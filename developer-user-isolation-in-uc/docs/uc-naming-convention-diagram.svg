@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 920" font-family="DM Sans, system-ui, sans-serif">
+  <defs>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.08"/>
+    </filter>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#4A5C65"/>
+    </marker>
+    <linearGradient id="headerGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1B3139"/>
+      <stop offset="100%" stop-color="#2D3B41"/>
+    </linearGradient>
+    <linearGradient id="devGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E6F4F8"/>
+      <stop offset="100%" stop-color="#D0EBF2"/>
+    </linearGradient>
+    <linearGradient id="tstGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFF8E6"/>
+      <stop offset="100%" stop-color="#FFEFCC"/>
+    </linearGradient>
+    <linearGradient id="uatGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E6F9F2"/>
+      <stop offset="100%" stop-color="#CCF2E5"/>
+    </linearGradient>
+    <linearGradient id="prdGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFE8E5"/>
+      <stop offset="100%" stop-color="#FFD4CF"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1100" height="920" rx="16" fill="#F5F7F8"/>
+
+  <rect width="1100" height="64" rx="16" fill="url(#headerGrad)"/>
+  <rect y="16" width="1100" height="48" fill="url(#headerGrad)"/>
+  <text x="32" y="40" fill="#FF3621" font-size="22" font-weight="700">&#9670;</text>
+  <text x="56" y="40" fill="#FFFFFF" font-size="16" font-weight="600">Databricks</text>
+  <text x="850" y="40" fill="#D0D7DB" font-size="12" font-weight="500" letter-spacing="0.5">UNITY CATALOG NAMING CONVENTION</text>
+  <text x="1068" y="40" fill="#8A9BA3" font-size="11" text-anchor="end">Matthew Giglia | Oct 2026</text>
+
+  <text x="550" y="104" text-anchor="middle" fill="#1B3139" font-size="22" font-weight="700">Catalog &amp; Schema Topology by Environment</text>
+  <text x="550" y="126" text-anchor="middle" fill="#4A5C65" font-size="13">Per-project catalogs with per-developer schema isolation in dev | Schema names match prod in tst/uat/prd</text>
+
+  <rect x="30" y="148" width="1040" height="36" rx="8" fill="#1B3139"/>
+  <text x="550" y="172" text-anchor="middle" fill="#FFFFFF" font-size="13" font-weight="600" letter-spacing="1">METASTORE</text>
+
+  <!-- DEV ENVIRONMENT -->
+  <rect x="30" y="200" width="510" height="340" rx="12" fill="url(#devGrad)" stroke="#077A9D" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="42" y="210" width="80" height="26" rx="6" fill="#077A9D"/>
+  <text x="82" y="228" text-anchor="middle" fill="#FFF" font-size="11" font-weight="600" letter-spacing="0.5">DEV</text>
+  <text x="134" y="228" fill="#077A9D" font-size="15" font-weight="700" font-family="monospace">hedis_dev</text>
+  <rect x="370" y="210" width="158" height="26" rx="6" fill="none" stroke="#077A9D" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="449" y="228" text-anchor="middle" fill="#077A9D" font-size="10" font-weight="500">Dev Workspace Only</text>
+
+  <rect x="50" y="250" width="230" height="130" rx="8" fill="#FFFFFF" stroke="#077A9D" stroke-width="1.5"/>
+  <rect x="50" y="250" width="230" height="30" rx="8" fill="#077A9D"/>
+  <rect x="50" y="268" width="230" height="12" fill="#077A9D"/>
+  <text x="165" y="270" text-anchor="middle" fill="#FFF" font-size="11" font-weight="600">Developer A (ah23297)</text>
+  <text x="66" y="304" fill="#1B3139" font-size="12" font-weight="600" font-family="monospace">dev_ah23297_pa</text>
+  <text x="66" y="322" fill="#4A5C65" font-size="10">claims, members, providers</text>
+  <text x="66" y="340" fill="#1B3139" font-size="12" font-weight="600" font-family="monospace">dev_ah23297_pa_pipeline</text>
+  <text x="66" y="358" fill="#4A5C65" font-size="10">bronze, silver, gold tables</text>
+  <text x="66" y="374" fill="#8A9BA3" font-size="10" font-style="italic">Owner: ah23297 (via CREATE SCHEMA)</text>
+
+  <rect x="300" y="250" width="230" height="130" rx="8" fill="#FFFFFF" stroke="#077A9D" stroke-width="1.5"/>
+  <rect x="300" y="250" width="230" height="30" rx="8" fill="#077A9D"/>
+  <rect x="300" y="268" width="230" height="12" fill="#077A9D"/>
+  <text x="415" y="270" text-anchor="middle" fill="#FFF" font-size="11" font-weight="600">Developer B (jsmith)</text>
+  <text x="316" y="304" fill="#1B3139" font-size="12" font-weight="600" font-family="monospace">dev_jsmith_pa</text>
+  <text x="316" y="322" fill="#4A5C65" font-size="10">claims, members, providers</text>
+  <text x="316" y="340" fill="#1B3139" font-size="12" font-weight="600" font-family="monospace">dev_jsmith_pa_pipeline</text>
+  <text x="316" y="358" fill="#4A5C65" font-size="10">bronze, silver, gold tables</text>
+  <text x="316" y="374" fill="#8A9BA3" font-size="10" font-style="italic">Owner: jsmith (via CREATE SCHEMA)</text>
+
+  <line x1="280" y1="310" x2="300" y2="310" stroke="#077A9D" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <text x="290" y="302" text-anchor="middle" fill="#077A9D" font-size="14" font-weight="700">&#8596;</text>
+
+  <rect x="130" y="395" width="280" height="50" rx="8" fill="#FFFFFF" stroke="#077A9D" stroke-width="1" stroke-dasharray="5,3"/>
+  <text x="270" y="416" text-anchor="middle" fill="#077A9D" font-size="11" font-weight="600">Shared Reference Schemas</text>
+  <text x="270" y="434" text-anchor="middle" fill="#4A5C65" font-size="10">Lookup tables, seed data - readable by all devs</text>
+
+  <rect x="50" y="460" width="480" height="34" rx="6" fill="rgba(7,122,157,0.08)"/>
+  <text x="290" y="482" text-anchor="middle" fill="#077A9D" font-size="11" font-weight="500">Grants: USE CATALOG + CREATE SCHEMA - ownership inheritance handles the rest</text>
+
+  <rect x="50" y="502" width="480" height="28" rx="6" fill="rgba(7,122,157,0.05)"/>
+  <text x="290" y="520" text-anchor="middle" fill="#4A5C65" font-size="10">Schemas personalized per developer | Cross-developer visibility within project catalog</text>
+
+  <!-- TST ENVIRONMENT -->
+  <rect x="560" y="200" width="510" height="160" rx="12" fill="url(#tstGrad)" stroke="#FFAB00" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="572" y="210" width="80" height="26" rx="6" fill="#FFAB00"/>
+  <text x="612" y="228" text-anchor="middle" fill="#FFF" font-size="11" font-weight="600" letter-spacing="0.5">TST</text>
+  <text x="664" y="228" fill="#B8860B" font-size="15" font-weight="700" font-family="monospace">hedis_tst</text>
+  <rect x="900" y="210" width="158" height="26" rx="6" fill="none" stroke="#FFAB00" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="979" y="228" text-anchor="middle" fill="#B8860B" font-size="10" font-weight="500">Test Workspace Only</text>
+
+  <text x="580" y="268" fill="#1B3139" font-size="12" font-weight="600" font-family="monospace">pa</text>
+  <text x="610" y="268" fill="#4A5C65" font-size="11">&#8592; exact match to prod</text>
+  <text x="580" y="290" fill="#4A5C65" font-size="10">claims, members, providers</text>
+  <text x="580" y="312" fill="#1B3139" font-size="12" font-weight="600" font-family="monospace">pa_pipeline</text>
+  <text x="660" y="312" fill="#4A5C65" font-size="11">&#8592; exact match to prod</text>
+  <text x="580" y="334" fill="#4A5C65" font-size="10">bronze, silver, gold tables</text>
+  <text x="580" y="350" fill="#8A9BA3" font-size="10" font-style="italic">Integration testing | Schema names identical to prod</text>
+
+  <!-- UAT ENVIRONMENT -->
+  <rect x="560" y="380" width="510" height="160" rx="12" fill="url(#uatGrad)" stroke="#00A972" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="572" y="390" width="80" height="26" rx="6" fill="#00A972"/>
+  <text x="612" y="408" text-anchor="middle" fill="#FFF" font-size="11" font-weight="600" letter-spacing="0.5">UAT</text>
+  <text x="664" y="408" fill="#00A972" font-size="15" font-weight="700" font-family="monospace">hedis_uat</text>
+  <rect x="900" y="390" width="158" height="26" rx="6" fill="none" stroke="#00A972" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="979" y="408" text-anchor="middle" fill="#00A972" font-size="10" font-weight="500">UAT Workspace Only</text>
+
+  <text x="580" y="448" fill="#1B3139" font-size="12" font-weight="600" font-family="monospace">pa</text>
+  <text x="610" y="448" fill="#4A5C65" font-size="11">&#8592; exact match to prod</text>
+  <text x="580" y="470" fill="#4A5C65" font-size="10">claims, members, providers</text>
+  <text x="580" y="492" fill="#1B3139" font-size="12" font-weight="600" font-family="monospace">pa_pipeline</text>
+  <text x="660" y="492" fill="#4A5C65" font-size="11">&#8592; exact match to prod</text>
+  <text x="580" y="514" fill="#4A5C65" font-size="10">bronze, silver, gold tables</text>
+  <text x="580" y="530" fill="#8A9BA3" font-size="10" font-style="italic">Business validation | Schema names identical to prod</text>
+
+  <!-- PRD -->
+  <rect x="200" y="570" width="700" height="180" rx="12" fill="url(#prdGrad)" stroke="#FF3621" stroke-width="2.5" filter="url(#shadow)"/>
+  <rect x="212" y="580" width="80" height="26" rx="6" fill="#FF3621"/>
+  <text x="252" y="598" text-anchor="middle" fill="#FFF" font-size="11" font-weight="700" letter-spacing="0.5">PROD</text>
+  <text x="304" y="598" fill="#FF3621" font-size="17" font-weight="700" font-family="monospace">hedis</text>
+  <text x="395" y="598" fill="#4A5C65" font-size="12">clean, undecorated canonical name</text>
+  <rect x="730" y="580" width="158" height="26" rx="6" fill="none" stroke="#FF3621" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="809" y="598" text-anchor="middle" fill="#FF3621" font-size="10" font-weight="500">Prod Workspace Only</text>
+
+  <text x="230" y="636" fill="#1B3139" font-size="13" font-weight="700" font-family="monospace">pa</text>
+  <text x="230" y="656" fill="#4A5C65" font-size="11">claims, members, providers</text>
+  <text x="230" y="676" fill="#4A5C65" font-size="11">measures (metric views)</text>
+  <text x="550" y="636" fill="#1B3139" font-size="13" font-weight="700" font-family="monospace">pa_pipeline</text>
+  <text x="550" y="656" fill="#4A5C65" font-size="11">bronze, silver, gold tables</text>
+  <text x="550" y="676" fill="#4A5C65" font-size="11">streaming checkpoints</text>
+
+  <text x="550" y="710" text-anchor="middle" fill="#FF3621" font-size="12" font-weight="600">Genie Agents, Dashboards, and Metric Views point here</text>
+  <text x="550" y="730" text-anchor="middle" fill="#8A9BA3" font-size="10">hedis.pa.claims | hedis.pa.members | hedis.pa_pipeline.gold_claims</text>
+
+  <!-- ARROWS -->
+  <line x1="540" y1="370" x2="560" y2="280" stroke="#4A5C65" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <rect x="525" y="310" width="130" height="22" rx="4" fill="#F5F7F8" stroke="#D0D7DB" stroke-width="1"/>
+  <text x="590" y="325" text-anchor="middle" fill="#4A5C65" font-size="9" font-weight="500">catalog + prefix drop</text>
+
+  <line x1="815" y1="360" x2="815" y2="380" stroke="#4A5C65" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="850" y="374" fill="#4A5C65" font-size="9" font-weight="500">catalog only</text>
+
+  <line x1="815" y1="540" x2="700" y2="570" stroke="#4A5C65" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="780" y="558" fill="#4A5C65" font-size="9" font-weight="500">catalog only</text>
+
+  <!-- LEGEND -->
+  <rect x="30" y="780" width="1040" height="120" rx="12" fill="#1B3139" filter="url(#shadow)"/>
+  <text x="550" y="808" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="700">Key Principles</text>
+
+  <rect x="60" y="822" width="12" height="12" rx="3" fill="#077A9D"/>
+  <text x="80" y="833" fill="#D0D7DB" font-size="11">Dev: per-project catalog, per-developer schemas (DAB dev_ prefix)</text>
+  <rect x="60" y="846" width="12" height="12" rx="3" fill="#FFAB00"/>
+  <text x="80" y="857" fill="#D0D7DB" font-size="11">Tst/UAT: schema names match prod exactly, only target_catalog changes</text>
+  <rect x="60" y="870" width="12" height="12" rx="3" fill="#FF3621"/>
+  <text x="80" y="881" fill="#D0D7DB" font-size="11">Prod: clean undecorated name, the canonical reference for all consumers</text>
+
+  <rect x="600" y="822" width="12" height="12" rx="3" fill="none" stroke="#D0D7DB" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <text x="620" y="833" fill="#D0D7DB" font-size="11">Workspace binding: hard platform-level isolation</text>
+  <text x="620" y="857" fill="#FF3621" font-size="11" font-weight="600">Zero hardcoding:</text>
+  <text x="730" y="857" fill="#D0D7DB" font-size="11">everything parameterized via ${var.catalog}</text>
+  <text x="620" y="881" fill="#00A972" font-size="11" font-weight="600">Cleanup:</text>
+  <text x="680" y="881" fill="#D0D7DB" font-size="11">databricks bundle destroy -t env</text>
+
+</svg>

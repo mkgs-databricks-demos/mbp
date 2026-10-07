@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1.0'>
+<title>UC Naming Convention - Databricks Best Practices</title>
+<link href='https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap' rel='stylesheet'>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',system-ui,sans-serif;background:#F5F7F8;color:#1B3139;line-height:1.7;font-size:16px}
+header{background:#1B3139;padding:20px 32px;position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 12px rgba(0,0,0,.15);display:flex;align-items:center;justify-content:space-between}
+header img{height:32px}
+header span{color:#D0D7DB;font-size:13px;font-weight:500;letter-spacing:.5px;text-transform:uppercase}
+main{max-width:900px;margin:0 auto;padding:48px 32px 80px}
+h1{font-size:36px;font-weight:700;color:#1B3139;margin:0 0 8px;line-height:1.2}
+h2{font-size:24px;font-weight:700;color:#1B3139;margin:48px 0 16px;padding-top:24px;border-top:2px solid #E8ECEE}
+h3{font-size:18px;font-weight:600;color:#2D3B41;margin:28px 0 12px}
+h4{font-size:15px;font-weight:600;color:#374850;margin:24px 0 8px}
+p{margin-bottom:16px}
+strong{font-weight:600}
+table{width:100%;border-collapse:collapse;margin:16px 0 24px;font-size:14px}
+thead th{background:#1B3139;color:#FFF;padding:12px 16px;text-align:left;font-weight:600;
+  font-size:13px;text-transform:uppercase;letter-spacing:.3px}
+thead th:first-child{border-radius:8px 0 0 0}
+thead th:last-child{border-radius:0 8px 0 0}
+tbody td{padding:12px 16px;border-bottom:1px solid #E8ECEE}
+tbody tr:hover{background:#F5F7F8}
+tbody tr:last-child td:first-child{border-radius:0 0 0 8px}
+tbody tr:last-child td:last-child{border-radius:0 0 8px 0}
+code{font-family:'JetBrains Mono',monospace;font-size:13px;background:#E8ECEE;
+  padding:2px 6px;border-radius:4px;color:#FF3621}
+pre{background:#1B3139;color:#E8ECEE;padding:20px 24px;border-radius:10px;
+  overflow-x:auto;margin:16px 0 24px;line-height:1.7}
+pre code{background:none;padding:0;color:inherit;font-size:13px}
+blockquote{border-left:4px solid #FF3621;padding:16px 24px;margin:20px 0;
+  background:rgba(255,54,33,.04);border-radius:0 10px 10px 0;font-size:15px}
+blockquote strong{color:#FF3621}
+ul,ol{padding-left:24px;margin-bottom:16px}
+li{margin-bottom:6px}
+hr{border:none;border-top:2px solid #E8ECEE;margin:32px 0}
+footer{text-align:center;padding:40px 32px;color:#8A9BA3;font-size:13px;border-top:1px solid #E8ECEE}
+@media(max-width:768px){main{padding:24px 16px}h1{font-size:28px}h2{font-size:20px}
+  table{font-size:12px}thead th,tbody td{padding:8px 10px}}
+</style>
+</head>
+<body>
+<header>
+<img src='https://cdn.bfldr.com/9AYANS2F/at/9c6z3t9c35wp88vc2t796qq9/primary-lockup-full-color-rgb.svg?auto=webp' alt='Databricks'/>
+<span>Best Practices Guide</span>
+</header>
+<main>
+<h1>Unity Catalog Naming Convention &amp; DAB Deployment Best Practices</h1>
+<p><strong>Author:</strong> Matthew Giglia | Databricks Field Engineering<br />
+<strong>Version:</strong> 1.0 | October 2026</p>
+<hr />
+<h2>Overview</h2>
+<p>This document defines the standard naming convention for Unity Catalog catalogs and schemas when using Databricks Asset Bundles (DABs) for multi-environment deployment. It covers catalog naming, schema personalization, privilege grants, workspace binding, parameterization rules, and lifecycle management.</p>
+<p>This convention is designed to be referenced by Genie Code for contextual understanding of your environment topology.</p>
+<hr />
+<h2>Catalog Naming Convention</h2>
+<h3>Pattern</h3>
+<table>
+<thead>
+<tr>
+<th>Environment</th>
+<th>Catalog Name</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Production</strong></td>
+<td><code>&lt;business_function&gt;</code></td>
+<td><code>hedis</code></td>
+</tr>
+<tr>
+<td><strong>UAT</strong></td>
+<td><code>&lt;business_function&gt;_uat</code></td>
+<td><code>hedis_uat</code></td>
+</tr>
+<tr>
+<td><strong>Test</strong></td>
+<td><code>&lt;business_function&gt;_tst</code></td>
+<td><code>hedis_tst</code></td>
+</tr>
+<tr>
+<td><strong>Development</strong></td>
+<td><code>&lt;business_function&gt;_dev</code></td>
+<td><code>hedis_dev</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key principle:</strong> The catalog is the environment discriminator. Production uses the clean, undecorated name. Non-production environments append <code>_&lt;env&gt;</code> as a suffix.</p>
+<h3>Schema Naming</h3>
+<table>
+<thead>
+<tr>
+<th>Environment</th>
+<th>Schema Name</th>
+<th>Personalized?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Production</strong></td>
+<td><code>pa</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><strong>UAT</strong></td>
+<td><code>pa</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><strong>Test</strong></td>
+<td><code>pa</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><strong>Development</strong></td>
+<td><code>dev_&lt;userid&gt;_pa</code></td>
+<td>Yes — DAB dev-mode prefix</td>
+</tr>
+</tbody>
+</table>
+<p>Schema names are <strong>exact matches across tst, uat, and prd</strong>. Only the development environment has personalized schema names, applied automatically by DAB's development mode prefix (<code>dev_&lt;userid&gt;_</code>).</p>
+<h3>Fully Qualified Examples</h3>
+<div class="codehilite"><pre><span></span><code>hedis.pa.claims              -- Production
+hedis_uat.pa.claims          -- UAT (schema matches prod)
+hedis_tst.pa.claims          -- Test (schema matches prod)
+hedis_dev.dev_ah23297_pa.claims  -- Dev (schema personalized)
+</code></pre></div>
+
+<hr />
+<h2>Promotion Path</h2>
+<div class="codehilite"><pre><span></span><code>dev  (personalized schemas, iterate fast)
+ ↓   target_catalog changes, schema prefix drops
+tst  (exact schema names, integration test)
+ ↓   target_catalog changes only
+uat  (exact schema names, business validation)
+ ↓   target_catalog changes only
+prd  (exact schema names, canonical)
+</code></pre></div>
+
+<p>The schema name discontinuity happens <strong>exactly once</strong> — at the dev → tst boundary. This is the natural boundary where code transitions from an individual developer's sandbox to a shared, validated artifact. From tst onward, promotion is a clean catalog swap with zero schema renaming.</p>
+<hr />
+<h2>Zero Hardcoding Rule</h2>
+<blockquote>
+<p><strong>Nothing in the bundle should ever be hardcoded — catalog names, schema names, table references — everything must be parameterized.</strong></p>
+</blockquote>
+<p>This is the foundational rule that makes the entire promotion path work. If anything is hardcoded, the bundle is welded to one environment and the single-variable promotion model breaks down.</p>
+<h3>What Must Be Parameterized</h3>
+<table>
+<thead>
+<tr>
+<th>Artifact</th>
+<th>Parameterization Method</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>databricks.yml resources</strong></td>
+<td>Use <code>${var.catalog}</code>, <code>${var.schema_prefix}</code>, etc.</td>
+</tr>
+<tr>
+<td><strong>Resource references</strong></td>
+<td><code>${resources.&lt;type&gt;.&lt;resource_id&gt;.&lt;element&gt;}</code> — never literal names</td>
+</tr>
+<tr>
+<td><strong>SQL queries</strong></td>
+<td><code>USE CATALOG ${catalog}; USE SCHEMA ${schema};</code> at the top, then unqualified table names</td>
+</tr>
+<tr>
+<td><strong>Metric view YAML</strong></td>
+<td>Catalog and schema references must use variables</td>
+</tr>
+<tr>
+<td><strong>Pipeline configurations</strong></td>
+<td>All catalog/schema references interpolated</td>
+</tr>
+<tr>
+<td><strong>Notebook widgets</strong></td>
+<td>Parameterized via DAB task parameters</td>
+</tr>
+<tr>
+<td><strong>Any other artifact</strong></td>
+<td>If it references a catalog or schema, it uses a variable</td>
+</tr>
+</tbody>
+</table>
+<h3>Example: databricks.yml</h3>
+<div class="codehilite"><pre><span></span><code><span class="nt">variables</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">catalog</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Target catalog for deployment</span>
+<span class="w">    </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hedis_dev</span>
+
+<span class="nt">resources</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">schemas</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">pa_schema</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">catalog_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${var.catalog}</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pa</span>
+</code></pre></div>
+
+<h3>Example: SQL in Notebooks</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1">-- Set context once at the top</span>
+<span class="n">USE</span><span class="w"> </span><span class="k">CATALOG</span><span class="w"> </span><span class="err">${</span><span class="k">catalog</span><span class="err">}</span><span class="p">;</span>
+<span class="n">USE</span><span class="w"> </span><span class="k">SCHEMA</span><span class="w"> </span><span class="err">${</span><span class="k">schema</span><span class="err">}</span><span class="p">;</span>
+
+<span class="c1">-- All subsequent queries use unqualified names</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">claims</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">measure_year</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2026</span><span class="p">;</span>
+</code></pre></div>
+
+<h3>Example: Resource References in Jobs/Pipelines</h3>
+<div class="codehilite"><pre><span></span><code><span class="nt">tasks</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">task_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">load_claims</span>
+<span class="w">    </span><span class="nt">notebook_task</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">notebook_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${resources.notebooks.load_claims.path}</span>
+<span class="w">      </span><span class="nt">base_parameters</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">catalog</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${resources.schemas.pa_schema.catalog_name}</span>
+<span class="w">        </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${resources.schemas.pa_schema.name}</span>
+</code></pre></div>
+
+<hr />
+<h2>Workspace Binding</h2>
+<p>Each catalog must be bound to its designated workspace. By default, all catalogs in a metastore are accessible from every attached workspace — workspace binding overrides this to enforce hard isolation.</p>
+<table>
+<thead>
+<tr>
+<th>Catalog</th>
+<th>Bound To</th>
+<th>Access Mode</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hedis_dev</code></td>
+<td>Development / Interactive workspace</td>
+<td>Read-Write</td>
+</tr>
+<tr>
+<td><code>hedis_tst</code></td>
+<td>Test workspace</td>
+<td>Read-Write</td>
+</tr>
+<tr>
+<td><code>hedis_uat</code></td>
+<td>UAT workspace</td>
+<td>Read-Write</td>
+</tr>
+<tr>
+<td><code>hedis</code> (prod)</td>
+<td>Production workspace</td>
+<td>Read-Write</td>
+</tr>
+</tbody>
+</table>
+<p>Once bound, access from any other workspace is <strong>denied at the platform level</strong>, regardless of privilege grants. This is a hard boundary, not a convention.</p>
+<p>Binding is configured via the Workspace-Catalog Bindings API or Catalog Explorer — not via SQL.</p>
+<hr />
+<h2>Grants — Development Catalog</h2>
+<p>For a per-developer development catalog, the minimal correct grant set is:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">GRANT</span><span class="w"> </span><span class="n">USE</span><span class="w"> </span><span class="k">CATALOG</span><span class="p">,</span><span class="w"> </span><span class="k">CREATE</span><span class="w"> </span><span class="k">SCHEMA</span>
+<span class="k">ON</span><span class="w"> </span><span class="k">CATALOG</span><span class="w"> </span><span class="n">hedis_dev</span>
+<span class="k">TO</span><span class="w"> </span><span class="o">`</span><span class="n">developer</span><span class="o">@</span><span class="n">company</span><span class="p">.</span><span class="n">com</span><span class="o">`</span><span class="p">;</span>
+</code></pre></div>
+
+<h3>Why This Is Sufficient</h3>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Authorization</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create schemas</td>
+<td><code>CREATE SCHEMA</code> grant on catalog</td>
+</tr>
+<tr>
+<td>Create tables/views/volumes inside their schemas</td>
+<td><strong>Ownership</strong> — developer created the schema</td>
+</tr>
+<tr>
+<td>SELECT / MODIFY data in their schemas</td>
+<td><strong>Ownership</strong> inheritance</td>
+</tr>
+<tr>
+<td>Drop their schemas and contents</td>
+<td><strong>Ownership</strong></td>
+</tr>
+<tr>
+<td>Grant access to a teammate</td>
+<td><strong>Ownership</strong> — schema owners can grant on their schemas</td>
+</tr>
+<tr>
+<td>Create tables in schemas they don't own</td>
+<td>Blocked — no catalog-level <code>CREATE TABLE</code></td>
+</tr>
+</tbody>
+</table>
+<h3>What NOT to Grant</h3>
+<table>
+<thead>
+<tr>
+<th>Privilege</th>
+<th>Why Not</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CREATE TABLE</code> at catalog level</td>
+<td>Would allow creating tables in any schema, including those owned by service principals or other developers</td>
+</tr>
+<tr>
+<td><code>MANAGE</code></td>
+<td>Not needed — ownership inheritance handles everything within developer-created schemas</td>
+</tr>
+<tr>
+<td><code>ALL PRIVILEGES</code></td>
+<td>Overly broad; dynamically evaluated and expands as new privilege types are added</td>
+</tr>
+</tbody>
+</table>
+<h3>Service Principal Consideration</h3>
+<p>If a DAB's service principal creates schemas (not the developer), the SP is the owner. Options:
+1. Structure the DAB so the developer identity creates schemas
+2. Have the SP transfer ownership post-deploy: <code>ALTER SCHEMA ... OWNER TO developer</code>
+3. Grant explicit privileges on SP-owned schemas to the developer</p>
+<hr />
+<h2>Lifecycle Cleanup</h2>
+<p>Lower environments can be cleaned up after a project ends using DAB's built-in destroy command:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Tear down a specific environment</span>
+databricks<span class="w"> </span>bundle<span class="w"> </span>destroy<span class="w"> </span>-t<span class="w"> </span>dev
+databricks<span class="w"> </span>bundle<span class="w"> </span>destroy<span class="w"> </span>-t<span class="w"> </span>tst
+databricks<span class="w"> </span>bundle<span class="w"> </span>destroy<span class="w"> </span>-t<span class="w"> </span>uat
+</code></pre></div>
+
+<p><code>bundle destroy</code> is DAB-aware — it tears down exactly what the bundle deployed (schemas, tables, volumes, pipelines, jobs) without manual hunting.</p>
+<p>For development specifically:
+- Individual developer schemas: <code>databricks bundle destroy</code> in dev mode
+- Entire dev catalog: <code>DROP CATALOG hedis_dev CASCADE</code> (admin operation)</p>
+<p>This addresses the metastore clutter concern: lower-environment catalogs are ephemeral and have a built-in, automated teardown path.</p>
+<hr />
+<h2>Metastore Visibility Note</h2>
+<p>Metastore admins and workspace admins will see all catalogs across all environments. With many developers, the metastore catalog list may appear busy.</p>
+<p><strong>Mitigations:</strong>
+- Consistent <code>&lt;business_function&gt;_&lt;env&gt;</code> naming makes dev catalogs instantly recognizable and filterable
+- <code>INFORMATION_SCHEMA</code> queries can filter with <code>WHERE catalog_name NOT LIKE '%_dev'</code>
+- Automated cleanup via <code>bundle destroy</code> keeps the catalog count proportional to active projects, not accumulated history
+- Unity Catalog does not impose practical limits on catalog count at typical team sizes</p>
+<hr />
+<h2>Quick Reference Card</h2>
+<div class="codehilite"><pre><span></span><code><span class="o">+-----------------------------------------------------+</span>
+<span class="o">|</span><span class="w">  </span><span class="n">CATALOG</span><span class="w"> </span><span class="n">NAMING</span><span class="w">                                      </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="n">Prod</span><span class="p">:</span><span class="w">     </span><span class="o">&lt;</span><span class="n">business_function</span><span class="o">&gt;</span><span class="w">         </span><span class="n">e</span><span class="o">.</span><span class="n">g</span><span class="o">.</span><span class="w"> </span><span class="n">hedis</span><span class="w">    </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="n">Non</span><span class="o">-</span><span class="n">prod</span><span class="p">:</span><span class="w"> </span><span class="o">&lt;</span><span class="n">business_function</span><span class="o">&gt;</span><span class="n">_</span><span class="o">&lt;</span><span class="n">env</span><span class="o">&gt;</span><span class="w">   </span><span class="n">e</span><span class="o">.</span><span class="n">g</span><span class="o">.</span><span class="w"> </span><span class="n">hedis_dev</span><span class="o">|</span>
+<span class="o">|</span><span class="w">                                                      </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="n">SCHEMA</span><span class="w"> </span><span class="n">NAMING</span><span class="w">                                       </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="n">Tst</span><span class="o">/</span><span class="n">UAT</span><span class="o">/</span><span class="n">Prd</span><span class="p">:</span><span class="w"> </span><span class="n">exact</span><span class="w"> </span><span class="k">match</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">prod</span><span class="w">     </span><span class="n">e</span><span class="o">.</span><span class="n">g</span><span class="o">.</span><span class="w"> </span><span class="n">pa</span><span class="w">       </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="n">Dev</span><span class="w"> </span><span class="n">only</span><span class="p">:</span><span class="w">    </span><span class="n">DAB</span><span class="w"> </span><span class="n">dev</span><span class="o">-</span><span class="n">mode</span><span class="w"> </span><span class="n">prefix</span><span class="w">      </span><span class="n">e</span><span class="o">.</span><span class="n">g</span><span class="o">.</span><span class="w"> </span><span class="n">dev_</span><span class="o">*</span><span class="n">_pa</span><span class="w"> </span><span class="o">|</span>
+<span class="o">|</span><span class="w">                                                      </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="n">GRANTS</span><span class="w"> </span><span class="p">(</span><span class="n">Dev</span><span class="p">)</span><span class="w">                                        </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="n">USE</span><span class="w"> </span><span class="n">CATALOG</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">CREATE</span><span class="w"> </span><span class="n">SCHEMA</span><span class="w"> </span><span class="o">--</span><span class="w"> </span><span class="n">nothing</span><span class="w"> </span><span class="n">more</span><span class="w">         </span><span class="o">|</span>
+<span class="o">|</span><span class="w">                                                      </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="n">PARAMETERIZATION</span><span class="w">                                    </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="n">Zero</span><span class="w"> </span><span class="n">hardcoding</span><span class="o">.</span><span class="w"> </span><span class="n">Everything</span><span class="w"> </span><span class="n">uses</span><span class="w"> </span><span class="n">variables</span><span class="o">.</span><span class="w">         </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="o">$</span><span class="p">{</span><span class="k">var</span><span class="o">.</span><span class="n">catalog</span><span class="p">},</span><span class="w"> </span><span class="o">$</span><span class="p">{</span><span class="n">resources</span><span class="o">.&lt;</span><span class="n">type</span><span class="o">&gt;.&lt;</span><span class="n">id</span><span class="o">&gt;.&lt;</span><span class="n">element</span><span class="o">&gt;</span><span class="p">}</span><span class="w">  </span><span class="o">|</span>
+<span class="o">|</span><span class="w">                                                      </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="n">CLEANUP</span><span class="w">                                             </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="n">databricks</span><span class="w"> </span><span class="n">bundle</span><span class="w"> </span><span class="n">destroy</span><span class="w"> </span><span class="o">-</span><span class="n">t</span><span class="w"> </span><span class="o">&lt;</span><span class="n">env</span><span class="o">&gt;</span><span class="w">                  </span><span class="o">|</span>
+<span class="o">|</span><span class="w">                                                      </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="n">WORKSPACE</span><span class="w"> </span><span class="n">BINDING</span><span class="w">                                   </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="n">Each</span><span class="w"> </span><span class="n">catalog</span><span class="w"> </span><span class="n">bound</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">its</span><span class="w"> </span><span class="n">designated</span><span class="w"> </span><span class="n">workspace</span><span class="w">      </span><span class="o">|</span>
+<span class="o">+-----------------------------------------------------+</span>
+</code></pre></div>
+</main>
+<footer>
+<p>Databricks, Inc. | Field Engineering Best Practices | Matthew Giglia | 2026</p>
+</footer>
+</body>
+</html>
