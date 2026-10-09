@@ -1,0 +1,6 @@
+# Generated render outputs -- keep PRs and git diff focused on source files.
+# These files are still tracked normally; this only changes how they are presented.
+
+workspace-architecture/diagrams/svg/*.svg -diff linguist-generated=true
+workspace-architecture/diagrams/html/*.html -diff linguist-generated=true
+workspace-architecture/docs/enterprise_workspace_architecture.html -diff linguist-generated=true
