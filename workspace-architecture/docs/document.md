@@ -94,6 +94,16 @@ For cross-region data sharing, use **Databricks-to-Databricks (D2D) OpenSharing*
 - For frequently accessed cross-region data, consider a replication pipeline to synchronize tables rather than relying solely on OpenSharing
 - Do **not** register the same external table in multiple metastores — this causes schema drift and Delta commit service consistency issues
 
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ Databricks Account                                                 │
+│                                                                     │
+│  US-East Region                              EU-West Region         │
+│  Metastore A                                 Metastore B            │
+│  func_dev · func_tst · func · prod           D2D OpenSharing        │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
 #### 2.3 Catalog Hierarchy
 
 Within each metastore, catalogs are organized by business function and environment:
@@ -625,6 +635,15 @@ GitHub Actions / Azure DevOps:
 
 The recommended pattern is **active-passive, single-writer** with Managed DR where available (gated feature on AWS and Azure).
 
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ Stable DR Endpoint                                                  │
+│                                                                     │
+│  PRIMARY REGION                             SECONDARY REGION        │
+│  Active / single-writer                     Standby / failover      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
 #### 13.2 RTO/RPO by Workload Tier
 
 | Workload Tier | Example | Target RTO | Target RPO | Pattern |
@@ -644,6 +663,15 @@ The recommended pattern is **active-passive, single-writer** with Managed DR whe
 #### 13.4 Global Operations Model
 
 For multi-geography organizations:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ Global Databricks Account                                          │
+│                                                                     │
+│  US-East                 EU-West                 APAC               │
+│  regional metastores linked with D2D OpenSharing                   │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 - Each region has its own metastore (UC hard constraint)
 - D2D OpenSharing for cross-region reference data and aggregates
