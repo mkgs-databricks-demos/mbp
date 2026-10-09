@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enterprise Databricks Workspace Architecture and Governance Reference</title>
+<style>
+/* Databricks Theme - Enterprise Architecture Document */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+    --red: #FF3621;
+    --dark: #1B3139;
+    --teal: #077A9D;
+    --green: #00A972;
+    --amber: #FFAB00;
+    --white: #FFFFFF;
+    --gray: #F2F2F2;
+    --border: #E8E8E8;
+    --text-gray: #6B7280;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'DM Sans', 'Inter', 'Segoe UI', sans-serif;
+    background: var(--gray);
+    color: var(--dark);
+    line-height: 1.7;
+    font-size: 16px;
+}
+
+.header {
+    background: var(--dark);
+    color: var(--white);
+    padding: 1.25rem 3rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.header .logo {
+    width: 40px; height: 40px;
+    background: var(--red);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+
+.header .logo svg { width: 24px; height: 24px; }
+.header h1 { font-size: 1.125rem; font-weight: 700; }
+.header .author { margin-left: auto; font-size: 0.8125rem; color: rgba(255,255,255,0.65); }
+
+.layout { display: flex; max-width: 1400px; margin: 0 auto; }
+
+.toc {
+    width: 260px; flex-shrink: 0;
+    position: sticky; top: 68px; height: calc(100vh - 68px);
+    overflow-y: auto; padding: 2rem 1.25rem;
+    background: var(--white); border-right: 1px solid var(--border);
+}
+
+.toc h2 {
+    font-size: 0.6875rem; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--text-gray);
+    margin-bottom: 0.75rem; font-weight: 700;
+}
+
+.toc ul { list-style: none; }
+.toc li { margin-bottom: 0.125rem; }
+.toc a {
+    color: var(--dark); text-decoration: none;
+    font-size: 0.78rem; display: block;
+    padding: 0.2rem 0.5rem; border-radius: 4px;
+    transition: all 0.15s;
+}
+.toc a:hover { background: var(--gray); color: var(--red); }
+
+.content { flex: 1; min-width: 0; padding: 3rem; background: var(--white); }
+.content > h1, .content > h2:first-of-type { display: none; }
+
+.content h3 {
+    font-size: 1.625rem; font-weight: 700;
+    margin: 3rem 0 1.25rem; padding-bottom: 0.625rem;
+    border-bottom: 3px solid var(--red);
+}
+
+.content h4 { font-size: 1.1875rem; font-weight: 700; margin: 2rem 0 0.75rem; }
+.content p { margin-bottom: 1rem; }
+.content a { color: var(--teal); text-decoration: none; }
+.content a:hover { text-decoration: underline; }
+
+.content table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.8125rem; }
+.content thead th { background: var(--dark); color: var(--white); padding: 0.625rem 0.875rem; text-align: left; font-weight: 600; }
+.content tbody td { padding: 0.5rem 0.875rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.content tbody tr:hover { background: rgba(7,122,157,0.04); }
+
+.content pre {
+    background: var(--dark); color: #E5E7EB;
+    padding: 1.25rem; border-radius: 8px;
+    overflow-x: auto; margin: 1.25rem 0;
+    font-family: 'DM Mono', 'Fira Code', monospace;
+    font-size: 0.78rem; line-height: 1.6;
+}
+
+.content code { font-family: 'DM Mono', 'Fira Code', monospace; font-size: 0.875em; }
+.content p code, .content li code { background: var(--gray); padding: 0.1em 0.35em; border-radius: 3px; color: var(--red); }
+
+.content ul, .content ol { margin: 0.5rem 0 1rem 1.5rem; }
+.content li { margin-bottom: 0.25rem; }
+
+.diagram-embed {
+    background: var(--gray); border: 1px solid var(--border);
+    border-radius: 12px; padding: 2rem; margin: 2rem 0;
+    text-align: center; overflow-x: auto;
+}
+.diagram-embed svg { max-width: 100%; height: auto; }
+
+.content hr { border: none; height: 1px; background: var(--border); margin: 3rem 0; }
+
+.footer {
+    background: var(--dark); color: rgba(255,255,255,0.55);
+    text-align: center; padding: 1.5rem; font-size: 0.78rem;
+}
+
+@media print {
+    .header { position: static; }
+    .toc { display: none; }
+    .content { padding: 1rem; }
+    .content h3 { page-break-before: always; }
+    .content h3:first-of-type { page-break-before: avoid; }
+    .diagram-embed { break-inside: avoid; }
+}
+
+@media (max-width: 1024px) {
+    .toc { display: none; }
+    .content { padding: 1.5rem; }
+}
+
+</style>
+</head>
+<body>
+<div class="header">
+<div class="logo">
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" stroke-width="1.5" fill="none"/>
+</svg>
+</div>
+<h1>Enterprise Databricks Workspace Architecture and Governance Reference</h1>
+<span class="author">Matthew Giglia | Field Engineering</span>
+</div>
+<div class="layout">
+<nav class="toc"><h2>Contents</h2><div class="toc">
+<ul>
+<li><a href="#executive-summary">Executive Summary</a></li>
+<li><a href="#section-1-workspace-environment-strategy">Section 1: Workspace Environment Strategy</a><ul>
+<li><a href="#11-the-six-workspace-enterprise-model">1.1 The Six-Workspace Enterprise Model</a></li>
+<li><a href="#12-workspace-topology-diagram">1.2 Workspace Topology Diagram</a></li>
+<li><a href="#13-promotion-path">1.3 Promotion Path</a></li>
+</ul>
+</li>
+<li><a href="#section-2-unity-catalog-metastore-architecture">Section 2: Unity Catalog &amp; Metastore Architecture</a><ul>
+<li><a href="#21-one-metastore-per-region">2.1 One Metastore Per Region</a></li>
+<li><a href="#22-cross-region-data-access">2.2 Cross-Region Data Access</a></li>
+<li><a href="#23-catalog-hierarchy">2.3 Catalog Hierarchy</a></li>
+<li><a href="#24-cross-environment-read-access-read-up-write-local">2.4 Cross-Environment Read Access — "Read Up, Write Local"</a></li>
+<li><a href="#25-pros-and-cons-of-cross-environment-read-access">2.5 Pros and Cons of Cross-Environment Read Access</a></li>
+<li><a href="#26-when-not-to-use-cross-environment-read-access">2.6 When NOT to Use Cross-Environment Read Access</a></li>
+</ul>
+</li>
+<li><a href="#section-3-storage-architecture">Section 3: Storage Architecture</a><ul>
+<li><a href="#31-managed-vs-external-storage">3.1 Managed vs. External Storage</a></li>
+<li><a href="#32-storage-isolation-by-environment">3.2 Storage Isolation by Environment</a></li>
+<li><a href="#33-external-locations-storage-credentials">3.3 External Locations &amp; Storage Credentials</a></li>
+<li><a href="#34-encryption-considerations">3.4 Encryption Considerations</a></li>
+</ul>
+</li>
+<li><a href="#section-4-compliance-security-profile-targeted-not-blanket">Section 4: Compliance Security Profile — Targeted, Not Blanket</a><ul>
+<li><a href="#41-the-problem-with-blanket-application">4.1 The Problem with Blanket Application</a></li>
+<li><a href="#42-targeted-compliance-profile-assignment">4.2 Targeted Compliance Profile Assignment</a></li>
+<li><a href="#43-multi-standard-workspaces">4.3 Multi-Standard Workspaces</a></li>
+</ul>
+</li>
+<li><a href="#section-5-identity-access-management">Section 5: Identity &amp; Access Management</a><ul>
+<li><a href="#51-account-level-identity-foundation">5.1 Account-Level Identity Foundation</a></li>
+<li><a href="#52-group-strategy">5.2 Group Strategy</a></li>
+<li><a href="#53-service-principal-strategy">5.3 Service Principal Strategy</a></li>
+<li><a href="#54-workspace-entitlements">5.4 Workspace Entitlements</a></li>
+</ul>
+</li>
+<li><a href="#section-6-networking-data-plane-isolation">Section 6: Networking &amp; Data Plane Isolation</a><ul>
+<li><a href="#61-network-architecture-by-workspace-tier">6.1 Network Architecture by Workspace Tier</a></li>
+<li><a href="#62-private-connectivity">6.2 Private Connectivity</a></li>
+<li><a href="#63-egress-controls-data-exfiltration-prevention">6.3 Egress Controls &amp; Data Exfiltration Prevention</a></li>
+<li><a href="#64-when-to-use-separate-cloud-accountssubscriptions">6.4 When to Use Separate Cloud Accounts/Subscriptions</a></li>
+</ul>
+</li>
+<li><a href="#section-7-compute-policy-standards">Section 7: Compute Policy Standards</a><ul>
+<li><a href="#71-compute-policies-by-workspace-tier">7.1 Compute Policies by Workspace Tier</a></li>
+<li><a href="#72-sql-warehouse-strategy">7.2 SQL Warehouse Strategy</a></li>
+<li><a href="#73-tagging-requirements-for-finops">7.3 Tagging Requirements for FinOps</a></li>
+</ul>
+</li>
+<li><a href="#section-8-the-sandbox-workspace">Section 8: The Sandbox Workspace</a><ul>
+<li><a href="#81-why-a-sandbox">8.1 Why a Sandbox?</a></li>
+<li><a href="#82-sandbox-guardrails">8.2 Sandbox Guardrails</a></li>
+<li><a href="#83-sandbox-dev-promotion-gate">8.3 Sandbox → Dev Promotion Gate</a></li>
+</ul>
+</li>
+<li><a href="#section-9-the-interactive-analyst-workspace-frictionless-analyst-deployments">Section 9: The Interactive Analyst Workspace &amp; Frictionless Analyst Deployments</a><ul>
+<li><a href="#91-why-a-dedicated-interactive-analyst-workspace">9.1 Why a Dedicated Interactive Analyst Workspace?</a></li>
+<li><a href="#92-frictionless-analyst-deployments-the-bridge-to-production">9.2 Frictionless Analyst Deployments — The Bridge to Production</a></li>
+<li><a href="#93-catalog-access-model">9.3 Catalog Access Model</a></li>
+</ul>
+</li>
+<li><a href="#section-10-the-consumer-workspace-genie-ontology-layer">Section 10: The Consumer Workspace (Genie Ontology Layer)</a><ul>
+<li><a href="#101-why-a-dedicated-consumer-workspace">10.1 Why a Dedicated Consumer Workspace?</a></li>
+<li><a href="#102-what-lives-in-the-consumer-workspace">10.2 What Lives in the Consumer Workspace</a></li>
+<li><a href="#103-genie-ontology-architecture">10.3 Genie Ontology Architecture</a></li>
+</ul>
+</li>
+<li><a href="#section-11-external-customer-access-unity-gateway-hyperscaler-api-gateway">Section 11: External Customer Access — Unity Gateway + Hyperscaler API Gateway</a><ul>
+<li><a href="#111-the-problem">11.1 The Problem</a></li>
+<li><a href="#112-the-architecture">11.2 The Architecture</a></li>
+<li><a href="#113-the-three-spn-architecture">11.3 The Three-SPN Architecture</a></li>
+<li><a href="#114-on-behalf-of-obo-pattern">11.4 On-Behalf-Of (OBO) Pattern</a></li>
+<li><a href="#115-unity-gateway-governance">11.5 Unity Gateway Governance</a></li>
+</ul>
+</li>
+<li><a href="#section-12-cicd-deployment-pipelines">Section 12: CI/CD &amp; Deployment Pipelines</a><ul>
+<li><a href="#121-declarative-automation-bundles-dabs">12.1 Declarative Automation Bundles (DABs)</a></li>
+<li><a href="#122-dab-target-configuration">12.2 DAB Target Configuration</a></li>
+<li><a href="#123-two-bundle-dab-pattern-for-projects-with-databricks-apps">12.3 Two-Bundle DAB Pattern (for projects with Databricks Apps)</a></li>
+<li><a href="#124-cicd-pipeline-structure">12.4 CI/CD Pipeline Structure</a></li>
+<li><a href="#125-deployment-controls">12.5 Deployment Controls</a></li>
+<li><a href="#126-lifecycle-cleanup">12.6 Lifecycle Cleanup</a></li>
+</ul>
+</li>
+<li><a href="#section-13-disaster-recovery-global-operations">Section 13: Disaster Recovery &amp; Global Operations</a><ul>
+<li><a href="#131-dr-architecture">13.1 DR Architecture</a></li>
+<li><a href="#132-rtorpo-by-workload-tier">13.2 RTO/RPO by Workload Tier</a></li>
+<li><a href="#133-what-must-be-replicated">13.3 What Must Be Replicated</a></li>
+<li><a href="#134-global-operations-model">13.4 Global Operations Model</a></li>
+</ul>
+</li>
+<li><a href="#section-14-complete-architecture-putting-it-all-together">Section 14: Complete Architecture — Putting It All Together</a></li>
+<li><a href="#section-15-decision-framework">Section 15: Decision Framework</a><ul>
+<li><a href="#when-to-add-a-workspace">When to Add a Workspace</a></li>
+<li><a href="#when-to-add-a-region">When to Add a Region</a></li>
+</ul>
+</li>
+<li><a href="#section-16-key-references">Section 16: Key References</a></li>
+</ul>
+</div>
+</nav>
+<main class="content"><h1 id="enterprise-databricks-workspace-architecture-governance-reference">Enterprise Databricks Workspace Architecture &amp; Governance Reference</h1>
+<h2 id="author-matthew-giglia-field-engineering">Author: Matthew Giglia | Field Engineering</h2>
+<hr />
+<h3 id="executive-summary">Executive Summary</h3>
+<p>This reference architecture defines a comprehensive workspace strategy for enterprise Databricks deployments. It covers the Unity Catalog governance foundation, storage architecture, compliance security profiles, identity and access management, networking, compute policies, environment isolation (Dev → Test → UAT → Prod), specialized workspaces (Sandbox, Interactive Analyst, Consumer/Genie Ontology), external customer access via Unity Gateway, CI/CD deployment pipelines, disaster recovery, and global operations.</p>
+<p>The design philosophy: <strong>if it's worth building for one customer, it's worth building for all.</strong> Every pattern here is reusable across industries and cloud providers.</p>
+<hr />
+<h3 id="section-1-workspace-environment-strategy">Section 1: Workspace Environment Strategy</h3>
+<h4 id="11-the-six-workspace-enterprise-model">1.1 The Six-Workspace Enterprise Model</h4>
+<p>The industry standard of Dev → Staging → Prod is a starting point, but enterprise customers with regulated data, consumer-facing applications, analyst populations, and innovation requirements need a more nuanced model. The recommended architecture uses <strong>six logical workspace tiers</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Workspace</th>
+<th>Purpose</th>
+<th>Data Profile</th>
+<th>Who Uses It</th>
+<th>Compliance Profile</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Sandbox</strong></td>
+<td>Pre-release feature testing, innovation spikes</td>
+<td>Synthetic only</td>
+<td>Platform team, innovation leads</td>
+<td>None (minimal controls)</td>
+</tr>
+<tr>
+<td><strong>Dev</strong></td>
+<td>Developer iteration, unit testing, DAB dev-mode</td>
+<td>Write: synthetic/dev; Read: optionally prod+tst (see §2.4)</td>
+<td>Data engineers, ML engineers, data scientists</td>
+<td>None, or matches prod if reading regulated data</td>
+</tr>
+<tr>
+<td><strong>Test / UAT</strong></td>
+<td>Integration testing, business validation, regression</td>
+<td>Write: test data; Read: optionally prod (see §2.4)</td>
+<td>QA, business analysts, UAT users</td>
+<td>Matches prod if processing regulated data</td>
+</tr>
+<tr>
+<td><strong>Production</strong></td>
+<td>Business-critical workloads, certified pipelines</td>
+<td>Production data</td>
+<td>CI/CD, operators, scheduled jobs</td>
+<td>As required per data type</td>
+</tr>
+<tr>
+<td><strong>Interactive Analyst</strong></td>
+<td>Ad-hoc SQL against production data, asset authoring</td>
+<td>Read: prod data; Write: analyst catalog</td>
+<td>Business analysts, data analysts</td>
+<td>Matches prod (reads regulated data)</td>
+</tr>
+<tr>
+<td><strong>Consumer</strong></td>
+<td>Genie Ontology surface, dashboards, Genie Agents, Apps</td>
+<td>Read-only prod (certified gold)</td>
+<td>Business users, external consumers</td>
+<td>Inherits from prod catalog binding</td>
+</tr>
+</tbody>
+</table>
+<h4 id="12-workspace-topology-diagram">1.2 Workspace Topology Diagram</h4>
+<div class="diagram-embed"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" width="100%" role="img" aria-label="Enterprise workspace topology" font-family="'DM Sans','Inter','Segoe UI',Helvetica,Arial,sans-serif"><defs><marker id="d01-ah-6B7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#6B7280"/></marker><marker id="d01-ah-FF3621" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#FF3621"/></marker></defs><rect x="20" y="10" width="1160" height="680" rx="14" fill="none" stroke="#1B3139" stroke-width="1.5" stroke-dasharray="8 6"/><text x="38" y="30" font-size="10.5" font-weight="700" fill="#1B3139" text-anchor="start" letter-spacing="1.3">DATABRICKS ACCOUNT</text><rect x="50" y="55" width="1100" height="170" rx="14" fill="none" stroke="#077A9D" stroke-width="1.5" stroke-dasharray="6 5"/><text x="68" y="75" font-size="10.5" font-weight="700" fill="#077A9D" text-anchor="start" letter-spacing="1.3">SDLC WORKSPACES</text><rect x="70" y="90" width="235" height="112" rx="10" fill="#FFAB00" stroke="#CC8800" stroke-width="1.6"/><g transform="translate(179,105.2) scale(0.7083)" fill="none" stroke="#1B3139" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8 3v5.5c0 5-3.4 9.3-8 10.5-4.6-1.2-8-5.5-8-10.5V5.5z"/></g><text x="187.5" y="139.8" font-size="13" font-weight="700" fill="#1B3139" text-anchor="middle">SANDBOX</text><text x="187.5" y="156.2" font-size="10.5" font-weight="400" fill="#1B3139" text-anchor="middle" opacity="0.88">Preview features</text><text x="187.5" y="169.8" font-size="10.5" font-weight="400" fill="#1B3139" text-anchor="middle" opacity="0.88">Synthetic data only</text><text x="187.5" y="183.2" font-size="10.5" font-weight="400" fill="#1B3139" text-anchor="middle" opacity="0.88">No CSP</text><rect x="345" y="90" width="235" height="112" rx="10" fill="#077A9D" stroke="#055F7A" stroke-width="1.6"/><g transform="translate(454,112) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 9.5h18"/></g><text x="462.5" y="146.5" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">DEV</text><text x="462.5" y="163" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">Personal schemas</text><text x="462.5" y="176.5" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">DAB dev mode</text><rect x="620" y="90" width="235" height="112" rx="10" fill="#077A9D" stroke="#055F7A" stroke-width="1.6"/><g transform="translate(729,112) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 9.5h18"/></g><text x="737.5" y="146.5" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">TST / UAT</text><text x="737.5" y="163" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">Integration &amp;</text><text x="737.5" y="176.5" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">business validation</text><rect x="895" y="90" width="235" height="112" rx="10" fill="#FF3621" stroke="#CC2B1A" stroke-width="1.6"/><g transform="translate(1004,105.2) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 10.5V8a5.5 5.5 0 0111 0v2.5M5 10.5h14v10H5z"/></g><text x="1012.5" y="139.8" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">PRODUCTION</text><text x="1012.5" y="156.2" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">Certified pipelines</text><text x="1012.5" y="169.8" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">Gold tables</text><text x="1012.5" y="183.2" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">HIPAA / PCI-DSS</text><path d="M307,146 L343,146" stroke="#6B7280" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d01-ah-6B7280)"/><path d="M582,146 L618,146" stroke="#6B7280" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d01-ah-6B7280)"/><path d="M857,146 L893,146" stroke="#6B7280" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d01-ah-6B7280)"/><rect x="380" y="300" width="290" height="125" rx="10" fill="#00A972" stroke="#007A52" stroke-width="1.6"/><g transform="translate(516.5,321.8) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V11M10 20V4.5M16 20v-7M2.5 20h19"/></g><text x="525" y="356.2" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">INTERACTIVE ANALYST</text><text x="525" y="372.8" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">Ad-hoc SQL</text><text x="525" y="386.2" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">Authors assets</text><text x="525" y="399.8" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">No publishing to prod</text><rect x="730" y="300" width="290" height="125" rx="10" fill="#1B3139" stroke="#0F1D22" stroke-width="1.6"/><g transform="translate(866.5,328.5) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11.5a4 4 0 100-8 4 4 0 000 8zM4.5 21c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5"/></g><text x="875" y="363" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">CONSUMER</text><text x="875" y="379.5" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">Genie Agents · Genie One</text><text x="875" y="393" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">Dashboards · Apps</text><path d="M990,202 L990,252 L525,252 L525,300" stroke="#FF3621" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d01-ah-FF3621)"/><rect x="727.6" y="242.2" width="58.7" height="19.5" rx="5" fill="#FFFFFF" stroke="none" stroke-width="0" opacity="0.93"/><text x="757" y="255.2" font-size="9.5" font-weight="500" fill="#FF3621" text-anchor="middle">read-only</text><path d="M1040,202 L1040,274 L875,274 L875,300" stroke="#FF3621" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d01-ah-FF3621)"/><rect x="927.6" y="264.2" width="58.7" height="19.5" rx="5" fill="#FFFFFF" stroke="none" stroke-width="0" opacity="0.93"/><text x="957" y="277.2" font-size="9.5" font-weight="500" fill="#FF3621" text-anchor="middle">read-only</text><rect x="50" y="470" width="1100" height="200" rx="14" fill="none" stroke="#6B7280" stroke-width="1.5" stroke-dasharray="6 5"/><text x="1132" y="490" font-size="10.5" font-weight="700" fill="#6B7280" text-anchor="end" letter-spacing="1.3">UNITY CATALOG METASTORE · REGIONAL</text><rect x="70" y="530" width="195" height="95" rx="10" fill="#F2F2F2" stroke="#E8E8E8" stroke-width="1.6"/><g transform="translate(159,550.2) scale(0.7083)" fill="none" stroke="#1B3139" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/></g><text x="167.5" y="584.8" font-size="13" font-weight="700" fill="#1B3139" text-anchor="middle">sandbox_cat</text><text x="167.5" y="601.2" font-size="10.5" font-weight="400" fill="#6B7280" text-anchor="middle">bound: Sandbox</text><rect x="288" y="530" width="195" height="95" rx="10" fill="#F2F2F2" stroke="#E8E8E8" stroke-width="1.6"/><g transform="translate(377,550.2) scale(0.7083)" fill="none" stroke="#1B3139" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/></g><text x="385.5" y="584.8" font-size="13" font-weight="700" fill="#1B3139" text-anchor="middle">func_dev</text><text x="385.5" y="601.2" font-size="10.5" font-weight="400" fill="#6B7280" text-anchor="middle">bound: Dev</text><rect x="506" y="530" width="195" height="95" rx="10" fill="#F2F2F2" stroke="#E8E8E8" stroke-width="1.6"/><g transform="translate(595,550.2) scale(0.7083)" fill="none" stroke="#1B3139" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/></g><text x="603.5" y="584.8" font-size="13" font-weight="700" fill="#1B3139" text-anchor="middle">func_tst</text><text x="603.5" y="601.2" font-size="10.5" font-weight="400" fill="#6B7280" text-anchor="middle">bound: Tst / UAT</text><rect x="724" y="530" width="195" height="95" rx="10" fill="#F2F2F2" stroke="#FF3621" stroke-width="2.2"/><g transform="translate(813,543.5) scale(0.7083)" fill="none" stroke="#1B3139" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/></g><text x="821.5" y="578" font-size="13" font-weight="700" fill="#1B3139" text-anchor="middle">func · prod</text><text x="821.5" y="594.5" font-size="10.5" font-weight="400" fill="#6B7280" text-anchor="middle">ISOLATED: Prod, Consumer,</text><text x="821.5" y="608" font-size="10.5" font-weight="400" fill="#6B7280" text-anchor="middle">Analyst  (+read Dev, Tst)</text><rect x="942" y="530" width="195" height="95" rx="10" fill="#F2F2F2" stroke="#E8E8E8" stroke-width="1.6"/><g transform="translate(1031,550.2) scale(0.7083)" fill="none" stroke="#1B3139" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/></g><text x="1039.5" y="584.8" font-size="13" font-weight="700" fill="#1B3139" text-anchor="middle">analyst_cat</text><text x="1039.5" y="601.2" font-size="10.5" font-weight="400" fill="#6B7280" text-anchor="middle">bound: Analyst</text><text x="600" y="452" font-size="10" font-weight="400" fill="#6B7280" text-anchor="middle" opacity="0.9">Workspace–catalog binding is noted on each catalog</text></svg>
+</div>
+<h4 id="13-promotion-path">1.3 Promotion Path</h4>
+<p>The code promotion path follows the Declarative Automation Bundle (DAB) model. The catalog is the environment discriminator — schema names are stable across all environments except Dev, where DAB's <code>dev_&lt;user&gt;_</code> prefix provides per-developer isolation.</p>
+<pre><code>Feature Branch → Dev (personalized schemas, iterate fast)
+                   ↓  target_catalog changes, schema prefix drops
+                 Tst (exact schema names, integration test)
+                   ↓  target_catalog changes only
+                 UAT (exact schema names, business validation)
+                   ↓  target_catalog changes only
+                 Prd (exact schema names, canonical)
+                   ↓  read-only binding
+                 Consumer (Genie Ontology surface)
+</code></pre>
+<p><strong>Naming convention:</strong> <code>&lt;business_function&gt;_&lt;env&gt;</code> for non-prod (e.g., <code>hedis_dev</code>, <code>hedis_tst</code>, <code>hedis_uat</code>), plain <code>&lt;business_function&gt;</code> for prod (e.g., <code>hedis</code>). Only dev gets personalized schemas. In tst/uat/prd, schema names are exact matches — only the catalog name changes.</p>
+<p><strong>Zero hardcoding rule:</strong> Nothing in the bundle is hardcoded. Catalogs, schemas, table references — everything is parameterized via <code>${var.catalog}</code>, <code>${var.schema_prefix}</code>, and <code>${resources.&lt;type&gt;.&lt;resource_id&gt;.&lt;element&gt;}</code>.</p>
+<hr />
+<h3 id="section-2-unity-catalog-metastore-architecture">Section 2: Unity Catalog &amp; Metastore Architecture</h3>
+<h4 id="21-one-metastore-per-region">2.1 One Metastore Per Region</h4>
+<p>Unity Catalog enforces one metastore per region. All workspaces in a region share that metastore. This is a hard constraint, not a recommendation.</p>
+<h4 id="22-cross-region-data-access">2.2 Cross-Region Data Access</h4>
+<p>For cross-region data sharing, use <strong>Databricks-to-Databricks (D2D) OpenSharing</strong>. Key considerations:</p>
+<ul>
+<li>Lineage graphs do not cross metastore boundaries</li>
+<li>Access control does not cross metastore boundaries — grants must be replicated at the destination</li>
+<li>Egress charges apply for cross-region data movement</li>
+<li>For frequently accessed cross-region data, consider a replication pipeline to synchronize tables rather than relying solely on OpenSharing</li>
+<li>Do <strong>not</strong> register the same external table in multiple metastores — this causes schema drift and Delta commit service consistency issues</li>
+</ul>
+<h4 id="23-catalog-hierarchy">2.3 Catalog Hierarchy</h4>
+<p>Within each metastore, catalogs are organized by business function and environment:</p>
+<pre><code>Metastore (US-East)
+├── hedis_dev          → bound to Dev workspace
+├── hedis_tst          → bound to Test/UAT workspace
+├── hedis              → ISOLATED to Prod + Consumer + Interactive Analyst + Dev (read) + Tst (read)
+├── underwriting_dev   → bound to Dev workspace
+├── underwriting_tst   → bound to Test/UAT workspace
+├── underwriting       → ISOLATED to Prod + Consumer + Interactive Analyst + Dev (read) + Tst (read)
+├── analyst            → bound to Interactive Analyst workspace only
+├── sandbox            → bound to Sandbox workspace
+└── system             → system tables (account-wide)
+</code></pre>
+<h4 id="24-cross-environment-read-access-read-up-write-local">2.4 Cross-Environment Read Access — "Read Up, Write Local"</h4>
+<p>The recommended pattern: each workspace may only <strong>write</strong> to its own environment catalog, but can have <strong>read-only</strong> access to catalogs above it in the promotion hierarchy.</p>
+<div class="diagram-embed"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="100%" role="img" aria-label="Read up, write local access hierarchy" font-family="'DM Sans','Inter','Segoe UI',Helvetica,Arial,sans-serif"><defs><marker id="d03-ah-077A9D" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#077A9D"/></marker><marker id="d03-ah-FF3621" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#FF3621"/></marker></defs><rect x="30" y="20" width="1140" height="560" rx="14" fill="none" stroke="#1B3139" stroke-width="1.5" stroke-dasharray="7 5"/><text x="48" y="40" font-size="10.5" font-weight="700" fill="#1B3139" text-anchor="start" letter-spacing="1.3">READ UP, WRITE LOCAL — ACCESS HIERARCHY</text><rect x="90" y="70" width="380" height="95" rx="10" fill="#FF3621" stroke="#CC2B1A" stroke-width="1.6"/><g transform="translate(271.5,90.2) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 10.5V8a5.5 5.5 0 0111 0v2.5M5 10.5h14v10H5z"/></g><text x="280" y="124.8" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">func · PROD catalog</text><text x="280" y="141.2" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">Source of truth</text><rect x="90" y="230" width="380" height="85" rx="10" fill="#077A9D" stroke="#055F7A" stroke-width="1.6"/><g transform="translate(271.5,245.2) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/></g><text x="280" y="279.8" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">func_tst</text><text x="280" y="296.2" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">TEST catalog</text><rect x="90" y="390" width="380" height="85" rx="10" fill="#077A9D" stroke="#055F7A" stroke-width="1.6"/><g transform="translate(271.5,405.2) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/></g><text x="280" y="439.8" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">func_dev</text><text x="280" y="456.2" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">DEV catalog</text><path d="M280,390 L280,315" stroke="#077A9D" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d03-ah-077A9D)"/><rect x="237.1" y="342.8" width="85.8" height="19.5" rx="5" fill="#FFFFFF" stroke="none" stroke-width="0" opacity="0.93"/><text x="280" y="355.8" font-size="9.5" font-weight="500" fill="#077A9D" text-anchor="middle">READ by Dev WS</text><path d="M280,230 L280,165" stroke="#FF3621" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d03-ah-FF3621)"/><rect x="215.4" y="187.8" width="129.1" height="19.5" rx="5" fill="#FFFFFF" stroke="none" stroke-width="0" opacity="0.93"/><text x="280" y="200.8" font-size="9.5" font-weight="500" fill="#FF3621" text-anchor="middle">READ by Dev WS, Tst WS</text><rect x="550" y="60" width="580" height="78" rx="10" fill="#FF3621" stroke="#CC2B1A" stroke-width="1.6"/><g transform="translate(831.5,71.8) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 9.5h18"/></g><text x="840" y="106.2" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">Prod WS</text><text x="840" y="122.8" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">WRITE: func · prod   ·   top of the hierarchy</text><rect x="550" y="150" width="580" height="78" rx="10" fill="#077A9D" stroke="#055F7A" stroke-width="1.6"/><g transform="translate(831.5,161.8) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 9.5h18"/></g><text x="840" y="196.2" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">Tst / UAT WS</text><text x="840" y="212.8" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">WRITE: func_tst   ·   READ: func</text><rect x="550" y="240" width="580" height="78" rx="10" fill="#077A9D" stroke="#055F7A" stroke-width="1.6"/><g transform="translate(831.5,251.8) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 9.5h18"/></g><text x="840" y="286.2" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">Dev WS</text><text x="840" y="302.8" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">WRITE: func_dev   ·   READ: func_tst, func</text><rect x="550" y="330" width="580" height="78" rx="10" fill="#00A972" stroke="#007A52" stroke-width="1.6"/><g transform="translate(831.5,341.8) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 9.5h18"/></g><text x="840" y="376.2" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">Analyst WS</text><text x="840" y="392.8" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">WRITE: analyst_cat   ·   READ: func</text><rect x="550" y="420" width="580" height="78" rx="10" fill="#1B3139" stroke="#0F1D22" stroke-width="1.6"/><g transform="translate(831.5,431.8) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 9.5h18"/></g><text x="840" y="466.2" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">Consumer WS</text><text x="840" y="482.8" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">no write   ·   READ: func (certified gold)</text><text x="840" y="540" font-size="10" font-weight="400" fill="#6B7280" text-anchor="middle" opacity="0.9">Each workspace writes only to its own catalog and reads upward</text></svg>
+</div>
+<p>Schema-level grants control which medallion layers are visible — bronze, silver, or gold — based on development need. A team building gold reads prod silver; a team building silver reads prod bronze; analysts read gold.</p>
+<h4 id="25-pros-and-cons-of-cross-environment-read-access">2.5 Pros and Cons of Cross-Environment Read Access</h4>
+<p><strong>Pros:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Benefit</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Eliminates wholesale data copying</strong></td>
+<td>No need to copy terabytes into lower environments. Saves storage cost and eliminates sync lag.</td>
+</tr>
+<tr>
+<td><strong>Realistic development and testing</strong></td>
+<td>Validate transformations against actual production data shapes, volumes, and edge cases.</td>
+</tr>
+<tr>
+<td><strong>Faster iteration for capable engineers</strong></td>
+<td>DevOps-capable engineers develop in Dev while reading prod, then promote through CI/CD.</td>
+</tr>
+<tr>
+<td><strong>Reference data stays current</strong></td>
+<td>Lookup and dimension tables in prod are always current — no stale copies.</td>
+</tr>
+<tr>
+<td><strong>Test validation against prod baselines</strong></td>
+<td>Compare pipeline outputs against production to validate correctness.</td>
+</tr>
+<tr>
+<td><strong>Reduced operational burden</strong></td>
+<td>No data copy/sync pipelines to build and maintain.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Cons:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Compliance exposure</strong></td>
+<td>Any workspace reading regulated prod data must carry the same compliance security profile (§4).</td>
+</tr>
+<tr>
+<td><strong>Accidental production dependency</strong></td>
+<td>Code should be parameterized to work against any catalog; integration tests should use test data.</td>
+</tr>
+<tr>
+<td><strong>Data leakage risk</strong></td>
+<td>FGAC (column masking, row filters) on sensitive columns; egress controls; audit logging.</td>
+</tr>
+<tr>
+<td><strong>Blast radius of misconfigured grants</strong></td>
+<td>Grants at schema or table level, not catalog-wide. UC groups aligned to project teams.</td>
+</tr>
+<tr>
+<td><strong>Not appropriate for all personas</strong></td>
+<td>Grant-level decision — workspace binding makes prod visible; UC grants control who gets SELECT.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="26-when-not-to-use-cross-environment-read-access">2.6 When NOT to Use Cross-Environment Read Access</h4>
+<ul>
+<li><strong>Sandbox workspace</strong> — should never read production data; synthetic only</li>
+<li><strong>Strict regulatory separation</strong> — some regulations require physical data isolation between environments</li>
+<li><strong>Untrusted developer populations</strong> — contractors, offshore teams, or users without production data authorization</li>
+</ul>
+<hr />
+<h3 id="section-3-storage-architecture">Section 3: Storage Architecture</h3>
+<h4 id="31-managed-vs-external-storage">3.1 Managed vs. External Storage</h4>
+<p>Unity Catalog supports two storage models:</p>
+<table>
+<thead>
+<tr>
+<th>Storage Type</th>
+<th>Description</th>
+<th>When to Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Managed storage</strong></td>
+<td>Databricks manages the storage location; tables are created in the metastore's or catalog's default location</td>
+<td>Default for most use cases; simplest to manage</td>
+</tr>
+<tr>
+<td><strong>External storage</strong></td>
+<td>Customer provides and manages the storage location; tables reference customer-owned buckets/containers</td>
+<td>When you need control over storage location, encryption keys, lifecycle policies, or cross-platform access</td>
+</tr>
+</tbody>
+</table>
+<h4 id="32-storage-isolation-by-environment">3.2 Storage Isolation by Environment</h4>
+<p>Use <strong>separate storage locations</strong> for each environment to prevent accidental cross-environment data access at the cloud storage layer:</p>
+<pre><code>s3://company-data-dev/          (or abfss://dev@companydatalake.dfs.core.windows.net/)
+s3://company-data-test/         (or abfss://test@companydatalake.dfs.core.windows.net/)
+s3://company-data-prod/         (or abfss://prod@companydatalake.dfs.core.windows.net/)
+s3://company-data-analyst/      (or abfss://analyst@companydatalake.dfs.core.windows.net/)
+</code></pre>
+<p>For stronger isolation, use separate:
+- Cloud storage accounts or buckets per environment
+- IAM roles or managed identities per environment
+- Encryption keys (BYOK/CMK) per environment where required
+- Storage credentials in UC per environment</p>
+<h4 id="33-external-locations-storage-credentials">3.3 External Locations &amp; Storage Credentials</h4>
+<ul>
+<li><strong>Storage credentials</strong> — represent the cloud IAM identity (role, managed identity, service account) that accesses storage. Bind to specific workspaces to prevent cross-environment credential use.</li>
+<li><strong>External locations</strong> — map a cloud storage path to a storage credential. Bind to specific workspaces using workspace binding (same mechanism as catalog binding).</li>
+<li><strong>Principle:</strong> storage credentials and external locations should be bound to the same workspaces as the catalogs they serve. A prod storage credential should not be accessible from the Dev workspace.</li>
+</ul>
+<h4 id="34-encryption-considerations">3.4 Encryption Considerations</h4>
+<table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Approach</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Default encryption</td>
+<td>Cloud provider default (SSE-S3, Azure Storage encryption, Google-managed)</td>
+</tr>
+<tr>
+<td>Customer-managed keys (CMK/BYOK)</td>
+<td>Configure per storage account; required for some compliance standards</td>
+</tr>
+<tr>
+<td>Separate keys per environment</td>
+<td>Use different CMK keys for prod vs. non-prod to limit blast radius of key compromise</td>
+</tr>
+<tr>
+<td>Key rotation</td>
+<td>Automate via cloud KMS; ensure Databricks storage credentials reference the current key</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="section-4-compliance-security-profile-targeted-not-blanket">Section 4: Compliance Security Profile — Targeted, Not Blanket</h3>
+<h4 id="41-the-problem-with-blanket-application">4.1 The Problem with Blanket Application</h4>
+<p>The Enhanced Security and Compliance add-on provides critical controls for regulated data: hardened compute images, enhanced security monitoring, automatic cluster updates, and compliance standard alignment (HIPAA, HITRUST, PCI-DSS, etc.).</p>
+<p>However, <strong>blanket-applying the compliance security profile to all workspaces is an anti-pattern</strong> because:</p>
+<ul>
+<li>It adds cost (the Enhanced Security and Compliance add-on is a paid feature)</li>
+<li>It restricts preview features — Partner-powered AI features (including Genie Code) are disabled by default on compliance-profiled workspaces</li>
+<li>It limits compute instance types to those supporting VNet encryption</li>
+<li>It is <strong>permanent</strong> — once a workspace has processed regulated data under a compliance standard, the profile cannot be disabled; the workspace must be deleted and recreated</li>
+<li>Not all workspaces process regulated data — dev and sandbox workspaces using synthetic data don't need HIPAA controls</li>
+</ul>
+<h4 id="42-targeted-compliance-profile-assignment">4.2 Targeted Compliance Profile Assignment</h4>
+<table>
+<thead>
+<tr>
+<th>Workspace</th>
+<th>Compliance Profile</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Sandbox</strong></td>
+<td>None</td>
+<td>Synthetic data only, preview feature testing</td>
+</tr>
+<tr>
+<td><strong>Dev</strong></td>
+<td>None if synthetic only; match prod if reading regulated prod data (see §2.4)</td>
+<td>Compliance profile follows the data</td>
+</tr>
+<tr>
+<td><strong>Test / UAT</strong></td>
+<td>Match prod if testing with representative regulated data</td>
+<td>Must mirror prod controls if regulated data flows through</td>
+</tr>
+<tr>
+<td><strong>Production</strong></td>
+<td>HIPAA, PCI-DSS, HITRUST, etc. as required</td>
+<td>Processes actual regulated data</td>
+</tr>
+<tr>
+<td><strong>Interactive Analyst</strong></td>
+<td>Match prod (reads regulated production data)</td>
+<td>Analysts query prod tables containing PxI data</td>
+</tr>
+<tr>
+<td><strong>Consumer</strong></td>
+<td>Match prod if serving regulated data to end users</td>
+<td>Inherits requirement from the data it surfaces</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The rule:</strong> the compliance profile follows the <strong>data</strong>, not the workspace.</p>
+<h4 id="43-multi-standard-workspaces">4.3 Multi-Standard Workspaces</h4>
+<p>For organizations processing different data types with different compliance requirements, consider <strong>separate production workspaces per compliance domain</strong>:</p>
+<pre><code>Production (HIPAA) — clinical/PHI data pipelines
+Production (PCI-DSS) — payment card data pipelines
+Production (standard) — non-regulated analytics
+Consumer (HIPAA) — clinical Genie Agents and dashboards
+Consumer (standard) — non-regulated BI
+</code></pre>
+<hr />
+<h3 id="section-5-identity-access-management">Section 5: Identity &amp; Access Management</h3>
+<h4 id="51-account-level-identity-foundation">5.1 Account-Level Identity Foundation</h4>
+<p>All identity management should be centralized at the <strong>Databricks account level</strong>, not per-workspace:</p>
+<ul>
+<li><strong>SSO</strong> — configure account-level SSO with the enterprise IdP (Okta, Azure AD/Entra ID, etc.)</li>
+<li><strong>SCIM</strong> — enable automatic identity provisioning to sync users and groups from the IdP to Databricks</li>
+<li><strong>Account-level groups</strong> — define groups once, use them across all workspaces and UC grants</li>
+</ul>
+<h4 id="52-group-strategy">5.2 Group Strategy</h4>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Purpose</th>
+<th>Workspace Access</th>
+<th>UC Grants</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>platform-admins</code></td>
+<td>Account and workspace administration</td>
+<td>All workspaces</td>
+<td>Metastore admin (optional)</td>
+</tr>
+<tr>
+<td><code>dev-engineers</code></td>
+<td>Data engineers, ML engineers</td>
+<td>Dev, Tst/UAT</td>
+<td>R/W on dev/tst catalogs; READ on prod catalogs</td>
+</tr>
+<tr>
+<td><code>qa-testers</code></td>
+<td>QA and integration testing</td>
+<td>Tst/UAT</td>
+<td>R/W on tst catalogs; READ on prod catalogs</td>
+</tr>
+<tr>
+<td><code>analysts</code></td>
+<td>Business analysts, data analysts</td>
+<td>Interactive Analyst</td>
+<td>R/W on analyst catalog; READ on prod gold</td>
+</tr>
+<tr>
+<td><code>prod-operators</code></td>
+<td>Production job monitoring, incident response</td>
+<td>Production</td>
+<td>Limited operational access</td>
+</tr>
+<tr>
+<td><code>consumers</code></td>
+<td>Business users, dashboard viewers</td>
+<td>Consumer</td>
+<td>READ on prod gold, metric views, Pages</td>
+</tr>
+<tr>
+<td><code>ci-cd-deployers</code></td>
+<td>Service principals for automated deployment</td>
+<td>Per-target workspace</td>
+<td>Per-environment deployment grants</td>
+</tr>
+</tbody>
+</table>
+<h4 id="53-service-principal-strategy">5.3 Service Principal Strategy</h4>
+<table>
+<thead>
+<tr>
+<th>SPN</th>
+<th>Purpose</th>
+<th>Scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dev deployment SPN</strong></td>
+<td>DAB deployment to Dev workspace</td>
+<td>Dev workspace + dev catalogs</td>
+</tr>
+<tr>
+<td><strong>Tst deployment SPN</strong></td>
+<td>DAB deployment to Tst/UAT workspace</td>
+<td>Tst workspace + tst catalogs</td>
+</tr>
+<tr>
+<td><strong>Prod deployment SPN</strong></td>
+<td>DAB deployment to Prod workspace</td>
+<td>Prod workspace + prod catalogs</td>
+</tr>
+<tr>
+<td><strong>App SPN</strong></td>
+<td>Databricks App runtime operations</td>
+<td>Consumer workspace + Lakebase + UC read</td>
+</tr>
+<tr>
+<td><strong>Pipeline SPN</strong></td>
+<td>Lakeflow pipeline execution</td>
+<td>Prod workspace + prod catalogs (R/W)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key principles:</strong>
+- Separate deployment SPNs per environment for separation of duties
+- Use <strong>Workload Identity Federation</strong> for CI/CD — no long-lived secrets in GitHub/Azure DevOps
+- App SPNs get auto-injected credentials via the Databricks Apps runtime
+- Never use personal access tokens (PATs) in CI/CD pipelines</p>
+<h4 id="54-workspace-entitlements">5.4 Workspace Entitlements</h4>
+<p>Control what users can do within each workspace:</p>
+<table>
+<thead>
+<tr>
+<th>Entitlement</th>
+<th>Sandbox</th>
+<th>Dev</th>
+<th>Tst/UAT</th>
+<th>Prod</th>
+<th>Analyst</th>
+<th>Consumer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Workspace access</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>Limited</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Create clusters</td>
+<td>✓</td>
+<td>✓</td>
+<td>✗</td>
+<td>✗</td>
+<td>✗</td>
+<td>✗</td>
+</tr>
+<tr>
+<td>SQL warehouse access</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Create notebooks</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✗</td>
+<td>✓</td>
+<td>✗</td>
+</tr>
+<tr>
+<td>Create jobs</td>
+<td>✓</td>
+<td>✓</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓</td>
+<td>✗</td>
+</tr>
+<tr>
+<td>Databricks SQL access</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Genie access</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="section-6-networking-data-plane-isolation">Section 6: Networking &amp; Data Plane Isolation</h3>
+<h4 id="61-network-architecture-by-workspace-tier">6.1 Network Architecture by Workspace Tier</h4>
+<table>
+<thead>
+<tr>
+<th>Workspace</th>
+<th>Network Posture</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Sandbox</strong></td>
+<td>Standard (Databricks-managed VPC/VNet)</td>
+<td>Minimal controls, synthetic data only</td>
+</tr>
+<tr>
+<td><strong>Dev</strong></td>
+<td>Standard or BYOVPC depending on prod read access</td>
+<td>If reading regulated prod data, network controls should match</td>
+</tr>
+<tr>
+<td><strong>Test / UAT</strong></td>
+<td>BYOVPC with controlled egress</td>
+<td>Mirror prod network posture for realistic testing</td>
+</tr>
+<tr>
+<td><strong>Production</strong></td>
+<td>BYOVPC, private connectivity, restricted egress</td>
+<td>Maximum protection for production data</td>
+</tr>
+<tr>
+<td><strong>Interactive Analyst</strong></td>
+<td>BYOVPC with controlled egress</td>
+<td>Reads regulated prod data; egress controls prevent exfiltration</td>
+</tr>
+<tr>
+<td><strong>Consumer</strong></td>
+<td>BYOVPC, private connectivity if serving external customers</td>
+<td>Network boundary for external-facing services</td>
+</tr>
+</tbody>
+</table>
+<h4 id="62-private-connectivity">6.2 Private Connectivity</h4>
+<p>For production and regulated workspaces:</p>
+<ul>
+<li><strong>Private Link / Private Endpoints</strong> — connect to the Databricks control plane without traversing the public internet</li>
+<li><strong>Private connectivity to cloud storage</strong> — ensure data never leaves the private network</li>
+<li><strong>Private connectivity to Lakebase</strong> — if using Lakebase for app state</li>
+<li><strong>Serverless network policies</strong> — configure network access for serverless SQL warehouses and compute</li>
+</ul>
+<h4 id="63-egress-controls-data-exfiltration-prevention">6.3 Egress Controls &amp; Data Exfiltration Prevention</h4>
+<ul>
+<li>Restrict outbound internet access from production and analyst workspaces</li>
+<li>Use network policies to control which external endpoints serverless compute can reach</li>
+<li>IP access lists to restrict which networks can access the workspace</li>
+<li>Combine with UC FGAC (column masking, row filters) for defense in depth</li>
+</ul>
+<h4 id="64-when-to-use-separate-cloud-accountssubscriptions">6.4 When to Use Separate Cloud Accounts/Subscriptions</h4>
+<p>Use separate cloud accounts or subscriptions when:
+- Regulatory requirements mandate physical isolation (not just logical)
+- You need separate billing boundaries per environment
+- IAM blast radius must be contained (a compromised prod IAM role can't reach dev resources)
+- Network peering or firewall rules differ materially between environments</p>
+<p>For most organizations, <strong>network-level isolation within a single account</strong> (separate VPCs/VNets per workspace) combined with UC catalog binding provides sufficient isolation. Separate accounts add operational complexity.</p>
+<hr />
+<h3 id="section-7-compute-policy-standards">Section 7: Compute Policy Standards</h3>
+<h4 id="71-compute-policies-by-workspace-tier">7.1 Compute Policies by Workspace Tier</h4>
+<table>
+<thead>
+<tr>
+<th>Policy Attribute</th>
+<th>Sandbox</th>
+<th>Dev</th>
+<th>Tst/UAT</th>
+<th>Prod</th>
+<th>Analyst</th>
+<th>Consumer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>All-purpose clusters</strong></td>
+<td>Permitted</td>
+<td>Permitted with limits</td>
+<td>Restricted</td>
+<td>Restricted</td>
+<td>Restricted</td>
+<td>Not permitted</td>
+</tr>
+<tr>
+<td><strong>Job clusters</strong></td>
+<td>Permitted</td>
+<td>Preferred</td>
+<td>Required</td>
+<td>Required</td>
+<td>Permitted</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td><strong>SQL warehouses</strong></td>
+<td>Small</td>
+<td>Medium</td>
+<td>Prod-like</td>
+<td>Right-sized</td>
+<td>Interactive-sized</td>
+<td>Genie/BI-sized</td>
+</tr>
+<tr>
+<td><strong>Auto-termination</strong></td>
+<td>30 min</td>
+<td>60 min</td>
+<td>30 min</td>
+<td>Workload-specific</td>
+<td>30 min</td>
+<td>Managed</td>
+</tr>
+<tr>
+<td><strong>Max workers</strong></td>
+<td>Low</td>
+<td>Medium</td>
+<td>Prod-like</td>
+<td>Approved limit</td>
+<td>Medium</td>
+<td>Managed</td>
+</tr>
+<tr>
+<td><strong>Serverless</strong></td>
+<td>Optional</td>
+<td>Preferred</td>
+<td>Preferred</td>
+<td>Preferred</td>
+<td>Preferred</td>
+<td>Preferred</td>
+</tr>
+<tr>
+<td><strong>Photon</strong></td>
+<td>Optional</td>
+<td>Optional</td>
+<td>Match prod</td>
+<td>Enabled</td>
+<td>Enabled</td>
+<td>Enabled</td>
+</tr>
+<tr>
+<td><strong>UC-compatible access mode</strong></td>
+<td>Required</td>
+<td>Required</td>
+<td>Required</td>
+<td>Required</td>
+<td>Required</td>
+<td>Required</td>
+</tr>
+</tbody>
+</table>
+<h4 id="72-sql-warehouse-strategy">7.2 SQL Warehouse Strategy</h4>
+<p>Each workspace tier should have its own SQL warehouses to prevent compute contention:</p>
+<table>
+<thead>
+<tr>
+<th>Workspace</th>
+<th>Warehouse Purpose</th>
+<th>Sizing Guidance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dev</strong></td>
+<td>Developer ad-hoc queries, notebook execution</td>
+<td>Small-Medium, auto-stop aggressive</td>
+</tr>
+<tr>
+<td><strong>Tst/UAT</strong></td>
+<td>Integration test execution, UAT queries</td>
+<td>Mirror prod sizing for realistic testing</td>
+</tr>
+<tr>
+<td><strong>Production</strong></td>
+<td>Pipeline execution, scheduled jobs</td>
+<td>Right-sized per workload SLA</td>
+</tr>
+<tr>
+<td><strong>Interactive Analyst</strong></td>
+<td>Ad-hoc analyst SQL, dashboard development</td>
+<td>Medium, optimized for interactive latency</td>
+</tr>
+<tr>
+<td><strong>Consumer</strong></td>
+<td>Genie Agent queries, dashboard rendering, App queries</td>
+<td>Sized for concurrent user load</td>
+</tr>
+</tbody>
+</table>
+<h4 id="73-tagging-requirements-for-finops">7.3 Tagging Requirements for FinOps</h4>
+<p>All compute resources should carry mandatory tags:</p>
+<pre><code>environment: dev | tst | uat | prod | sandbox | analyst | consumer
+project: &lt;business_function&gt;
+team: &lt;owning_team&gt;
+cost_center: &lt;finance_code&gt;
+workload_type: interactive | pipeline | genie | app
+</code></pre>
+<p>Tags enable cost allocation, chargeback, and anomaly detection across workspaces.</p>
+<hr />
+<h3 id="section-8-the-sandbox-workspace">Section 8: The Sandbox Workspace</h3>
+<h4 id="81-why-a-sandbox">8.1 Why a Sandbox?</h4>
+<p>Databricks releases features through Private Preview → Public Preview → GA. The sandbox workspace provides a <strong>completely isolated environment</strong> for:</p>
+<ul>
+<li><strong>Pre-release feature validation</strong> — test preview features without risk to active development</li>
+<li><strong>Innovation spikes</strong> — prototype with new capabilities without affecting team workflows</li>
+<li><strong>Platform team evaluation</strong> — assess feature readiness before enabling account-wide</li>
+<li><strong>Training and enablement</strong> — hands-on workshops run in sandbox, not in environments with real data</li>
+</ul>
+<h4 id="82-sandbox-guardrails">8.2 Sandbox Guardrails</h4>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Sandbox Setting</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data</td>
+<td>Synthetic only — <strong>never</strong> production or masked production data</td>
+</tr>
+<tr>
+<td>Catalog binding</td>
+<td>Sandbox catalog bound only to sandbox workspace</td>
+</tr>
+<tr>
+<td>Compliance profile</td>
+<td>None</td>
+</tr>
+<tr>
+<td>Compute</td>
+<td>Minimal cluster policies, auto-termination enforced</td>
+</tr>
+<tr>
+<td>Lifecycle</td>
+<td>Ephemeral — <code>bundle destroy</code> cleans up after evaluation periods</td>
+</tr>
+<tr>
+<td>Network</td>
+<td>Standard (no private connectivity required)</td>
+</tr>
+<tr>
+<td>Identity</td>
+<td>Same IdP groups, sandbox-specific entitlements</td>
+</tr>
+</tbody>
+</table>
+<h4 id="83-sandbox-dev-promotion-gate">8.3 Sandbox → Dev Promotion Gate</h4>
+<p>When the platform team validates a preview feature in sandbox:</p>
+<ol>
+<li>Document the feature behavior, limitations, and configuration requirements</li>
+<li>Enable the feature in the Dev workspace</li>
+<li>Update DAB templates and cluster policies to support the feature</li>
+<li>Communicate availability to engineering teams</li>
+<li>The feature follows the normal Dev → Tst → UAT → Prd promotion path</li>
+</ol>
+<hr />
+<h3 id="section-9-the-interactive-analyst-workspace-frictionless-analyst-deployments">Section 9: The Interactive Analyst Workspace &amp; Frictionless Analyst Deployments</h3>
+<h4 id="91-why-a-dedicated-interactive-analyst-workspace">9.1 Why a Dedicated Interactive Analyst Workspace?</h4>
+<p>Analysts create Gold-level assets critical for data-driven decision making. They need to write SQL against production data, build notebooks, create tables, author dashboards, and develop workflows. But they <strong>should not deploy directly to production</strong> — that would violate SDLC governance.</p>
+<p>The tension: enforcing full DevOps and Engineering best practices would cause <strong>too much friction</strong> for widespread analyst adoption. There are too many analysts, dashboards, projects, and reports for any centralized DevOps team to support.</p>
+<p>The Interactive Analyst Workspace provides:</p>
+<ul>
+<li><strong>Full read access to production data</strong> — analysts query production tables directly via SQL warehouses</li>
+<li><strong>A dedicated analyst catalog</strong> — USE CATALOG, CREATE SCHEMA, author assets without risk of altering production</li>
+<li><strong>No direct publishing to production</strong> — artifacts must go through the Frictionless Analyst Deployment process</li>
+<li><strong>Compute isolation</strong> — analyst queries don't compete with production pipelines or consumer Genie workloads</li>
+</ul>
+<h4 id="92-frictionless-analyst-deployments-the-bridge-to-production">9.2 Frictionless Analyst Deployments — The Bridge to Production</h4>
+<p>A <strong>Databricks App</strong> abstracts the entire CI/CD process so analysts never need to learn Git, DABs, or DevOps tooling:</p>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│  FRICTIONLESS ANALYST DEPLOYMENT PROCESS                            │
+│                                                                     │
+│  1. Analyst authors &amp; tests assets in Interactive Analyst Workspace │
+│  2. Analyst opens &quot;Request Publication&quot; Databricks App              │
+│  3. App collects governance metadata:                               │
+│     • Tags (FinOps) • Data Class (PxI) • Business Purpose          │
+│     • Stakeholders • Failure Notification Rules                     │
+│     • Schedule/Trigger Rules • Dependencies                         │
+│  4. Python SDK retrieves Asset IDs                                  │
+│  5. `databricks bundle generate` creates a DAB from the assets      │
+│  6. Bundle written to feature branch in Data Management Repo        │
+│  7. Change Control review (human approval gate)                     │
+│  8. If approved → GitHub Actions: CI to Dev → CD to Stage → Prod   │
+│  9. Once in Prod → Consumer Access (Databricks One, RBAC/ABAC)     │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<h4 id="93-catalog-access-model">9.3 Catalog Access Model</h4>
+<pre><code>Interactive Analyst Workspace
+  ├── Read:  prod catalog (granted schemas, FGAC enforced)
+  ├── Write: analyst catalog (USE CATALOG, CREATE SCHEMA)
+  └── None:  dev catalog, test catalog, sandbox catalog
+</code></pre>
+<hr />
+<h3 id="section-10-the-consumer-workspace-genie-ontology-layer">Section 10: The Consumer Workspace (Genie Ontology Layer)</h3>
+<h4 id="101-why-a-dedicated-consumer-workspace">10.1 Why a Dedicated Consumer Workspace?</h4>
+<p>The consumer workspace is the <strong>governed presentation layer</strong> where business users and external consumers interact with certified data assets through Genie Ontology:</p>
+<ul>
+<li><strong>Blast radius isolation</strong> — Genie Agent workloads don't compete with production pipeline compute</li>
+<li><strong>Tailored compute</strong> — SQL warehouses sized for interactive BI and Genie</li>
+<li><strong>Simplified access</strong> — business users access the consumer workspace without exposure to pipeline infrastructure</li>
+<li><strong>Genie One customization</strong> — homepage branded and curated for the business audience</li>
+</ul>
+<h4 id="102-what-lives-in-the-consumer-workspace">10.2 What Lives in the Consumer Workspace</h4>
+<table>
+<thead>
+<tr>
+<th>Asset Type</th>
+<th>Description</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Genie Agents</strong></td>
+<td>Curated per business domain</td>
+<td>Deployed via DAB</td>
+</tr>
+<tr>
+<td><strong>Genie One</strong></td>
+<td>Account-level discovery surface</td>
+<td>Platform feature</td>
+</tr>
+<tr>
+<td><strong>Dashboards</strong></td>
+<td>Certified Lakeview dashboards</td>
+<td>Deployed via DAB</td>
+</tr>
+<tr>
+<td><strong>Metric Views</strong></td>
+<td>Certified business metrics (MEASURE())</td>
+<td>Defined in prod catalog</td>
+</tr>
+<tr>
+<td><strong>UC Pages</strong></td>
+<td>Business term definitions</td>
+<td>Defined in prod catalog</td>
+</tr>
+<tr>
+<td><strong>Databricks Apps</strong></td>
+<td>Consumer-facing applications</td>
+<td>Deployed via two-bundle DAB</td>
+</tr>
+</tbody>
+</table>
+<h4 id="103-genie-ontology-architecture">10.3 Genie Ontology Architecture</h4>
+<p>Genie Ontology is the unified context layer that gives Genie One and Genie Code a business-aware map of the organization. It combines <strong>Unity Catalog Semantics</strong> (metric views, domains, Pages) with <strong>Inferred Context</strong> (snippets extracted from dashboards, SQL queries, and Genie Agents).</p>
+<p><strong>The key insight:</strong> the same metric views serve both the consumer app AND internal enterprise Genie Agents — one semantic layer, two audiences.</p>
+<hr />
+<h3 id="section-11-external-customer-access-unity-gateway-hyperscaler-api-gateway">Section 11: External Customer Access — Unity Gateway + Hyperscaler API Gateway</h3>
+<h4 id="111-the-problem">11.1 The Problem</h4>
+<p>External customers (health plan members, banking app users, partner organizations) need to access Databricks-powered capabilities but are <strong>not Databricks account users</strong>.</p>
+<h4 id="112-the-architecture">11.2 The Architecture</h4>
+<p>A <strong>hyperscaler API gateway</strong> (Azure APIM, AWS API Gateway, GCP Apigee) sits between external customers and Databricks:</p>
+<div class="diagram-embed"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 840" width="100%" role="img" aria-label="External customer access via Unity Gateway" font-family="'DM Sans','Inter','Segoe UI',Helvetica,Arial,sans-serif"><defs><marker id="d07-ah-1B3139" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#1B3139"/></marker></defs><rect x="430" y="20" width="340" height="76" rx="10" fill="#1B3139" stroke="#0F1D22" stroke-width="1.6"/><g transform="translate(591.5,30.8) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11.5a4 4 0 100-8 4 4 0 000 8zM4.5 21c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5"/></g><text x="600" y="65.2" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">External Customer</text><text x="600" y="81.8" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">Mobile app · Partner API · Web portal</text><path d="M600,96 L600,148" stroke="#1B3139" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d07-ah-1B3139)"/><rect x="653.4" y="112.2" width="129.1" height="19.5" rx="5" fill="#FFFFFF" stroke="none" stroke-width="0" opacity="0.93"/><text x="718" y="125.2" font-size="9.5" font-weight="500" fill="#1B3139" text-anchor="middle">API key / OAuth / mTLS</text><rect x="300" y="150" width="600" height="220" rx="14" fill="none" stroke="#FFAB00" stroke-width="1.5" stroke-dasharray="7 5"/><text x="318" y="170" font-size="10.5" font-weight="700" fill="#FFAB00" text-anchor="start" letter-spacing="1.3">HYPERSCALER API GATEWAY</text><rect x="320" y="190" width="265" height="50" rx="10" fill="#FFAB00" stroke="#CC8800" stroke-width="1.6"/><text x="452.5" y="217" font-size="12" font-weight="700" fill="#1B3139" text-anchor="middle">External authentication</text><rect x="605" y="190" width="265" height="50" rx="10" fill="#FFAB00" stroke="#CC8800" stroke-width="1.6"/><text x="737.5" y="217" font-size="12" font-weight="700" fill="#1B3139" text-anchor="middle">Rate limiting &amp; throttling</text><rect x="320" y="250" width="265" height="50" rx="10" fill="#FFAB00" stroke="#CC8800" stroke-width="1.6"/><text x="452.5" y="277" font-size="12" font-weight="700" fill="#1B3139" text-anchor="middle">IP allowlisting</text><rect x="605" y="250" width="265" height="50" rx="10" fill="#FFAB00" stroke="#CC8800" stroke-width="1.6"/><text x="737.5" y="277" font-size="12" font-weight="700" fill="#1B3139" text-anchor="middle">Request validation</text><rect x="320" y="310" width="265" height="50" rx="10" fill="#FFAB00" stroke="#CC8800" stroke-width="1.6"/><text x="452.5" y="337" font-size="12" font-weight="700" fill="#1B3139" text-anchor="middle">API versioning</text><rect x="605" y="310" width="265" height="50" rx="10" fill="#FFAB00" stroke="#CC8800" stroke-width="1.6"/><text x="737.5" y="337" font-size="12" font-weight="700" fill="#1B3139" text-anchor="middle">Usage metering</text><path d="M600,370 L600,423" stroke="#1B3139" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d07-ah-1B3139)"/><rect x="679" y="379.8" width="102.1" height="32.5" rx="5" fill="#FFFFFF" stroke="none" stroke-width="0" opacity="0.93"/><text x="730" y="392.8" font-size="9.5" font-weight="500" fill="#1B3139" text-anchor="middle">M2M OAuth</text><text x="730" y="405.8" font-size="9.5" font-weight="500" fill="#1B3139" text-anchor="middle">Service Principal</text><rect x="80" y="425" width="1040" height="235" rx="14" fill="none" stroke="#077A9D" stroke-width="1.5" stroke-dasharray="7 5"/><text x="98" y="445" font-size="10.5" font-weight="700" fill="#077A9D" text-anchor="start" letter-spacing="1.3">DATABRICKS CONSUMER WORKSPACE</text><rect x="110" y="460" width="320" height="170" rx="14" fill="none" stroke="#00A972" stroke-width="1.3" stroke-dasharray="5 4"/><text x="128" y="480" font-size="10.5" font-weight="700" fill="#00A972" text-anchor="start" letter-spacing="1.3">DATABRICKS APP · APPKIT</text><rect x="135" y="500" width="270" height="50" rx="10" fill="#00A972" stroke="#007A52" stroke-width="1.6"/><g transform="translate(261.5,505.2) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7M3.5 12h5M15.5 12h5M12 3.5v5M12 15.5v5"/></g><text x="270" y="538.2" font-size="11.5" font-weight="700" fill="#FFFFFF" text-anchor="middle">REST API endpoints</text><rect x="135" y="560" width="270" height="50" rx="10" fill="#00A972" stroke="#007A52" stroke-width="1.6"/><g transform="translate(261.5,565.2) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 18.5a4.2 4.2 0 01-.2-8.4 5.6 5.6 0 0110.8-1.3 4.4 4.4 0 01-.6 9.7z"/></g><text x="270" y="598.2" font-size="11.5" font-weight="700" fill="#FFFFFF" text-anchor="middle">Lakebase auth + memory</text><rect x="445" y="460" width="320" height="170" rx="14" fill="none" stroke="#FF3621" stroke-width="1.3" stroke-dasharray="5 4"/><text x="463" y="480" font-size="10.5" font-weight="700" fill="#FF3621" text-anchor="start" letter-spacing="1.3">UNITY GATEWAY</text><rect x="470" y="500" width="270" height="50" rx="10" fill="#FF3621" stroke="#CC2B1A" stroke-width="1.6"/><g transform="translate(596.5,505.2) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7M3.5 12h5M15.5 12h5M12 3.5v5M12 15.5v5"/></g><text x="605" y="538.2" font-size="11.5" font-weight="700" fill="#FFFFFF" text-anchor="middle">MCP Services</text><rect x="470" y="560" width="270" height="50" rx="10" fill="#FF3621" stroke="#CC2B1A" stroke-width="1.6"/><g transform="translate(596.5,565.2) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V11M10 20V4.5M16 20v-7M2.5 20h19"/></g><text x="605" y="598.2" font-size="11.5" font-weight="700" fill="#FFFFFF" text-anchor="middle">Genie Agent queries</text><rect x="780" y="460" width="320" height="170" rx="14" fill="none" stroke="#1B3139" stroke-width="1.3" stroke-dasharray="5 4"/><text x="798" y="480" font-size="10.5" font-weight="700" fill="#1B3139" text-anchor="start" letter-spacing="1.3">MODEL SERVING</text><rect x="805" y="500" width="270" height="50" rx="10" fill="#1B3139" stroke="#0F1D22" stroke-width="1.6"/><g transform="translate(931.5,505.2) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2.5L4.5 14H10l-1 7.5L19.5 10H13z"/></g><text x="940" y="538.2" font-size="11.5" font-weight="700" fill="#FFFFFF" text-anchor="middle">Foundation Model APIs</text><rect x="805" y="560" width="270" height="50" rx="10" fill="#1B3139" stroke="#0F1D22" stroke-width="1.6"/><g transform="translate(931.5,565.2) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 10.5V8a5.5 5.5 0 0111 0v2.5M5 10.5h14v10H5z"/></g><text x="940" y="598.2" font-size="11.5" font-weight="700" fill="#FFFFFF" text-anchor="middle">Governed by UC ACLs</text><rect x="80" y="700" width="1040" height="120" rx="14" fill="none" stroke="#6B7280" stroke-width="1.5" stroke-dasharray="6 5"/><text x="98" y="720" font-size="10.5" font-weight="700" fill="#6B7280" text-anchor="start" letter-spacing="1.3">THREE-SPN ARCHITECTURE</text><rect x="110" y="738" width="320" height="62" rx="10" fill="#F2F2F2" stroke="#E8E8E8" stroke-width="1.6"/><g transform="translate(261.5,741.8) scale(0.7083)" fill="none" stroke="#1B3139" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 10.5V8a5.5 5.5 0 0111 0v2.5M5 10.5h14v10H5z"/></g><text x="270" y="776.2" font-size="13" font-weight="700" fill="#1B3139" text-anchor="middle">App SPN</text><text x="270" y="792.8" font-size="10.5" font-weight="400" fill="#6B7280" text-anchor="middle">App-scoped</text><rect x="445" y="738" width="320" height="62" rx="10" fill="#F2F2F2" stroke="#E8E8E8" stroke-width="1.6"/><g transform="translate(596.5,741.8) scale(0.7083)" fill="none" stroke="#1B3139" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 10.5V8a5.5 5.5 0 0111 0v2.5M5 10.5h14v10H5z"/></g><text x="605" y="776.2" font-size="13" font-weight="700" fill="#1B3139" text-anchor="middle">Gateway SPN</text><text x="605" y="792.8" font-size="10.5" font-weight="400" fill="#6B7280" text-anchor="middle">AI-scoped</text><rect x="780" y="738" width="320" height="62" rx="10" fill="#F2F2F2" stroke="#E8E8E8" stroke-width="1.6"/><g transform="translate(931.5,741.8) scale(0.7083)" fill="none" stroke="#1B3139" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 10.5V8a5.5 5.5 0 0111 0v2.5M5 10.5h14v10H5z"/></g><text x="940" y="776.2" font-size="13" font-weight="700" fill="#1B3139" text-anchor="middle">Bootstrap SPN</text><text x="940" y="792.8" font-size="10.5" font-weight="400" fill="#6B7280" text-anchor="middle">Minimal blast radius</text></svg>
+</div>
+<h4 id="113-the-three-spn-architecture">11.3 The Three-SPN Architecture</h4>
+<table>
+<thead>
+<tr>
+<th>SPN</th>
+<th>Purpose</th>
+<th>Blast Radius</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>App SPN</strong></td>
+<td>Databricks App server operations</td>
+<td>App-scoped</td>
+</tr>
+<tr>
+<td><strong>Gateway SPN</strong></td>
+<td>Unity Gateway model/MCP calls</td>
+<td>AI-scoped</td>
+</tr>
+<tr>
+<td><strong>External Bootstrap SPN</strong></td>
+<td>API gateway → Databricks auth</td>
+<td>Minimal (CAN_USE on app only)</td>
+</tr>
+</tbody>
+</table>
+<h4 id="114-on-behalf-of-obo-pattern">11.4 On-Behalf-Of (OBO) Pattern</h4>
+<ol>
+<li>External customer authenticates to API gateway (API key, OAuth client credentials, mTLS)</li>
+<li>API gateway validates and forwards to Databricks App endpoint</li>
+<li>App looks up external identity in Lakebase user registry</li>
+<li>App executes Databricks operations using its own M2M OAuth SPN</li>
+<li>External caller's identity preserved in data columns for lineage and audit</li>
+<li>All operations logged via MLflow 3 tracing</li>
+</ol>
+<h4 id="115-unity-gateway-governance">11.5 Unity Gateway Governance</h4>
+<ul>
+<li><strong>Access control</strong> — UC ACLs on model services, MCP servers, and skills</li>
+<li><strong>Rate limiting</strong> — service policies attached to model services</li>
+<li><strong>Guardrails</strong> — sensitive data detection, content filtering</li>
+<li><strong>Audit logging</strong> — all requests logged for compliance</li>
+<li><strong>Cost management</strong> — token and request tracking per endpoint</li>
+<li><strong>Fallback routing</strong> — automatic failover between model providers</li>
+</ul>
+<hr />
+<h3 id="section-12-cicd-deployment-pipelines">Section 12: CI/CD &amp; Deployment Pipelines</h3>
+<h4 id="121-declarative-automation-bundles-dabs">12.1 Declarative Automation Bundles (DABs)</h4>
+<p>DABs are the recommended IaC and deployment mechanism for packaging source code, jobs, pipelines, permissions, tests, and environment-specific configuration.</p>
+<h4 id="122-dab-target-configuration">12.2 DAB Target Configuration</h4>
+<pre><code class="language-yaml">targets:
+  dev:
+    mode: development    # enables dev_ schema prefix
+    workspace:
+      host: ${var.dev_host}
+    variables:
+      catalog: hedis_dev
+
+  tst:
+    workspace:
+      host: ${var.tst_host}
+    variables:
+      catalog: hedis_tst
+
+  prod:
+    workspace:
+      host: ${var.prod_host}
+    variables:
+      catalog: hedis
+</code></pre>
+<h4 id="123-two-bundle-dab-pattern-for-projects-with-databricks-apps">12.3 Two-Bundle DAB Pattern (for projects with Databricks Apps)</h4>
+<ul>
+<li><strong>Bundle 1 (Infra):</strong> UC schemas, tables, volumes, Lakeflow pipelines (SDP), Lakeflow Jobs, Lakebase project + environment branches. Deployed first.</li>
+<li><strong>Bundle 2 (App):</strong> Databricks App. Initialized via <code>databricks apps init</code> from a serverless compute notebook terminal with plugin selection (Lakebase, OpenTelemetry, Data API). Deployed after Bundle 1.</li>
+</ul>
+<p>Bundle 1 must be fully deployed and validated before Bundle 2 is initialized — the app depends on Bundle 1's resources.</p>
+<h4 id="124-cicd-pipeline-structure">12.4 CI/CD Pipeline Structure</h4>
+<pre><code>Feature Branch
+   ├── Unit tests, linting, security scanning
+   ├── Bundle validation (`databricks bundle validate`)
+   └── PR review
+          ↓
+Merge to main
+          ↓
+GitHub Actions / Azure DevOps:
+   ├── CI: Deploy to Dev (automatic)
+   ├── CD: Deploy to Tst/UAT (automatic)
+   │   ├── Integration tests
+   │   ├── Data quality tests
+   │   └── UAT approval gate
+   └── CD: Deploy to Prod (manual approval)
+          ├── Smoke tests
+          └── Post-deployment validation
+</code></pre>
+<h4 id="125-deployment-controls">12.5 Deployment Controls</h4>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Dev</th>
+<th>Tst/UAT</th>
+<th>Prod</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Trigger</td>
+<td>Automatic on merge</td>
+<td>Automatic after Dev</td>
+<td>Manual approval required</td>
+</tr>
+<tr>
+<td>SPN</td>
+<td>Dev deployment SPN</td>
+<td>Tst deployment SPN</td>
+<td>Prod deployment SPN</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>Workload Identity Federation</td>
+<td>Workload Identity Federation</td>
+<td>Workload Identity Federation</td>
+</tr>
+<tr>
+<td>Rollback</td>
+<td><code>bundle destroy</code> + redeploy</td>
+<td><code>bundle destroy</code> + redeploy</td>
+<td>Revert to previous validated release</td>
+</tr>
+<tr>
+<td>Audit</td>
+<td>Commit SHA, deployer, timestamp</td>
+<td>Commit SHA, deployer, timestamp</td>
+<td>Commit SHA, approver, deployer, timestamp</td>
+</tr>
+</tbody>
+</table>
+<h4 id="126-lifecycle-cleanup">12.6 Lifecycle Cleanup</h4>
+<ul>
+<li>Lower environments (dev, tst, uat) can be cleaned up with <code>databricks bundle destroy</code></li>
+<li><code>bundle destroy</code> is DAB-aware — tears down exactly what the bundle deployed</li>
+<li>Dev schemas can be cleaned up individually or the entire dev catalog can be dropped</li>
+<li>This addresses metastore clutter: dev catalogs are ephemeral with a built-in automated teardown path</li>
+</ul>
+<hr />
+<h3 id="section-13-disaster-recovery-global-operations">Section 13: Disaster Recovery &amp; Global Operations</h3>
+<h4 id="131-dr-architecture">13.1 DR Architecture</h4>
+<p>The recommended pattern is <strong>active-passive, single-writer</strong> with Managed DR where available (gated feature on AWS and Azure).</p>
+<h4 id="132-rtorpo-by-workload-tier">13.2 RTO/RPO by Workload Tier</h4>
+<table>
+<thead>
+<tr>
+<th>Workload Tier</th>
+<th>Example</th>
+<th>Target RTO</th>
+<th>Target RPO</th>
+<th>Pattern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mission-critical</td>
+<td>Real-time claims, payments</td>
+<td>&lt; 1 hour</td>
+<td>&lt; 15 min</td>
+<td>Managed DR with continuous replication</td>
+</tr>
+<tr>
+<td>Important batch</td>
+<td>Daily ETL, gold refresh</td>
+<td>&lt; 4 hours</td>
+<td>&lt; 1 hour</td>
+<td>Active-passive with frequent replication</td>
+</tr>
+<tr>
+<td>Analytics / BI</td>
+<td>Dashboards, Genie Agents</td>
+<td>&lt; 24 hours</td>
+<td>&lt; 24 hours</td>
+<td>Rebuild from IaC + data replication</td>
+</tr>
+</tbody>
+</table>
+<h4 id="133-what-must-be-replicated">13.3 What Must Be Replicated</h4>
+<ul>
+<li><strong>Data:</strong> Bronze, silver, gold Delta tables; streaming checkpoints; volumes</li>
+<li><strong>Identity:</strong> Users, groups, service principals, grants (account-level SSO + SCIM)</li>
+<li><strong>Code:</strong> DABs, Terraform, notebooks — all in Git, deployed to both regions</li>
+<li><strong>Infrastructure:</strong> Networking, private connectivity, IAM, secrets, firewall rules</li>
+<li><strong>External systems:</strong> Kafka/Event Hubs, schedulers, BI tools, APIs, DNS</li>
+</ul>
+<h4 id="134-global-operations-model">13.4 Global Operations Model</h4>
+<p>For multi-geography organizations:</p>
+<ul>
+<li>Each region has its own metastore (UC hard constraint)</li>
+<li>D2D OpenSharing for cross-region reference data and aggregates</li>
+<li>Data sovereignty (GDPR, data residency) enforced at metastore + catalog binding level</li>
+<li>Not every region needs every workspace tier — centralize Dev/Sandbox in primary region, deploy Prod + Consumer per region</li>
+<li>DR pairs are region-to-region within the same cloud provider</li>
+</ul>
+<hr />
+<h3 id="section-14-complete-architecture-putting-it-all-together">Section 14: Complete Architecture — Putting It All Together</h3>
+<div class="diagram-embed"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1070" width="100%" role="img" aria-label="Complete enterprise architecture" font-family="'DM Sans','Inter','Segoe UI',Helvetica,Arial,sans-serif"><defs><marker id="d06-ah-1B3139" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#1B3139"/></marker><marker id="d06-ah-6B7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#6B7280"/></marker><marker id="d06-ah-FF3621" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#FF3621"/></marker></defs><rect x="20" y="10" width="1160" height="1050" rx="14" fill="none" stroke="#1B3139" stroke-width="1.5" stroke-dasharray="8 6"/><text x="38" y="30" font-size="10.5" font-weight="700" fill="#1B3139" text-anchor="start" letter-spacing="1.3">DATABRICKS ACCOUNT</text><rect x="50" y="55" width="1100" height="110" rx="14" fill="none" stroke="#6B7280" stroke-width="1.5" stroke-dasharray="6 5"/><text x="1132" y="75" font-size="10.5" font-weight="700" fill="#6B7280" text-anchor="end" letter-spacing="1.3">UNITY CATALOG METASTORE · REGIONAL</text><rect x="70" y="85" width="1060" height="62" rx="10" fill="#F2F2F2" stroke="#E8E8E8" stroke-width="1.6"/><text x="600" y="111.5" font-size="12.5" font-weight="700" fill="#1B3139" text-anchor="middle">Catalogs:  sandbox  |  func_dev  |  func_tst  |  func (prod)  |  analyst</text><text x="600" y="128" font-size="10.5" font-weight="400" fill="#6B7280" text-anchor="middle">Read Up, Write Local   ·   separate storage location and credentials per environment</text><rect x="50" y="195" width="1100" height="150" rx="14" fill="none" stroke="#077A9D" stroke-width="1.5" stroke-dasharray="6 5"/><text x="68" y="215" font-size="10.5" font-weight="700" fill="#077A9D" text-anchor="start" letter-spacing="1.3">WORKSPACES</text><rect x="70" y="230" width="235" height="92" rx="10" fill="#FFAB00" stroke="#CC8800" stroke-width="1.6"/><g transform="translate(179,248.8) scale(0.7083)" fill="none" stroke="#1B3139" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8 3v5.5c0 5-3.4 9.3-8 10.5-4.6-1.2-8-5.5-8-10.5V5.5z"/></g><text x="187.5" y="283.2" font-size="13" font-weight="700" fill="#1B3139" text-anchor="middle">Sandbox</text><text x="187.5" y="299.8" font-size="10.5" font-weight="400" fill="#1B3139" text-anchor="middle" opacity="0.88">No CSP</text><rect x="345" y="230" width="235" height="92" rx="10" fill="#077A9D" stroke="#055F7A" stroke-width="1.6"/><g transform="translate(454,248.8) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 9.5h18"/></g><text x="462.5" y="283.2" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">Dev</text><text x="462.5" y="299.8" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">CSP if reading prod</text><rect x="620" y="230" width="235" height="92" rx="10" fill="#077A9D" stroke="#055F7A" stroke-width="1.6"/><g transform="translate(729,248.8) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 9.5h18"/></g><text x="737.5" y="283.2" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">Tst / UAT</text><text x="737.5" y="299.8" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">CSP if regulated</text><rect x="895" y="230" width="235" height="92" rx="10" fill="#FF3621" stroke="#CC2B1A" stroke-width="1.6"/><g transform="translate(1004,248.8) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 10.5V8a5.5 5.5 0 0111 0v2.5M5 10.5h14v10H5z"/></g><text x="1012.5" y="283.2" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">Prod</text><text x="1012.5" y="299.8" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">HIPAA · PCI-DSS</text><path d="M307,276 L343,276" stroke="#6B7280" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d06-ah-6B7280)"/><path d="M582,276 L618,276" stroke="#6B7280" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d06-ah-6B7280)"/><path d="M857,276 L893,276" stroke="#6B7280" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d06-ah-6B7280)"/><rect x="90" y="420" width="330" height="110" rx="10" fill="#00A972" stroke="#007A52" stroke-width="1.6"/><g transform="translate(246.5,441) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V11M10 20V4.5M16 20v-7M2.5 20h19"/></g><text x="255" y="475.5" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">Interactive Analyst</text><text x="255" y="492" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">Frictionless Deployments</text><text x="255" y="505.5" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">CSP matches prod</text><rect x="470" y="420" width="330" height="110" rx="10" fill="#1B3139" stroke="#0F1D22" stroke-width="1.6"/><g transform="translate(626.5,441) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11.5a4 4 0 100-8 4 4 0 000 8zM4.5 21c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5"/></g><text x="635" y="475.5" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">Consumer</text><text x="635" y="492" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">Genie One · Genie Agents</text><text x="635" y="505.5" font-size="10.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">Dashboards · Apps</text><path d="M990,322 L990,372 L255,372 L255,420" stroke="#FF3621" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d06-ah-FF3621)"/><rect x="592.6" y="362.2" width="58.7" height="19.5" rx="5" fill="#FFFFFF" stroke="none" stroke-width="0" opacity="0.93"/><text x="622" y="375.2" font-size="9.5" font-weight="500" fill="#FF3621" text-anchor="middle">read-only</text><path d="M1040,322 L1040,394 L635,394 L635,420" stroke="#FF3621" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d06-ah-FF3621)"/><rect x="807.6" y="384.2" width="58.7" height="19.5" rx="5" fill="#FFFFFF" stroke="none" stroke-width="0" opacity="0.93"/><text x="837" y="397.2" font-size="9.5" font-weight="500" fill="#FF3621" text-anchor="middle">read-only</text><rect x="50" y="560" width="1100" height="200" rx="14" fill="none" stroke="#FF3621" stroke-width="1.5" stroke-dasharray="6 5"/><text x="68" y="580" font-size="10.5" font-weight="700" fill="#FF3621" text-anchor="start" letter-spacing="1.3">EXTERNAL ACCESS LAYER</text><rect x="80" y="635" width="200" height="72" rx="10" fill="#1B3139" stroke="#0F1D22" stroke-width="1.6"/><g transform="translate(171.5,650.5) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11.5a4 4 0 100-8 4 4 0 000 8zM4.5 21c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5"/></g><text x="180" y="685" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">External Customers</text><rect x="320" y="625" width="230" height="92" rx="10" fill="#FFAB00" stroke="#CC8800" stroke-width="1.6"/><g transform="translate(426.5,643.8) scale(0.7083)" fill="none" stroke="#1B3139" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 4.5h15v15h-15zM9.5 4.5v15M14.5 4.5v15"/></g><text x="435" y="678.2" font-size="13" font-weight="700" fill="#1B3139" text-anchor="middle">API Gateway</text><text x="435" y="694.8" font-size="10.5" font-weight="400" fill="#1B3139" text-anchor="middle" opacity="0.88">APIM / AWS GW / Apigee</text><path d="M280,671 L320,671" stroke="#1B3139" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d06-ah-1B3139)"/><path d="M550,671 L590,671" stroke="#1B3139" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="620" y="585" width="250" height="52" rx="10" fill="#00A972" stroke="#007A52" stroke-width="1.6"/><g transform="translate(736.5,584.5) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 18.5a4.2 4.2 0 01-.2-8.4 5.6 5.6 0 0110.8-1.3 4.4 4.4 0 01-.6 9.7z"/></g><text x="745" y="617.5" font-size="11.5" font-weight="700" fill="#FFFFFF" text-anchor="middle">Databricks App</text><text x="745" y="633" font-size="9.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">OBO via Lakebase</text><path d="M590,671 L590,611 L620,611" stroke="#1B3139" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d06-ah-1B3139)"/><rect x="620" y="645" width="250" height="52" rx="10" fill="#FF3621" stroke="#CC2B1A" stroke-width="1.6"/><g transform="translate(736.5,644.5) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7M3.5 12h5M15.5 12h5M12 3.5v5M12 15.5v5"/></g><text x="745" y="677.5" font-size="11.5" font-weight="700" fill="#FFFFFF" text-anchor="middle">Unity Gateway</text><text x="745" y="693" font-size="9.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">MCP · Models · Skills</text><path d="M590,671 L590,671 L620,671" stroke="#1B3139" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d06-ah-1B3139)"/><rect x="620" y="705" width="250" height="52" rx="10" fill="#077A9D" stroke="#055F7A" stroke-width="1.6"/><g transform="translate(736.5,704.5) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2.5L4.5 14H10l-1 7.5L19.5 10H13z"/></g><text x="745" y="737.5" font-size="11.5" font-weight="700" fill="#FFFFFF" text-anchor="middle">Model Serving Endpoints</text><text x="745" y="753" font-size="9.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">Governed by UC ACLs</text><path d="M590,671 L590,731 L620,731" stroke="#1B3139" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d06-ah-1B3139)"/><path d="M635,530 L635,560" stroke="#6B7280" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 4"/><rect x="50" y="790" width="540" height="250" rx="14" fill="none" stroke="#077A9D" stroke-width="1.5" stroke-dasharray="6 5"/><text x="68" y="810" font-size="10.5" font-weight="700" fill="#077A9D" text-anchor="start" letter-spacing="1.3">CI/CD</text><rect x="80" y="828" width="130" height="50" rx="10" fill="#077A9D" stroke="#055F7A" stroke-width="1.6"/><g transform="translate(136.5,833) scale(0.7083)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5v11a3 3 0 003 3h6M6.5 3.5a2 2 0 100 4 2 2 0 000-4zM18.5 15.5a2 2 0 100 4 2 2 0 000-4z"/></g><text x="145" y="866.5" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">Git</text><rect x="240" y="828" width="150" height="50" rx="10" fill="#077A9D" stroke="#055F7A" stroke-width="1.6"/><text x="315" y="848" font-size="11.5" font-weight="700" fill="#FFFFFF" text-anchor="middle">DAB Bundle 1</text><text x="315" y="863.5" font-size="9.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">Infra</text><rect x="420" y="828" width="150" height="50" rx="10" fill="#077A9D" stroke="#055F7A" stroke-width="1.6"/><text x="495" y="848" font-size="11.5" font-weight="700" fill="#FFFFFF" text-anchor="middle">DAB Bundle 2</text><text x="495" y="863.5" font-size="9.5" font-weight="400" fill="#FFFFFF" text-anchor="middle" opacity="0.88">App</text><path d="M212,853 L238,853" stroke="#6B7280" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d06-ah-6B7280)"/><path d="M392,853 L418,853" stroke="#6B7280" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d06-ah-6B7280)"/><rect x="80" y="900" width="130" height="50" rx="10" fill="#F2F2F2" stroke="#E8E8E8" stroke-width="1.6"/><text x="145" y="927" font-size="12" font-weight="700" fill="#1B3139" text-anchor="middle">Terraform</text><rect x="240" y="900" width="150" height="50" rx="10" fill="#F2F2F2" stroke="#E8E8E8" stroke-width="1.6"/><text x="315" y="920" font-size="11.5" font-weight="700" fill="#1B3139" text-anchor="middle">Workspace</text><text x="315" y="935.5" font-size="9.5" font-weight="400" fill="#6B7280" text-anchor="middle">provisioning</text><path d="M212,925 L238,925" stroke="#6B7280" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d06-ah-6B7280)"/><rect x="80" y="972" width="490" height="50" rx="10" fill="#F2F2F2" stroke="#E8E8E8" stroke-width="1.6"/><text x="325" y="992.2" font-size="12" font-weight="700" fill="#1B3139" text-anchor="middle">Workload Identity Federation</text><text x="325" y="1007.8" font-size="9.5" font-weight="400" fill="#6B7280" text-anchor="middle">No long-lived secrets</text><rect x="640" y="790" width="510" height="250" rx="14" fill="none" stroke="#00A972" stroke-width="1.5" stroke-dasharray="6 5"/><text x="658" y="810" font-size="10.5" font-weight="700" fill="#00A972" text-anchor="start" letter-spacing="1.3">DISASTER RECOVERY</text><rect x="680" y="840" width="170" height="56" rx="10" fill="#00A972" stroke="#007A52" stroke-width="1.6"/><text x="765" y="870" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">Primary</text><rect x="940" y="840" width="170" height="56" rx="10" fill="#F2F2F2" stroke="#E8E8E8" stroke-width="1.6"/><text x="1025" y="870" font-size="12" font-weight="700" fill="#1B3139" text-anchor="middle">Secondary</text><path d="M852,868 L938,868" stroke="#1B3139" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#d06-ah-1B3139)" marker-start="url(#d06-ah-1B3139)"/><rect x="862.9" y="838.2" width="64.2" height="19.5" rx="5" fill="#FFFFFF" stroke="none" stroke-width="0" opacity="0.93"/><text x="895" y="851.2" font-size="9.5" font-weight="500" fill="#1B3139" text-anchor="middle">Managed DR</text><rect x="680" y="930" width="430" height="56" rx="10" fill="#FFFFFF" stroke="#E8E8E8" stroke-width="1.6"/><g transform="translate(886.5,931.2) scale(0.7083)" fill="none" stroke="#1B3139" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a8.5 8.5 0 11-2.8-6.3M20.5 4v5h-5"/></g><text x="895" y="964.8" font-size="12" font-weight="700" fill="#1B3139" text-anchor="middle">Stable URL</text><text x="895" y="980.2" font-size="9.5" font-weight="400" fill="#6B7280" text-anchor="middle">Quarterly failover testing</text></svg>
+</div>
+<hr />
+<h3 id="section-15-decision-framework">Section 15: Decision Framework</h3>
+<h4 id="when-to-add-a-workspace">When to Add a Workspace</h4>
+<table>
+<thead>
+<tr>
+<th>Question</th>
+<th>If Yes →</th>
+<th>If No →</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Does this workload process data under a different compliance standard?</td>
+<td>Separate workspace</td>
+<td>Same workspace, separate catalog</td>
+</tr>
+<tr>
+<td>Do users need different network boundaries?</td>
+<td>Separate workspace</td>
+<td>Same workspace</td>
+</tr>
+<tr>
+<td>Does compute contention affect business SLAs?</td>
+<td>Separate workspace</td>
+<td>Same workspace, separate warehouses</td>
+</tr>
+<tr>
+<td>Do teams need different workspace admin settings?</td>
+<td>Separate workspace</td>
+<td>Same workspace</td>
+</tr>
+<tr>
+<td>Is this a preview feature evaluation?</td>
+<td>Sandbox workspace</td>
+<td>Dev workspace</td>
+</tr>
+<tr>
+<td>Do analysts need ad-hoc SQL access to production data?</td>
+<td>Interactive Analyst workspace</td>
+<td>Consumer workspace (Genie/dashboards)</td>
+</tr>
+<tr>
+<td>Is this a consumer-facing surface?</td>
+<td>Consumer workspace</td>
+<td>Production workspace</td>
+</tr>
+</tbody>
+</table>
+<h4 id="when-to-add-a-region">When to Add a Region</h4>
+<table>
+<thead>
+<tr>
+<th>Question</th>
+<th>If Yes →</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data sovereignty requires data to stay in-region</td>
+<td>New metastore + regional workspaces</td>
+</tr>
+<tr>
+<td>Latency requirements for regional users</td>
+<td>New metastore + regional workspaces</td>
+</tr>
+<tr>
+<td>DR requires cross-region failover</td>
+<td>Secondary region with DR workspaces</td>
+</tr>
+<tr>
+<td>Regulatory isolation (e.g., GovCloud)</td>
+<td>Separate account + region</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="section-16-key-references">Section 16: Key References</h3>
+<ul>
+<li><strong>Databricks Developer Best Practices</strong> — workspace isolation, catalog binding, CI/CD</li>
+<li><strong>Unity Catalog Best Practices</strong> — one metastore per region, catalog isolation, D2D OpenSharing</li>
+<li><strong>Compliance Security Profile</strong> — HIPAA, PCI-DSS, HITRUST controls and limitations</li>
+<li><strong>Workspace-Catalog Binding</strong> — ISOLATED mode enforcement across platform</li>
+<li><strong>Managed Disaster Recovery</strong> — replication, failover, stable URLs</li>
+<li><strong>Unity Gateway</strong> — AI governance, model services, MCP servers, service policies</li>
+<li><strong>Genie Ontology</strong> — unified context layer for Genie One and Genie Code</li>
+<li><strong>Declarative Automation Bundles</strong> — IaC for workspace configuration and deployment</li>
+<li><strong>Frictionless Analyst Deployments</strong> — <a href="https://lucid.app/lucidspark/1ad1687e-15b7-4728-b8fa-0a17ecdbb8bc/edit?invitationId=inv_09a27c62-ae2d-434f-91e8-8c337f1e5bf5&amp;page=0_0#">Lucid Spark Diagram</a> — analyst self-service deployment process via Databricks App + <code>bundle generate</code></li>
+</ul></main>
+</div>
+<div class="footer">Matthew Giglia | Field Engineering - Databricks</div>
+</body>
+</html>
