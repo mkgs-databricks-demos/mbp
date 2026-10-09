@@ -38,7 +38,12 @@ CSS_FILE = SCRIPT_DIR / "databricks_theme.css"
 TEMPLATE_FILE = SCRIPT_DIR / "document_template.html"
 OUTPUT = SCRIPT_DIR / "enterprise_workspace_architecture.html"
 
-# Map: keywords found in ASCII code blocks -> SVG filename
+# Map: keywords found in ASCII code blocks -> SVG filename.
+# A block is swapped when >= 2 of its keywords match, so keywords must be copied
+# verbatim (and case-sensitively) from the ASCII art in document.md.
+# Diagrams 02, 04 and 05 have no ASCII counterpart in document.md -- they
+# illustrate prose-only sections, so they are only produced as standalone pages
+# under diagrams/html/. Their entries stay here for when that art is added.
 SVG_MAP = [
     (["SANDBOX", "INTERACTIVE", "CONSUMER", "Unity Catalog Metastore"],
      "01_workspace_topology.svg"),
@@ -46,15 +51,14 @@ SVG_MAP = [
      "02_uc_metastore_by_region.svg"),
     (["WRITE ACCESS", "READ ACCESS", "func_dev catalog"],
      "03_read_up_write_local.svg"),
-    (["func (PROD catalog)", "top of hierarchy", "source of truth"],
-     "03_read_up_write_local.svg"),
     (["PRIMARY REGION", "SECONDARY REGION", "Stable DR Endpoint"],
      "04_dr_architecture.svg"),
     (["Global Databricks Account", "US-East", "APAC"],
      "05_global_operations.svg"),
     (["DATABRICKS ACCOUNT", "UNITY CATALOG METASTORE"],
      "06_complete_architecture.svg"),
-    (["External Customer", "Hyperscaler API Gateway"],
+    (["External Customer", "API Gateway", "Unity Gateway",
+      "Model Serving Endpoints"],
      "07_external_customer_access.svg"),
 ]
 
@@ -71,12 +75,17 @@ def find_svg_for_block(code_text):
 
 
 def replace_ascii_with_svg(html_content):
-    """Replace ASCII art code blocks with embedded SVG diagrams."""
+    """Replace ASCII art code blocks with embedded SVG diagrams.
+
+    Returns (html, blocks_replaced).
+    """
     box_chars = [
         "\u250c", "\u2510", "\u2514", "\u2518", "\u2502", "\u2500",
         "\u251c", "\u2524", "\u252c", "\u2534", "\u253c",
         "\u25bc", "\u25b6", "\u25c4", "\u25ba"
     ]
+
+    replaced = []
 
     def replacer(match):
         raw = match.group(1)
@@ -84,15 +93,17 @@ def replace_ascii_with_svg(html_content):
         if any(c in decoded for c in box_chars):
             svg = find_svg_for_block(decoded)
             if svg:
+                replaced.append(1)
                 return '<div class="diagram-embed">' + svg + '</div>'
         return match.group(0)
 
-    return re.sub(
+    out = re.sub(
         r'<pre><code>(.*?)</code></pre>',
         replacer,
         html_content,
         flags=re.DOTALL
     )
+    return out, len(replaced)
 
 
 def main():
@@ -130,8 +141,9 @@ def main():
     toc_html = md_obj.toc
 
     # Replace ASCII diagrams with SVGs
+    embedded = 0
     if svg_count > 0:
-        body_html = replace_ascii_with_svg(body_html)
+        body_html, embedded = replace_ascii_with_svg(body_html)
 
     # Assemble final HTML
     final_html = template_text
@@ -142,7 +154,8 @@ def main():
     # Write output
     OUTPUT.write_text(final_html)
     print(f"Done: {OUTPUT}")
-    print(f"  SVGs embedded: {svg_count}")
+    print(f"  SVGs available:    {svg_count}")
+    print(f"  Diagrams embedded: {embedded}")
     print(f"  Size: {OUTPUT.stat().st_size:,} bytes")
     print("  Open in a browser to view.")
 
