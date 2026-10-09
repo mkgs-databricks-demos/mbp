@@ -8,9 +8,10 @@ it hand-lays out the same seven diagrams using the Databricks brand palette and 
 inline icon set. Pure standard library -- no browser, no network, no npm.
 
 Usage:
-    python build_svg.py                 # write all seven SVGs to ./svg/
-    python build_svg.py --out somedir   # write elsewhere
-    python build_svg.py --list          # just list what would be written
+    python build_svg.py                          # write SVG + standalone HTML
+    python build_svg.py --out somedir            # SVG output dir
+    python build_svg.py --html-out otherdir      # standalone HTML output dir
+    python build_svg.py --list                   # just list what would be written
 
 Output filenames match the SVG_MAP in ../docs/render_document.py, so running this
 and then render_document.py embeds the diagrams into the final HTML.
@@ -24,6 +25,7 @@ from xml.sax.saxutils import escape
 
 SCRIPT_DIR = Path(__file__).parent
 SVG_DIR = SCRIPT_DIR / "svg"
+HTML_DIR = SCRIPT_DIR / "html"
 
 # ---------------------------------------------------------------- brand palette
 RED = "#FF3621"
@@ -48,6 +50,108 @@ KINDS = {
     "gray":  (GRAY,  BORDER,    DARK),
     "white": (WHITE, BORDER,    DARK),
 }
+
+HTML_TEMPLATE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title} — Databricks Architecture</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap');
+
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+
+        body {{
+            font-family: 'DM Sans', 'Inter', 'Segoe UI', sans-serif;
+            background: {bg};
+            color: {dark};
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }}
+
+        header {{
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 3px solid {red};
+            width: 100%;
+            max-width: 1200px;
+        }}
+
+        header .logo {{
+            width: 40px;
+            height: 40px;
+            background: {red};
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }}
+
+        header .logo svg {{
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }}
+
+        header h1 {{
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: {dark};
+        }}
+
+        header .subtitle {{
+            font-size: 0.875rem;
+            color: {muted};
+            margin-left: auto;
+        }}
+
+        .diagram-container {{
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            max-width: 1200px;
+            width: 100%;
+            overflow-x: auto;
+        }}
+
+        .diagram-container svg {{
+            max-width: 100%;
+            height: auto;
+        }}
+
+        footer {{
+            margin-top: 2rem;
+            font-size: 0.75rem;
+            color: {muted};
+        }}
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+        </div>
+        <h1>{title}</h1>
+        <span class="subtitle">Enterprise Workspace Architecture Reference</span>
+    </header>
+    <div class="diagram-container">
+        {svg_content}
+    </div>
+    <footer>
+        Matthew Giglia | Field Engineering — Databricks
+    </footer>
+</body>
+</html>"""
 
 # ------------------------------------------------------------------- icon paths
 # All 24x24, stroke-only so they inherit the card's text colour.
@@ -220,6 +324,23 @@ def _midpoint(pts):
             return x1 + (x2 - x1) * t, y1 + (y2 - y1) * t
         target -= length
     return pts[-1]
+
+
+def title_for(stem):
+    """Human title for the standalone page from the output stem."""
+    return stem.split("_", 1)[1].replace("_", " ").title() if "_" in stem else stem
+
+
+def wrap_html(title, svg_content):
+    """Wrap a raw SVG in the Databricks-branded standalone HTML shell."""
+    return HTML_TEMPLATE.format(
+        title=title,
+        svg_content=svg_content,
+        bg=GRAY,
+        dark=DARK,
+        red=RED,
+        muted=MUTED,
+    )
 
 
 # ============================================================ the seven diagrams
@@ -515,7 +636,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Draw the architecture diagrams as Databricks-themed SVG."
     )
-    parser.add_argument("--out", default=None, help="Output directory (default ./svg/).")
+    parser.add_argument("--out", default=None, help="SVG output directory (default ./svg/).")
+    parser.add_argument("--html-out", default=None,
+                        help="Standalone HTML output directory (default ./html/).")
     parser.add_argument("--list", action="store_true",
                         help="List the diagrams without writing anything.")
     args = parser.parse_args(argv)
@@ -523,20 +646,35 @@ def main(argv=None):
     if args.list:
         for stem in DIAGRAMS:
             print(f"{stem}.svg")
+            print(f"{stem}.html")
         return
 
     out_dir = Path(args.out) if args.out else SVG_DIR
+    html_dir = Path(args.html_out) if args.html_out else HTML_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
+    html_dir.mkdir(parents=True, exist_ok=True)
 
-    total = 0
+    svg_total = 0
+    html_total = 0
     for stem, build in DIAGRAMS.items():
         svg = build().render()
-        path = out_dir / f"{stem}.svg"
-        path.write_text(svg, encoding="utf-8")
-        total += len(svg.encode("utf-8"))
-        print(f"  wrote {path.name:34s} {len(svg.encode('utf-8')):>7,} bytes")
+        svg_path = out_dir / f"{stem}.svg"
+        svg_path.write_text(svg, encoding="utf-8")
+        svg_bytes = len(svg.encode("utf-8"))
+        svg_total += svg_bytes
 
-    print(f"\n{len(DIAGRAMS)} diagram(s), {total:,} bytes total -> {out_dir}")
+        html = wrap_html(title_for(stem), svg)
+        html_path = html_dir / f"{stem}.html"
+        html_path.write_text(html, encoding="utf-8")
+        html_bytes = len(html.encode("utf-8"))
+        html_total += html_bytes
+
+        print(f"  wrote {svg_path.name:34s} {svg_bytes:>7,} bytes")
+        print(f"  wrote {html_path.name:34s} {html_bytes:>7,} bytes")
+
+    print(f"\n{len(DIAGRAMS)} diagram(s) written")
+    print(f"  SVG total:  {svg_total:,} bytes -> {out_dir}")
+    print(f"  HTML total: {html_total:,} bytes -> {html_dir}")
 
 
 if __name__ == "__main__":
