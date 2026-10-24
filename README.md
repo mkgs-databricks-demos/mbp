@@ -7,5 +7,6 @@ Matt's Best Practices for Working with Databricks
 | [developer-user-isolation-in-uc](developer-user-isolation-in-uc/docs/uc-naming-convention-reference.md) | Unity Catalog naming convention per environment, developer schema isolation, zero-hardcoding rule, grants |
 | [sdlc-best-practices](sdlc-best-practices/README.md) | SDLC deep dive with Declarative Automation Bundles and GitHub Actions, including a complete example bundle and a bundle vs Terraform vs REST API comparison |
 | [genie-build-waves](genie-build-waves) | Bundle for orchestrating parallel build waves |
+| [unity-gateway](unity-gateway/README.md) | Registering and governing external MCP servers in Unity Gateway: auth options, permissions, invocation, pitfalls. Includes a Figma MCP example (design context, code, and Make projects) |
 
 Suggested reading order: workspace architecture, then UC naming, then SDLC best practices.
