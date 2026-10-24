@@ -8,7 +8,7 @@ This folder covers general patterns for registering external MCP servers, plus w
 
 | Example | Topic |
 | --- | --- |
-| [figma-mcp](figma-mcp/docs/guide.md) | Figma's MCP server (design context, code, and Make projects): direct registration, the client-allowlist limitation, and a custom Databricks App alternative |
+| [robinhood-mcp](robinhood-mcp/docs/guide.md) | A brokerage MCP server whose OAuth only accepts a fixed loopback redirect: proxy Databricks App with a paste-back connect flow, encrypted token handling, read-only tool allowlist, and Unity Gateway registration |
 
 ## Choose the Right Service Type
 
@@ -106,7 +106,7 @@ Use `tools/list` to discover tools and `tools/call` with `params.name` and `para
 
 - Registering a server that only listens on `localhost` (desktop apps, local dev servers).
 - Forgetting the workspace redirect URL on a custom OAuth app.
-- Assuming every hosted MCP server accepts any client. Some providers only allow approved MCP clients. Check the provider's documentation before planning an integration.
+- Assuming every hosted MCP server accepts any client. Some providers only allow approved MCP clients, or only accept a fixed loopback redirect URL, so the workspace callback can never be allowlisted. Check the provider's OAuth metadata and documentation before planning an integration, and use a proxy Databricks App when direct registration isn't possible (see the robinhood-mcp example).
 - Granting `USE CONNECTION` to callers instead of `EXECUTE` on the service.
 
 ## References
