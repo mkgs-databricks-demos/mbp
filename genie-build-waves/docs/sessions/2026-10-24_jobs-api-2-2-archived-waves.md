@@ -35,6 +35,19 @@ A consumer manifest with 32 waves (22 from three finished builds, 10 for the nex
 * Setup job against the 32-wave manifest: SUCCESS, printed `Manifest OK: 32 waves (22 archived, 10 runnable), 63 sessions, 19 runtime targets`, build job reset to 40 tasks (all `w4-*`, first task without dependencies, escaped gate_check references), all four automations updated (none created). The first attempt failed on the unescaped reference (cause 3), before the job was changed.
 * Not exercised live: a `jobs/reset` with more than 100 tasks (covered by the fake-client test).
 
+## Deployment notes
+
+* No `bundle deploy` needed: nothing under `resources/` changed. Jobs run the notebooks and read `src/skills` from the live mbp Git folder (source WORKSPACE), so the change is live as soon as the folder is on the right commit.
+* Skills are already republished. Every dev instance (default, `-sgt-root`, `-agentic-trading`) publishes to the same UC skills schema, `hls_fde_dev.dev_matthew_giglia_build_waves`, so the one setup run above updated the runner and integrator skills for all of them. This is safe: the new rules only apply to manifests with `"archived": true`.
+* Other instances keep their old task graph until their own setup job runs. Rerun setup for an instance before using it with an archived-wave manifest.
+* The mbp Git folder stays on `mg-genie-build-waves-api22-archived` until the PR is merged, then switches back to `main`. No republish is needed after the switch, because the merged files are identical.
+
+## Decisions
+
+* Archived waves are validated, not ignored, so `depends_on` and runtime targets that point at old sessions still fail loudly when wrong.
+* Validation and task generation live in plain modules (`waves_manifest.py`, `jobs_api.py`) so they can be unit tested without a cluster.
+* After a reset, setup reads the job back and compares task keys. A paging bug would then fail the run instead of silently dropping tasks.
+
 ## Files
 
 `src/notebooks/jobs_api.py`, `src/notebooks/waves_manifest.py`, `src/notebooks/setup_build_waves_job.ipynb`, `src/notebooks/wave_gate_check.ipynb`, `src/skills/genie-build-session-runner/SKILL.md`, `src/skills/genie-build-wave-integrator/SKILL.md`, `src/skills/genie-build-planner/SKILL.md`, `README.md`, `docs/manifest-schema.md`, `docs/prompts/follow-up-build.md`, `tests/conftest.py`, `tests/test_jobs_api.py`, `tests/test_waves_manifest.py`.
