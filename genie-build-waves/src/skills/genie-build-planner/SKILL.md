@@ -46,7 +46,7 @@ Read the project's existing files, README, architecture docs, and any requiremen
    - `workspace` — the output is notebooks, tables, models, dashboards, or UC objects
    - `hybrid` — mix of file authoring and notebook/SQL execution
 5. **What are the natural functional boundaries?** (modules, layers, data domains, components)
-6. **Is this an initial build or a follow-up?** If earlier waves already ran (there is a `waves.json`, `docs/sessions/` summaries, a gate history), you are planning a **follow-up**: append new waves to the existing manifest and keep earlier waves unchanged. See "Follow-up builds" below.
+6. **Is this an initial build or a follow-up?** If earlier waves already ran (there is a `waves.json`, `docs/sessions/` summaries, a gate history), you are planning a **follow-up**: append new waves to the existing manifest and keep earlier waves unchanged except for marking them `"archived": true` (setup then generates no tasks for them, and `depends_on` entries naming their sessions count as done). Name waves `<build>-<n>` (task prefix `w<build>-<n>`), optionally with `"build": "<build>"`. See "Follow-up builds" below and the Archived waves section of `docs/manifest-schema.md`.
 7. **What has to deploy and run to prove it works?** List the apps, jobs, pipelines, dashboards and Genie spaces, which bundle defines each, the target, and where their telemetry lands (e.g. the app's OTel logs table). These become `runtime_targets`.
 
 ## Step 2: Decompose into sessions

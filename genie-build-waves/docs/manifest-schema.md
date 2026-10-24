@@ -50,8 +50,10 @@ The manifest supports three workflow modes that control how sessions operate and
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `wave_id` | string | Yes | Unique identifier (e.g. `0`, `1`, `4a`). Used in task keys and file names. |
+| `wave_id` | string | Yes | Unique identifier (e.g. `0`, `1`, `4a`, `4-1`): 1-60 letters, digits, `_` or `-`. Used in task keys (`w<wave_id>_sessions`, ...) and file names. For manifests that span several builds, use `<build>-<n>` (see Archived waves). |
 | `name` | string | No | Human-readable wave name. |
+| `archived` | boolean | No | `true` = an earlier build's wave, kept as history. Validated (ids, duplicate session ids, modes, runtime target references) but gets **no** job tasks, skips the single-writer rule, and its sessions count as done for `depends_on`. Default `false`. See Archived waves. |
+| `build` | string | No | Informational build label (e.g. `"4"`; an integer is accepted too). Not used by the runtime. |
 | `concurrency` | integer | No | Max parallel sessions. Defaults to the number of sessions. |
 | `manual_prereqs` | ManualPrereq[] | No | Sessions that must be done outside Genie Code before this wave runs. |
 | `gate` | string[] | Yes | List of checks the integrator runs after all sessions finish. Plain text descriptions; the integrator interprets them. |
@@ -74,7 +76,7 @@ The manifest supports three workflow modes that control how sessions operate and
 | `exclude_paths` | string[] | No | Glob patterns to exclude from `owned_paths`. |
 | `allow_deploy` | boolean | No | Whether the session may run `bundle deploy`. Defaults to `false`. |
 | `allow_execute` | boolean | No | Whether the session may execute notebooks or run SQL. Defaults to `false` in `edit` mode, `true` in `execute`/`configure` mode. |
-| `depends_on` | string[] | No | Session ids that must be done before this session. Enforced by wave ordering, not runtime — all deps should be in prior waves. |
+| `depends_on` | string[] | No | Session ids that must be done before this session. Enforced by wave ordering, not runtime — all deps should be in prior waves (setup warns otherwise). Sessions in archived waves count as already done: no task dependency and no `.build-status` check. |
 | `runtime_targets` | string[] | Conditional | **Required** for `converge`. Names of top-level `runtime_targets` this session deploys and must make stable. It may deploy only these. |
 | `max_attempts` | integer | No | `converge` only. Max deploy-diagnose-fix iterations before giving up with `status: "fail"`. Default `5`. |
 | `timeout_minutes` | integer | No | Task timeout for this session. Overrides the wave default. |
@@ -230,6 +232,23 @@ Overrides the default skill locations. If omitted, the setup notebook uses its o
 7. **Deploys are single-writer.** A wave that contains a `converge` session, or any session with `allow_deploy: true`, must contain exactly one session. The setup notebook rejects manifests that break this and forces `concurrency: 1`.
 8. **Runtime gates are deterministic.** Every wave with a `converge` session must list its targets in `runtime_gate`. The gate notebook checks them itself; it does not trust session or integrator reports.
 9. **Don't put the build job in the bundle being converged.** If a `converge` session deploys a bundle that also defines the build-waves job, the deploy resets the running build job. Keep orchestration in the genie-build-waves bundle.
+10. **Archive finished builds instead of deleting them.** When a manifest gets a new build, mark the previous build's waves `"archived": true`. See Archived waves.
+
+## Archived waves
+
+A manifest can keep every build's waves as history. Mark finished waves `"archived": true` and add the next build's waves after them:
+
+```json
+{"wave_id": "3-6", "build": "3", "archived": true, "sessions": [...]},
+{"wave_id": "4-0", "build": "4", "sessions": [{"session_id": "25", "depends_on": ["24"], ...}]}
+```
+
+* **Wave ids:** `<build>-<n>` (build number, then wave number within the build), so task keys are `w<build>-<n>_sessions`, `w<build>-<n>_integrate`, `w<build>-<n>_gate`, `w<build>-<n>_gate_check`, and status files are `wave_<build>-<n>_gate.json`. Session ids stay unique across all builds.
+* **Setup:** archived waves generate no tasks. The first runnable wave starts the run (no upstream dependency), so a long history never pushes the build job toward the Jobs task limit. Setup prints `Manifest OK: N waves (A archived, R runnable), S sessions, T runtime targets`. A manifest where every wave is archived is rejected.
+* **Validation:** archived waves still need unique wave ids and session ids, valid modes, and `runtime_gate` / converge `runtime_targets` that exist. The single-writer rule and the `owned_paths` warning are skipped.
+* **Dependencies:** a `depends_on` entry naming an archived session is satisfied. Runners, the integrator and the gate notebook never expect `.build-status` files for archived sessions.
+* **First / last wave:** the integrator's remote-branch check runs on the first **runnable** wave, and the unclaimed-carryover rule applies to the last **runnable** wave.
+* Manifests without `archived` behave exactly as before.
 
 ## Use Case Examples
 

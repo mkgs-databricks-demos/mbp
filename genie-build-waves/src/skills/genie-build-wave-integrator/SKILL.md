@@ -11,7 +11,7 @@ You run once per wave, after every session of the wave has finished (successfull
 
 | Parameter | Meaning |
 |---|---|
-| `wave` | Wave id, e.g. `0`, `1`, `4a` |
+| `wave` | Wave id, e.g. `0`, `1`, `4a`, `4-1` |
 | `run_id` | Job run id (same value the session tasks received) |
 | `branch` | Feature branch to commit and push to (for `git`/`hybrid`; may be empty for `workspace`) |
 | `build_root` | Absolute workspace path of the project |
@@ -40,7 +40,9 @@ Treat `converge` sessions exactly like `edit` sessions for file ownership, stray
 
 Determine: `workflow_mode` = `manifest.workflow.mode` or `"git"`.
 
-**Branch check (git/hybrid only, first wave only).** If this is the manifest's first wave and `workflow_mode` is `git` or `hybrid`, check that `branch` exists on the remote: `git ls-remote --heads origin <branch>` (via the Git CLI on `repo_root`). If the branch is not found on the remote, write a `fail` gate with `reason: "branch not found on remote — it may have been merged and deleted. Retarget the build to a new feature branch, update the manifest, re-deploy with --var build_branch=<new>, re-run setup, and start a new run."` and stop without committing.
+**Archived waves.** Waves with `"archived": true` are earlier builds kept as history; they have no job tasks. In this skill, "first wave", "last wave" and "later wave" always mean **runnable** (non-archived) waves in manifest order. Never expect or look for `status_dir` files for sessions in archived waves, and never report them as missing. A `depends_on` entry naming an archived session is satisfied. If the wave you were given is itself archived, write a `fail` gate with `reason: "wave is archived; re-run setup"` and stop.
+
+**Branch check (git/hybrid only, first wave only).** If this is the manifest's first runnable wave and `workflow_mode` is `git` or `hybrid`, check that `branch` exists on the remote: `git ls-remote --heads origin <branch>` (via the Git CLI on `repo_root`). If the branch is not found on the remote, write a `fail` gate with `reason: "branch not found on remote — it may have been merged and deleted. Retarget the build to a new feature branch, update the manifest, re-deploy with --var build_branch=<new>, re-run setup, and start a new run."` and stop without committing.
 
 ### 2. Collect session results
 
@@ -67,9 +69,9 @@ Anything else is a **stray**. Do not stage strays; list them in the gate file. S
 **Carryover.** Failed or interrupted runs leave files behind: summaries an integrator never committed (it crashed or never started), and code from non-passing sessions that step 6 deliberately leaves uncommitted. A fresh run (new `run_id`) must not mistake these for strays. Classify a file that is not claimed by this run as carryover when one of these holds, checked in this order:
 1. `summary`: it is under `sessions_dir` and is named like a runner summary (`<YYYY-MM-DD>_w<wave>-<session_id>-<slug>.md`) for a session that exists in the manifest, or it is named as a summary in a status file under `status_dir/<other_run_id>/`.
 2. `prior_run_code`: it is in the `files_changed` of a status file under `status_dir/<other_run_id>/` and matches that session's `owned_paths`.
-3. `owned_by_later_wave`: it matches the `owned_paths` (and not the `exclude_paths`) of an `edit` or `converge` session in a wave that comes **after** this one in the manifest. That session will rewrite and claim it.
+3. `owned_by_later_wave`: it matches the `owned_paths` (and not the `exclude_paths`) of an `edit` or `converge` session in a runnable wave that comes **after** this one in the manifest. That session will rewrite and claim it.
 
-Record each carryover file with its `kind` and the run id or session id that explains it. Carryover does not fail the gate, with one exception: in the manifest's **last** wave, any remaining `prior_run_code` or `owned_by_later_wave` file is unclaimed and fails the gate (`reason: "unclaimed carryover"`), so a human decides whether to keep or discard it. Never discard or revert carryover yourself.
+Record each carryover file with its `kind` and the run id or session id that explains it. Carryover does not fail the gate, with one exception: in the manifest's **last** runnable wave, any remaining `prior_run_code` or `owned_by_later_wave` file is unclaimed and fails the gate (`reason: "unclaimed carryover"`), so a human decides whether to keep or discard it. Never discard or revert carryover yourself.
 
 For `hybrid` mode: only `edit`- and `converge`-mode sessions produce files to check. Ignore `execute`/`configure` sessions in the stray analysis.
 
@@ -132,7 +134,7 @@ Path: `build_root/<status_dir>/<run_id>/wave_<wave>_gate.json`:
 }
 ```
 
-`status` is `pass` only if every session is `pass`, every manual prereq is `done`, no check `fail`ed, every `bundle_validations` entry is `pass`, and there are no strays and, in the last wave, no unclaimed carryover (in `git`/`hybrid` mode). Copy every session's `suppressions` into the gate file so a human can review them. Your `pass` is necessary but not sufficient when the wave has a `runtime_gate`: the gate notebook adds its own runtime verdict. The next job task reads this file and stops the run on `fail`, so write it even when you hit an error (use `status: "fail"` and put the error in `reason`).
+`status` is `pass` only if every session is `pass`, every manual prereq is `done`, no check `fail`ed, every `bundle_validations` entry is `pass`, and there are no strays and, in the last runnable wave, no unclaimed carryover (in `git`/`hybrid` mode). Copy every session's `suppressions` into the gate file so a human can review them. Your `pass` is necessary but not sufficient when the wave has a `runtime_gate`: the gate notebook adds its own runtime verdict. The next job task reads this file and stops the run on `fail`, so write it even when you hit an error (use `status: "fail"` and put the error in `reason`).
 
 ### 8. Final response
 
