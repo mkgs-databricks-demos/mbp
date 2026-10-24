@@ -44,6 +44,17 @@ A follow-up appends waves to the same `waves.json`. Optionally start with a para
 
 Deploys are single-writer: the setup job rejects any wave where a deploying session (`converge` or `allow_deploy`) shares the wave with another session. See `examples/converge-waves.json`.
 
+### Several builds in one manifest: archived waves
+
+Keep earlier builds in `waves.json` as history instead of deleting them. Mark every wave of a finished build `"archived": true` and append the next build's waves. Name waves `<build>-<n>` (`"wave_id": "4-1"`, with an optional informational `"build": "4"`), so task keys read `w<build>-<n>_sessions`, `w4-1_integrate`, `w4-1_gate`, `w4-1_gate_check`.
+
+* Setup generates **no** tasks for archived waves; the first runnable wave has no upstream dependency. It prints `Manifest OK: N waves (A archived, R runnable), S sessions, T runtime targets`.
+* Archived waves are still validated (unique wave ids and session ids, modes, `runtime_gate` and converge targets that exist); the single-writer rule is skipped for them.
+* `depends_on` entries that name archived sessions count as done. Runners, the integrator and the gate notebook never expect `.build-status` files for them.
+* "First wave" (remote-branch check) and "last wave" (unclaimed carryover) mean the first and last **runnable** wave.
+
+Manifests without `archived` behave exactly as before. See [docs/manifest-schema.md](docs/manifest-schema.md#archived-waves).
+
 A manifest can span several bundles. List them in a wave's `validate_bundles` (`root` + `target` each) and the integrator runs `bundle validate --strict` on every one; the gate notebook fails the wave if any is missing or failing. Runtime targets carry their own `bundle_root` and `bundle_target`. See [docs/manifest-schema.md](docs/manifest-schema.md#multiple-bundles-in-one-manifest).
 
 ## Architecture
@@ -55,6 +66,9 @@ A manifest can span several bundles. List them in a wave's `validate_bundles` (`
 | Build Planner skill | `src/skills/genie-build-planner/SKILL.md` | Planning guide you give Genie Code in your project folder: decompose into waves/sessions, write plans and `waves.json`. Not published to UC |
 | Gate check notebook | `src/notebooks/wave_gate_check.ipynb` | Deterministic stop: reads gate + status files; for `runtime_gate` waves also checks app/job/pipeline/dashboard/Genie space state, soak stability, OTel error lines, app probes and traces, dashboard datasets, Genie space tables, example SQL and probe questions, pipeline expectation budgets, and `table` row counts, columns and freshness itself; checks `validate_bundles` results |
 | App probe module | `src/notebooks/app_probes.py` | HTTP / MCP `initialize` probes against an app's own URL as the `probe_auth` service principal, plus MLflow 3 trace counts; shared by the gate and the smoke job |
+| Manifest module | `src/notebooks/waves_manifest.py` | Manifest validation (including `archived` waves) and task-graph generation; shared by setup and the gate |
+| Jobs API module | `src/notebooks/jobs_api.py` | Jobs API 2.2 calls (`jobs/get`, `runs/get` following `next_page_token`, `jobs/reset`, `run-now`); 2.1 rejects jobs with more than 100 tasks |
+| Unit tests | `tests/` | Paged reads and reset of a job with more than 100 tasks (fake client), archived/runnable waves, backwards compatibility with `examples/` |
 | Placeholder notebook | `src/notebooks/genie_task_placeholder.ipynb` | Stand-in for `genie_task` (bundle CLI has no schema); fails loud if run |
 | Setup notebook | `src/notebooks/setup_build_waves_job.ipynb` | Validates the manifest, publishes the runner and integrator skills to UC, creates/reuses automations, generates the task graph (with per-task timeouts and retries) from the manifest, resets the build and smoke jobs |
 | Build job YAML | `resources/build_waves.job.yml` | Shell job (one placeholder); setup notebook replaces with full wave graph |
@@ -222,6 +236,7 @@ After a feature branch is merged to main and deleted on the remote, the build jo
 ## Changing a build
 
 * **Skill or prompt change**: Edit the `SKILL.md` in this repo, then re-run the setup job (it republishes the skills). On `dev`, deployments are source-linked, so setup reads `src/skills` straight from this repo. On other targets, setup reads the deployed copy, so run `bundle deploy` first.
+* **Next build in the same manifest**: mark the finished build's waves `"archived": true`, append the new `<build>-<n>` waves, then re-run the setup job.
 * **Wave or session change**: Edit `waves.json` in your project, then re-run the setup job. The setup notebook reads the manifest from `manifest_path` and regenerates the full task graph; no deploy is needed unless you change bundle variables.
 * Never edit the build jobs in the UI; deploy and setup overwrite them.
 
@@ -241,7 +256,7 @@ Sessions also have **modes** (`edit`, `execute`, `configure`, `converge`) that c
 * **Git guardrails are conditional** — Only active in `git`/`hybrid` mode. `workspace` mode has no Git requirements at all.
 * **Sessions are Git read-only** — In `git`/`hybrid` mode, only the integrator commits, by explicit path, to a feature branch.
 * **Placeholder workaround** — `genie_task` isn't in the bundle CLI schema; notebook placeholders get swapped via `jobs/reset`.
-* **Dynamic task graph** — The setup notebook generates the wave task structure from the manifest, so different projects with different wave counts work without YAML changes.
+* **Dynamic task graph** — The setup notebook generates the wave task structure from the manifest, so different projects with different wave counts work without YAML changes. Jobs calls use API 2.2 and read every page, so graphs with more than 100 tasks work.
 * **Repair-friendly** — `run_if: ALL_DONE` on integrator/gate means failures get reported. Repair re-runs from the failed wave (with dependents); passing earlier waves are not re-run.
 * **Zero-compute cascade** — If/else gate checks use the Excluded propagation rule: when a gate fails, all downstream wave tasks are Excluded instantly (no wasted Genie Code compute).
 

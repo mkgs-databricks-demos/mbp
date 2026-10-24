@@ -56,7 +56,7 @@ Identify:
 
 ### Step 2: Write the follow-up manifest
 
-Append new waves to the existing `docs/plans/waves.json`. Keep the existing waves unchanged — they already ran and their results are in `.build-status/`. Update:
+Append new waves to the existing `docs/plans/waves.json`. Keep the existing waves' content unchanged — they already ran and their results are in `.build-status/` — but mark each of them `"archived": true` so setup generates no tasks for them (the job stays small, and the new waves start the run). Name the new waves `<build>-<n>` (e.g. `2-0`, `2-1`; task keys `w2-0_sessions`, ...). Their `depends_on` may name archived sessions; those count as done. Update:
 
 - `branch`: current branch (if it changed since the initial build)
 - Add `context_files` if not already present: `["PROJECT_MEMORY.md", "docs/plans/INDEX.md"]`

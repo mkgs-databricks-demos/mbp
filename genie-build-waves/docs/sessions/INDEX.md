@@ -1,5 +1,11 @@
 # Session Summaries — genie-build-waves
 
+## 2026-10-24
+
+| Session | Summary |
+|---|---|
+| [jobs-api-2-2-archived-waves](2026-10-24_jobs-api-2-2-archived-waves.md) | All Jobs calls on API 2.2 with full `next_page_token` paging (`jobs_api.py`), so jobs with more than 100 tasks reset safely. Wave-level `"archived": true` + `build` label (`waves_manifest.py`): validated, no tasks, archived dependencies satisfied, `<build>-<n>` wave ids with backtick-escaped gate_check references. Skills, gate, docs and 32 unit tests updated. |
+
 ## 2026-10-23
 
 | Session | Summary |

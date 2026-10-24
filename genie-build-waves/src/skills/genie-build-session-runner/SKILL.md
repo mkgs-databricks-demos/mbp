@@ -12,7 +12,7 @@ You are one of several Genie Code sessions running **in parallel** on the same p
 | Parameter | Meaning |
 |---|---|
 | `session_id` | Session to run, e.g. `01`, `06a`, `13` |
-| `wave` | Wave id, e.g. `0`, `1`, `4a` |
+| `wave` | Wave id, e.g. `0`, `1`, `4a`, `4-1` |
 | `run_id` | Job run id. Used to namespace status files |
 | `branch` | Feature branch (for `git`/`hybrid` workflows; may be empty for `workspace` mode) |
 | `build_root` | Absolute workspace path of the project |
@@ -63,7 +63,9 @@ Determine your effective mode:
 - `workflow_mode` = `manifest.workflow.mode` or `"git"`
 - `session_mode` = session `mode` or `"edit"`
 
-If the session is not found, stop with `status: "error"`.
+If the session is not found, stop with `status: "error"`. If its wave has `"archived": true`, also stop with `status: "error"` (`blocking`: "wave is archived; re-run setup"): archived waves are earlier builds and never run.
+
+**Archived dependencies.** A `depends_on` entry that names a session in an archived wave is already satisfied: that session finished in an earlier build, and its code is in the branch history. Never look for a `.build-status` (`status_dir`) file for it, in this run or any other, and never stop or warn because one is missing. Its summary in `sessions_dir` (step 3) is still useful context if it exists.
 
 **Task retries.** The job retries a Genie Code task automatically when the agent fails to start or crashes (`max_retries` on the job task). If your status file for this `run_id` or a summary for your session from today already exists, you are a retry: read them and the current state of your `owned_paths` / `owned_assets`, and continue from where the previous attempt stopped (keep finished work). In steps 6-7, update that same summary and status file so they describe the combined result of all attempts.
 
@@ -79,7 +81,7 @@ If `workflow_mode` is `workspace`: skip this step entirely.
 1. `repo_root/PROJECT_MEMORY.md` and, if present, `repo_root/hi_genie/` (read-only collaboration notes; follow any pending recommendation that applies to your session).
 2. The project's plan index (`build_root/<plans_dir>/INDEX.md`): wave plan, dependency graph, hidden dependencies, shared-file table, resolved gaps.
 3. Your plan file (`build_root/<plans_dir>/<plan_file>`): only the tasks named in `scope` apply.
-4. Session summaries of your `depends_on` sessions in `build_root/<sessions_dir>/` (latest file whose name contains `-<dep_id>-`), to learn what they actually produced.
+4. Session summaries of your `depends_on` sessions in `build_root/<sessions_dir>/` (latest file whose name contains `-<dep_id>-`), to learn what they actually produced. For a dependency in an archived wave, a missing summary is fine: read the code it owned instead.
 5. For `edit` sessions: the current contents of every file you are about to change.
 6. For `execute`/`configure` sessions: the current state of every asset you will modify (read tables, inspect resources).
 
