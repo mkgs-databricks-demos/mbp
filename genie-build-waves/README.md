@@ -227,6 +227,10 @@ Keep `rerun_dependent_tasks=True` in every case. Without it, nothing after the n
 
 **Fresh runs.** If the build job was redeployed and re-patched since the failed run, Jobs refuses to repair it ("job structure has changed"). Start a new run with `only` set to the failed wave's task keys and everything after it (earlier waves show as skipped). Files left in the working tree by the earlier run (uncommitted summaries, code from failed sessions) are reported by the integrator as `carryover_files`, not strays, so they no longer fail the new run's first gate. Summary carryover is committed; code carryover is left for the session that owns it. The last wave fails on any carryover code nobody claimed, so a human decides what to do with it.
 
+**Inherited files.** When the failed session itself reruns in the new run, it keeps its earlier changes and lists them in `files_changed`, even though none of this run's attempts touched them. The gate (`src/notebooks/session_status.py`) and the integrator credit such a file as **inherited** when the same session's status file from another run lists it and it is inside the session's `owned_paths` (and not its `exclude_paths`). For converge sessions, `files_changed` must equal the inherited files plus the union of the attempts' `files_changed`. Inherited files are committed with the session and recorded in the gate's `carryover_files` as `kind: "inherited"`.
+
+**Why not repair?** A session that ends `blocked` or `fail` still finishes its `for_each` iteration as SUCCESS, so repairing from `<wave>_sessions` re-runs nothing. After fixing the cause, start a new run from that wave (above).
+
 A convergence wave can commit (its session passed) and still fail on `runtime_gate` (e.g. the app crashed during the soak). The commit is kept as progress; repair re-runs the converge session, which starts from the committed code.
 
 ### Retarget after merge

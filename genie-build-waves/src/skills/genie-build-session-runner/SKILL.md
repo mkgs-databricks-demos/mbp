@@ -175,7 +175,7 @@ Path: `build_root/<status_dir>/<run_id>/<session_id>.json`. Exactly this shape:
 
 `suppressions`, `attempts` and `runtime` are required for `converge` sessions (use empty values when not applicable) and optional otherwise.
 
-`status` is `pass` only if the scope is complete and no check failed. `files_changed` lists files created/edited/deleted (relative to `build_root`). `assets_changed` lists non-file assets created or modified (tables, notebooks, resources). Both exclude the summary and status files.
+`status` is `pass` only if the scope is complete and no check failed. `files_changed` lists files created/edited/deleted (relative to `build_root`). For `converge` sessions it must equal the union of every attempt's `files_changed` plus any **inherited** files: uncommitted changes in your `owned_paths` that an earlier run of this same session left behind (it failed its gate, and this is a new build run). Keep and build on those changes and list them in `files_changed`, but not in an attempt you did not change them in; the gate credits them from that earlier run's status file for your session. Any file you edit before attempt 1 goes in attempt 1's `files_changed`; a file in `files_changed` that neither an attempt nor an earlier run of your session lists fails the gate. `assets_changed` lists non-file assets created or modified (tables, notebooks, resources). Both exclude the summary and status files.
 
 ### 8. Final response
 

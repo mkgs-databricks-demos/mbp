@@ -1,5 +1,11 @@
 # Session Summaries — genie-build-waves
 
+## 2026-10-25
+
+| Session | Summary |
+|---|---|
+| [inherited-files-gate](2026-10-25_inherited-files-gate.md) | Gate and integrator credit files a rerun converge session inherits from its earlier run's status file (`session_status.py`): `files_changed` = inherited + union of attempts, inherited files must be owned; recorded as `kind: "inherited"` carryover and committed with the session. 9 new tests (41 pass); verified on AgenticTrading 35a. |
+
 ## 2026-10-24
 
 | Session | Summary |
