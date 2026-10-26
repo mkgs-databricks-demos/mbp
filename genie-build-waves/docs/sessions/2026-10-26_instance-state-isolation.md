@@ -35,7 +35,7 @@ To smoke-test the visible-failures changes on a separate instance, I deployed wi
 
 ## Open
 
-* Delete the six throwaway `-iso-a` / `-iso-b` jobs and `.bundle/genie-build-waves-iso-a`, `-iso-b` (blocked by the guardrail; needs approval).
+* Done: the `-iso-a` / `-iso-b` test instances (six jobs, two state folders) were cleaned up after the test; the sGt jobs are unchanged (build job still 40 tasks).
 * The `-smoke` remote state still references the sGt jobs; the guard now refuses it, but delete `.bundle/genie-build-waves-smoke` or unbind it.
 * sGt: repair run `110489694161084` from `w4-4_integrate` (after the session 36 rerun); do not run sGt setup until then. The sGt smoke job is still the placeholder.
 * Report cleanup steps 2–4: which sGt instance is canonical, job ownership, redeploy `-sgt-root` with the script.
