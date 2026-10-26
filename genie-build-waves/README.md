@@ -24,6 +24,8 @@ Wave 1:  [02] [03] [04] -> integrate -> gate -> gate_check
                                                   true
                                                     |
 Wave N:  [...] ----------> integrate -> gate -> gate_check -> done
+
+build_verdict (run_if ALL_DONE, depends on every gate): fails the run if any gate failed
 ```
 
 Each wave follows a four-phase pattern:
@@ -32,6 +34,8 @@ Each wave follows a four-phase pattern:
 2. **Integrator** (single Genie Code task, `run_if: ALL_DONE`) — Collects session status files, runs gate checks. In `git`/`hybrid` mode: checks for stray files and commits by explicit path (the *only* committer). In `workspace` mode: status collection and gates only.
 3. **Gate notebook** (`run_if: ALL_DONE`) — Reads the integrator's gate JSON and every session's status file independently. Sets a `gate_passed` task value (`true`/`false`).
 4. **Gate check** (If/else condition task) — Checks `gate_passed == "true"`. If false, all downstream wave tasks are **Excluded** — zero compute on cascade failure.
+
+After the last wave, **`build_verdict`** (notebook, `run_if: ALL_DONE`, depends on every wave's gate) reads each gate's task state and `wave_<N>_gate_result.json` and raises `BUILD_FAILED` when any gate failed, so the run ends **FAILED** and notifications fire. The gate itself never raises on a failed wave: a FAILED gate would make the next wave `UPSTREAM_FAILED`, and that wave's `run_if: ALL_DONE` integrator and gate would still run (Jobs treats Upstream failed as failed, and ALL_DONE runs regardless of status).
 
 ## Initial builds and follow-up builds
 
@@ -70,6 +74,10 @@ A manifest can span several bundles. List them in a wave's `validate_bundles` (`
 | Jobs API module | `src/notebooks/jobs_api.py` | Jobs API 2.2 calls (`jobs/get`, `runs/get` following `next_page_token`, `jobs/reset`, `run-now`); 2.1 rejects jobs with more than 100 tasks |
 | Unit tests | `tests/` | Paged reads and reset of a job with more than 100 tasks (fake client), archived/runnable waves, backwards compatibility with `examples/` |
 | Placeholder notebook | `src/notebooks/genie_task_placeholder.ipynb` | Stand-in for `genie_task` (bundle CLI has no schema); fails loud if run |
+| Build verdict notebook | `src/notebooks/build_verdict.ipynb` | Final task (`run_if: ALL_DONE`, depends on every wave gate): fails the run with `BUILD_FAILED` when any gate failed or did not finish |
+| Gate helpers | `src/notebooks/gate_helpers.py` | Pure helpers (tested): verdict, `required_checks`, Genie space content matching for freshness |
+| Instance guard | `src/notebooks/instance_guard.py` | Pure ownership checks (tested), shared by the deploy script and setup: job `deployment.metadata_file_path` under the instance root, summary IDs vs remote state, build job manifest and latest run |
+| Deploy script | `scripts/deploy_instance.py` | The supported way to deploy an instance: moves the local state cache aside, runs the instance guard, deploys, then checks job ownership again |
 | Setup notebook | `src/notebooks/setup_build_waves_job.ipynb` | Validates the manifest, publishes the runner and integrator skills to UC, creates/reuses automations, generates the task graph (with per-task timeouts and retries) from the manifest, resets the build and smoke jobs |
 | Build job YAML | `resources/build_waves.job.yml` | Shell job (one placeholder); setup notebook replaces with full wave graph |
 | Setup job YAML | `resources/setup_build_waves.job.yml` | Runs the setup notebook. Run it after every deploy (deploy restores the placeholders); `run_smoke=true` also runs the smoke job |
@@ -96,13 +104,13 @@ Genie Code will:
 2. Analyze your project's files and structure
 3. Propose a wave/session decomposition
 4. Write the plan files, waves.json manifest, and plan index in your project
-5. Deploy the bundle with `--var` flags (does not modify `databricks.yml` — the bundle stays generic)
+5. Deploy the bundle with `scripts/deploy_instance.py` and a vars file (does not modify `databricks.yml` — the bundle stays generic)
 
 ### Deploy and run
 
 If you've already written your plans and manifest and just need to deploy:
 
-> Read `[/Workspace/Users/you@example.com/genie-build-waves]/README.md`. Deploy the bundle using `--var` flags — do **not** edit `databricks.yml` (keep it generic so multiple projects can share the same bundle). My project is at `[project workspace path]` on branch `[branch name]`. Use catalog `[catalog]` and schema `[schema]` for skills. [Create the schema automatically / I already have this schema].
+> Read `[/Workspace/Users/you@example.com/genie-build-waves]/README.md`. Deploy the bundle with `scripts/deploy_instance.py` (run it with Python `subprocess`, not the CLI tool) and a vars file — do **not** edit `databricks.yml` (keep it generic so multiple projects can share the same bundle). My project is at `[project workspace path]` on branch `[branch name]`. Use catalog `[catalog]` and schema `[schema]` for skills. [Create the schema automatically / I already have this schema].
 
 **Important:** Always pass project-specific values as `--var` flags at deploy time. Never edit `databricks.yml` with project-specific values — the bundle is a shared tool, not a per-project config file.
 
@@ -140,9 +148,32 @@ In your target project folder (Git folder for `git`/`hybrid` mode, any workspace
 4. Create a `docs/sessions/` directory for session summaries.
 5. For `git`/`hybrid` mode: add `.build-status/` to `.gitignore`.
 
-### 2. Deploy with `--var` flags
+### 2. Deploy with `scripts/deploy_instance.py`
 
 Pass all project-specific values at deploy time. Do **not** edit `databricks.yml` — keep the bundle generic so it can be shared across projects.
+
+Put the variables in a JSON file next to your project's `waves.json` (for example `docs/plans/build-waves.vars.json`) and deploy with the script:
+
+```json
+{
+  "project_name": "My App",
+  "instance_suffix": "-my-app",
+  "build_root": "/Workspace/Users/you@example.com/my-project",
+  "build_branch": "feature-genie-build",
+  "manifest_path": "/Workspace/Users/you@example.com/my-project/docs/plans/waves.json",
+  "skills_catalog": "my_catalog",
+  "skills_schema": "my_schema"
+}
+```
+
+```bash
+python scripts/deploy_instance.py --target dev --vars /Workspace/Users/you@example.com/my-project/docs/plans/build-waves.vars.json --check-only
+python scripts/deploy_instance.py --target dev --vars /Workspace/Users/you@example.com/my-project/docs/plans/build-waves.vars.json
+```
+
+The script moves the local state cache aside, checks that every job `bundle summary` names belongs to this instance, deploys, and checks again (see "One deployment per project" below). It exits 2 without deploying when a check fails; `--force` overrides. From Genie Code, run it through Python `subprocess` in the bundle folder.
+
+The plain CLI equivalent, only safe after you have checked `bundle summary` yourself:
 
 ```bash
 databricks bundle deploy --target dev \
@@ -157,7 +188,16 @@ databricks bundle deploy --target dev \
 
 Optional variables (with defaults): `project_name` (`"Genie Build Waves"`, used in job names), `instance_suffix` (`""`), `create_skills_schema` (`"true"`), `runner_skill_id`, `integrator_skill_id`.
 
-**One deployment per project.** `instance_suffix` is appended to the bundle root path (`.bundle/genie-build-waves<suffix>/<target>`), so each project gets its own deployment state and its own build, setup and smoke jobs. Use the same suffix every time you deploy or validate for a project. Without it, deploying for a second project replaces the first project's jobs.
+**One deployment per project.** `instance_suffix` is appended to the bundle root path (`.bundle/genie-build-waves<suffix>/<target>`), so each project gets its own **remote** deployment state and its own build, setup and smoke jobs. Use the same suffix every time you deploy or validate for a project. Without it, deploying for a second project replaces the first project's jobs.
+
+`instance_suffix` does **not** isolate the CLI's local state cache. Every instance deployed from this folder shares `.databricks/bundle/<target>/`, and the Genie Code CLI tool keeps a cache of its own. If that cache holds instance A's state, deploying instance B binds to A's jobs: it renames them, resets the build job to the placeholder and points its defaults at B's manifest, so A's runs can no longer be repaired. Nothing warns. So:
+
+* Deploy instances only with `scripts/deploy_instance.py`, which clears the folder cache and refuses foreign jobs.
+* If you deploy with the plain CLI, first run `bundle summary` with the same `--var` flags and check the job IDs and names: a first deploy must show no job IDs, and an existing instance must show its own.
+* Do not deploy instances through the Genie Code CLI tool; its cache cannot be cleared.
+* Setup runs the same guard before it publishes or resets anything, and fails with `INSTANCE_GUARD_FAILED` when the jobs look like another instance's (for example the build job's latest run used a different manifest). If you deliberately moved a project to a new manifest, run setup once with `force=true`.
+
+Background: [docs/plans/2026-10-26_instance-state-isolation.md](docs/plans/2026-10-26_instance-state-isolation.md).
 
 ### 3. Run setup to patch jobs
 
@@ -182,17 +222,19 @@ Pass = both iterations SUCCESS, each echoing its `session_id` and the nonce. Bef
 databricks bundle run build_waves --target dev
 ```
 
-Or choose **Run now** on the build job in the Jobs UI. `branch` defaults to `build_branch`; override it with `--params branch=<branch>`. Each wave runs `wN_sessions` → `wN_integrate` → `wN_gate` → `wN_gate_check`, and the next wave starts only when `wN_gate_check` is true. Watch each `wN_gate` task.
+Or choose **Run now** on the build job in the Jobs UI. `branch` defaults to `build_branch`; override it with `--params branch=<branch>`. Each wave runs `wN_sessions` → `wN_integrate` → `wN_gate` → `wN_gate_check`, and the next wave starts only when `wN_gate_check` is true. Watch each `wN_gate` task. The run's result comes from `build_verdict`: FAILED when any wave gate failed.
 
 ## When a wave fails
 
-1. Read the `wN_gate` output, `.build-status/<run_id>/wave_<N>_gate.json` and, for convergence waves, `wave_<N>_runtime.json` (deployment id, states, error samples, missing markers).
-2. Read the failing session's status file and summary in `docs/sessions/`.
+1. Read the `build_verdict` error (`BUILD_FAILED: ...` with each failed wave's first problems), the `wN_gate` output (`GATE_FAILED: wave N: ...` and the result JSON, also in `.build-status/<run_id>/wave_<N>_gate_result.json`), `.build-status/<run_id>/wave_<N>_gate.json` and, for convergence waves, `wave_<N>_runtime.json` (deployment id, states, error samples, missing markers, Genie space `freshness`).
+2. Read the failing session's status file and summary in `docs/sessions/`. A session that hit the Genie Code step limit, is still `in_progress`, or wrote no status file is named in the gate problems with its conversation id and its `progress.next`: resume that conversation, then repair from `wN_integrate`.
 3. Passing sessions are already committed. Failing sessions' code is left uncommitted.
 4. Fix the cause (plan, manifest, or code), then repair the run (below).
 5. `requests` in the gate file list changes a session needed outside its owned paths. Apply them before repairing.
 
-Note: downstream waves show as **Excluded** (not failed). This is the correct cascade behavior — they never ran and consumed no compute.
+Note: downstream waves show as **Excluded** (not failed). This is the correct cascade behavior — they never ran and consumed no compute. `build_verdict` still runs (Excluded dependencies count as done) and fails the run.
+
+**Fixes outside every session's paths.** If you (or a planner session) fix something outside every session's `owned_paths` before repairing (manifest, shared config, a plan file), commit it to the build branch yourself first; otherwise the integrator correctly reports it as a stray and fails the wave again.
 
 ### Repairing a failed wave
 
@@ -205,11 +247,11 @@ w = WorkspaceClient()
 w.jobs.repair_run(
     run_id=<failed_run_id>,
     rerun_tasks=["wN_sessions", "wN_integrate", "wN_gate"],  # start of the failed wave
-    rerun_dependent_tasks=True,  # re-runs wN_gate_check and every later wave
+    rerun_dependent_tasks=True,  # re-runs wN_gate_check, every later wave and build_verdict
 )
 ```
 
-CLI equivalent: `databricks jobs repair-run <failed_run_id> --json '{"rerun_tasks": ["wN_sessions", "wN_integrate", "wN_gate"], "rerun_dependent_tasks": true}'`. If the run was already repaired once, also pass `latest_repair_id` (from `w.jobs.get_run(run_id, include_history=True).repair_history`). In the UI, choose **Repair run** and select the failed wave's tasks **and** everything after them, including each `wN_gate_check`.
+CLI equivalent: `databricks jobs repair-run <failed_run_id> --json '{"rerun_tasks": ["wN_sessions", "wN_integrate", "wN_gate"], "rerun_dependent_tasks": true}'`. If the run was already repaired once, also pass `latest_repair_id` (from `w.jobs.get_run(run_id, include_history=True).repair_history`). In the UI, choose **Repair run** and select the failed wave's tasks **and** everything after them, including each `wN_gate_check` and `build_verdict`. Jobs' default selection picks only the FAILED `build_verdict`, which would just repeat the verdict.
 
 Which tasks to name in `rerun_tasks`:
 
@@ -223,9 +265,9 @@ Keep `rerun_dependent_tasks=True` in every case. Without it, nothing after the n
 
 **Pass `job_parameters` on every repair.** A `repair_run` falls back to the job-level parameter defaults when `job_parameters` is omitted. The setup job writes these defaults from the manifest, but if the original run was started with custom parameters (e.g. a different branch), the repair would silently use the wrong values. Always pass `branch`, `build_root`, and `manifest_path`.
 
-**Transient agent start-up errors** (`INTERNAL_ERROR: start_agent_run`) are retried automatically: Genie Code tasks get `max_retries` (default 2, one minute apart, override with manifest `task_retries`). If a task still fails after its retries, repair as above; don't start a fresh run.
+**Transient agent start-up errors** (`INTERNAL_ERROR: start_agent_run`) are retried automatically: Genie Code tasks get `max_retries` (default 2, one minute apart, override with manifest `task_retries`). If a task still fails after its retries, repair as above; don't start a fresh run. Note that `min_retry_interval` counts from the **start** of the failed attempt, so after a long failure the retry starts almost immediately (seen: 2 s after a 32-minute failure). A retry that fails at once with `PrincipalContext must contain an account ID for login RPC auth` is a platform error; repair later.
 
-**Fresh runs.** If the build job was redeployed and re-patched since the failed run, Jobs refuses to repair it ("job structure has changed"). Start a new run with `only` set to the failed wave's task keys and everything after it (earlier waves show as skipped). Files left in the working tree by the earlier run (uncommitted summaries, code from failed sessions) are reported by the integrator as `carryover_files`, not strays, so they no longer fail the new run's first gate. Summary carryover is committed; code carryover is left for the session that owns it. The last wave fails on any carryover code nobody claimed, so a human decides what to do with it.
+**Fresh runs.** If the build job was redeployed and re-patched since the failed run, Jobs refuses to repair it ("job structure has changed"). Start a new run with `only` set to the failed wave's task keys and everything after it, plus `build_verdict` (earlier waves show as skipped; without `build_verdict` in `only`, the run gets no verdict and a failed gate leaves it SUCCESS). Files left in the working tree by the earlier run (uncommitted summaries, code from failed sessions) are reported by the integrator as `carryover_files`, not strays, so they no longer fail the new run's first gate. Summary carryover is committed; code carryover is left for the session that owns it. The last wave fails on any carryover code nobody claimed, so a human decides what to do with it.
 
 **Inherited files.** When the failed session itself reruns in the new run, it keeps its earlier changes and lists them in `files_changed`, even though none of this run's attempts touched them. The gate (`src/notebooks/session_status.py`) and the integrator credit such a file as **inherited** when the same session's status file from another run lists it and it is inside the session's `owned_paths` (and not its `exclude_paths`). For converge sessions, `files_changed` must equal the inherited files plus the union of the attempts' `files_changed`. Inherited files are committed with the session and recorded in the gate's `carryover_files` as `kind: "inherited"`.
 

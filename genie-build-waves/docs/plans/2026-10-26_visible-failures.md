@@ -1,6 +1,17 @@
 # Plan: make failed sessions and failed waves visible (low-risk version)
 
-Status: **planned, on hold.** Do not start while other projects (AgenticTrading, Semantic Ground Truth) are running builds from the live `mbp` folder. The build jobs read the gate notebook and the workspace skill fallback from that folder, so any edit takes effect immediately.
+Status: **implemented 2026-10-26 on branch `mg-genie-build-waves-visible-failures-plan`, as one PR (A, B and C together, at the user's request).** Changes 1 (as redesigned below: verdict task, not a raising gate), 2, 3, 4 and 5 and the Genie space half of 6 are in; the dashboard half of 6 is still open. Because change 1 adds a task, the whole PR needs a setup rerun per instance after merge (see Rollout); merge only when no build is running from the live `mbp` folder, and finish or abandon runs that still need a repair first.
+
+Original status: planned, on hold. Do not start while other projects (AgenticTrading, Semantic Ground Truth) are running builds from the live `mbp` folder. The build jobs read the gate notebook and the workspace skill fallback from that folder, so any edit takes effect immediately.
+
+Implementation notes (2026-10-26):
+
+* Change 1 does **not** raise in the gate. A FAILED gate makes the next wave's tasks `UPSTREAM_FAILED`, and `run_if: ALL_DONE` tasks (the next integrator and gate) run anyway. Instead the gate prints `GATE_FAILED: wave <w>: ...` and the result JSON, writes `wave_<w>_gate_result.json`, keeps setting `gate_passed` (the If/else Exclusion cascade is unchanged), and a new final notebook task `build_verdict` (`run_if: ALL_DONE`, depends on every `w<w>_gate`) reads the gate task states and result files and raises `BUILD_FAILED: ...`. Excluded gates are ignored; a gate task that did not end SUCCESS fails the verdict. `only` runs must include `build_verdict`.
+* Change 4 went in (required checks are a wave-level `required_checks: string[]`, not a per-check flag, because `gate` is free text).
+* Change 6 (Genie half): `source_file` or `resource_key` locates the source; setup warns for a `genie_space` target with neither. The AgenticTrading `genie_trade_analysis` target has neither; add `resource_key: trade_analysis` there to get content matching.
+* Code: `src/notebooks/gate_helpers.py` (new), `session_status.py` (session outcome helpers), `wave_gate_check.ipynb`, `build_verdict.ipynb` (new), `waves_manifest.py`, setup notebook comment; tests in `tests/test_gate_helpers.py` (new), `test_session_status.py`, `test_waves_manifest.py`.
+
+Reviewed 2026-10-26: implement, split into three PRs (see Rollout), with change 3 cut back and change 4 optional. Changes 1 and 6 are notebook / helper-module only, so they go live when merged into the `mbp` folder's checked-out branch without a setup rerun, and older runs stay repairable. Only changes 3 and 4 (skills, manifest schema) need setup. The on-hold rule applies at merge time, not only at setup.
 
 Source: Semantic Ground Truth requests, 2026-10-26 (build job 1079028753739581, run 110489694161084, waves 4-0..4-9; and "runtime freshness check fails when a converge session's deploy is a no-op"), and the reviews that followed.
 
@@ -14,34 +25,42 @@ Source: Semantic Ground Truth requests, 2026-10-26 (build job 1079028753739581, 
 
 ## Prerequisites
 
-1. Merge the inherited-files PR (branch `mg-genie-build-waves-inherited-files`, commit 578f3ac) after it has run in at least one real build (AgenticTrading w13a repair).
+1. ~~Merge the inherited-files PR~~ Done: PR #6 merged to `main` as cb8b1c5 (2026-10-26), after the AgenticTrading w13a repair passed with it.
 2. Start this work on a **new** branch from `main` (for example `mg-genie-build-waves-visible-failures`).
 3. Do the edits in a separate Git worktree, or while no build is running, so live builds are not affected mid-run.
-4. Finish or abandon any run you still need to repair. The setup rerun at the end changes the job structure, and Jobs then refuses to repair older runs.
+4. Before PR C only: finish or abandon any run you still need to repair. The setup rerun for PR C changes the job structure, and Jobs then refuses to repair older runs. PRs A and B need no setup.
 
 ## Changes
 
 ### 1. Gate raises when it fails (Bug 3)
 
 * `src/notebooks/wave_gate_check.ipynb`: after setting the `gate_passed` task value, raise with the list of problems when the gate did not pass. The task then ends FAILED, the downstream waves become UPSTREAM_FAILED (still zero compute), and the run ends FAILED.
+  * Print the full result JSON before raising; raising replaces the `dbutils.notebook.exit` payload, so the output would otherwise be lost.
+  * Start the exception message with a fixed tag (`GATE_FAILED: wave <wave>: ...`) so a gate that rejected the wave can be told apart from a gate notebook that crashed (both end FAILED).
+  * The gate task has no retries (`build_tasks` passes none), so raising does not re-run the soak.
 * Keep the `w<wave>_gate_check` condition tasks for now. With the gate failing, they do not run (upstream failed), and later waves are not started either way. Removing them is a later clean-up, not part of this change.
 * Docs (README, `docs/prompts/repair-failed-wave.md`): a failed gate is now a FAILED task. Repair still means selecting `w<wave>_integrate` and later tasks yourself (Jobs' default repair selection only picks the failed gate).
 
 ### 2. Step-limit and incomplete-session detection in the gate (Bug 1, gate-level)
 
+Scope note: the gate already fails a wave when a session status file is `in_progress` or missing (cell 4, check 2). This change improves the diagnosis (session, conversation id, next step); it does not catch new failures. Matching on the step-limit text is brittle if the product wording changes, which is acceptable because the status-file checks still catch the failure.
+
 * New pure-Python helper (in `session_status.py`): `session_outcome(response, status)` returns `complete`, `step_limit`, `in_progress` or `missing`.
   * `step_limit`: the genie_task response matches the step-limit text ("I've reached the maximum number of steps for this turn").
   * `in_progress` / `missing`: the status file is still `in_progress` or does not exist.
+  * Step-limit response with a final `pass` status: `complete`, plus a warning. The final status write is the session's last step, so a step limit after it does not affect the result; the other status checks still apply.
 * The gate notebook reads each session iteration's output from the Jobs API (`runs/get` on this run's `w<wave>_sessions` task for the iterations, then `runs/get-output` for `genie_task_output.conversation_id` and `agent_output.response`). Confirmed available on iteration 861320051785964.
 * For any session that is not `complete`, the gate problem names the session, the conversation id and the next step: "session 33 hit the step limit (conversation 3614498846438467): resume that conversation, then repair from w4-1_integrate".
 * Jobs API failures are a warning, not a gate failure; the existing status-file checks still apply.
 
 ### 3. Runner records progress as it goes (Bug 1, item 3)
 
-* `src/skills/genie-build-session-runner/SKILL.md`: add a `progress` object to the status file (`done`: steps finished, `next`: next step, `attempt`: attempt in flight) and update it after every task and attempt, not only at the end.
+* `src/skills/genie-build-session-runner/SKILL.md`: add a `progress` object to the status file (`done`: steps finished, `next`: next step, `attempt`: attempt in flight). Update it only at milestones (start and end of each converge attempt, and after each major task in the session brief), not after every step: each write costs session steps, and running out of steps is the failure this plan addresses.
 * The integrator includes `progress` in the session table for a session that is `error` / `in_progress`, so the resumed or repaired session knows where to pick up.
 
-### 4. Required gate checks (item 5)
+### 4. Required gate checks (item 5) — optional
+
+Include in PR C only if a project needs it by then; otherwise move to Deferred. One reported case (Node tsc/vitest), and it touches the manifest schema, the integrator skill and the gate.
 
 * Manifest: a gate check may be marked `required: true`. Document it in `docs/manifest-schema.md` and validate it in `waves_manifest.py`.
 * Integrator skill: report each required check by name in the gate file's `checks`.
@@ -64,6 +83,8 @@ Rule (Genie spaces and dashboards):
 * **current**: the deployed definition equals the bundle source file after normalisation.
 * Fail when the resource is missing, the id does not match the target's `id`, or the content differs from the source (report the first few differing paths).
 * If the source file cannot be located or read, keep today's timestamp rule and say why in the basis.
+* Known limit: a source file that uses per-target `${var...}` substitution will not match the deployed content and is reported as stale. This fails the gate (a false failure, never a false pass); use `require_fresh_deployment: false` for such targets or add substitution later.
+* Ship the Genie space half first (PR B); the dashboard half follows once its normalisation is tested.
 
 Not adopted: "deploy evidence" from the session's status file (it trusts the session's own claim, which the gate exists to check) and "no source files changed in this run" (weak, and unnecessary once content is compared).
 
@@ -80,18 +101,21 @@ Changes:
 
 ## Tests
 
-* `session_outcome`: the step-limit response above with an `in_progress` status, the same response with a `pass` status, an `in_progress` status with a normal response, a missing status file, and a normal complete session.
-* Gate failure message: contains the session id, conversation id and `repair from w<wave>_integrate`.
+* `session_outcome`: the step-limit response above with an `in_progress` status (`step_limit`), the same response with a `pass` status (`complete` + warning), an `in_progress` status with a normal response (`in_progress`), a missing status file (`missing`), and a normal complete session (`complete`).
+* Gate failure message: starts with `GATE_FAILED:`, contains the session id, conversation id and `repair from w<wave>_integrate`; the result JSON is printed before the raise.
 * Required checks: required + `skipped` fails, required + missing fails, not required + `skipped` passes.
 * Task graph: unchanged except for what change 1 needs (existing `waves_manifest` tests still pass).
 * Freshness (change 6): no-op deploy whose content matches the source passes (`current: content matches source`); content differs with an old `update_time` fails with the differing paths; space missing or id mismatch fails; normal deploy that updates the space passes unchanged (`fresh`); freshness fails but probe questions still run and are reported; Genie normalisation on an anonymised copy of the space compared above (line arrays, `metric_views`, reordered `sample_questions`); missing source file falls back to the timestamp rule.
 
 ## Rollout
 
-1. Implement and test on the new branch; `pytest tests` passes.
-2. Open the PR; after merge, switch `mbp` back to `main`.
-3. Rerun setup for each instance (setup job 818046072228128 and the other dev instances) to republish skills and regenerate the build jobs.
-4. Watch the next failing wave: the run should end FAILED with the session and conversation named in the gate output.
+Three PRs, each on its own branch from `main`; `pytest tests` passes before each PR.
+
+1. **PR A: change 1 + change 5 docs.** Notebook and docs only; no setup. Live as soon as merged. Check: the next failing wave ends the run FAILED with a `GATE_FAILED:` message.
+2. **PR B: change 6, Genie space half.** Gate notebook + helper module (+ optional `source_file` validation in `waves_manifest.py`, which the gate tolerates without setup). No setup. Check: a no-op converge deploy passes with `current: content matches source`, and probes run. Dashboard half follows as a separate PR once tested.
+3. **PR C: changes 2 and 3 (cut back), and 4 if still wanted.** Skills change, so after merge: repair or abandon pending runs, then rerun setup for each instance (setup job 818046072228128 and the other dev instances) to republish skills and regenerate the build jobs. Check: the next step-limited session is named with its conversation id in the gate output.
+
+After each merge, keep `mbp` on `main`.
 
 ## Recovery today: instance stuck at the freshness check (no framework change, no setup)
 

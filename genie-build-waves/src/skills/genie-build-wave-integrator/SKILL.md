@@ -46,7 +46,7 @@ Determine: `workflow_mode` = `manifest.workflow.mode` or `"git"`.
 
 ### 2. Collect session results
 
-For each session, read `build_root/<status_dir>/<run_id>/<session_id>.json`. A missing file counts as `error` (the task crashed or never ran). A file with `status: "in_progress"` also counts as `error` (the session hit the turn limit or crashed before writing its final status). Build a table: session_id, mode, status, files_changed, assets_changed, failed/skipped checks, requests, blocking. For `converge` sessions also note the number of `attempts`, the last attempt's `result`, and every entry in `suppressions`.
+For each session, read `build_root/<status_dir>/<run_id>/<session_id>.json`. A missing file counts as `error` (the task crashed or never ran). A file with `status: "in_progress"` also counts as `error` (the session hit the turn limit or crashed before writing its final status). Build a table: session_id, mode, status, files_changed, assets_changed, failed/skipped checks, requests, blocking. For `converge` sessions also note the number of `attempts`, the last attempt's `result`, and every entry in `suppressions`. For a session that is `error` or `in_progress`, also copy its `progress` (`done`, `next`, `attempt`) into the table and the gate file's `reason`, so whoever resumes or repairs it knows where to pick up.
 
 **Incomplete session file credit.** When a session's status is `error` because its file is missing or `in_progress`, scan the working tree for files under its `owned_paths` (and not its `exclude_paths`). If any exist, add them to that session's `files_changed` in your table and note `reason: "incomplete session file credit"`. This prevents the stray detector from flagging code a partially-complete session left behind. The session still fails the gate (its status is `error`), so the repair run re-executes it.
 
@@ -89,6 +89,8 @@ Run each check in the wave `gate` list. Interpret each check description and exe
 - **Quality checks:** metric thresholds, schema matches, data validation.
 
 Record each as `pass`, `fail` or `skipped` with a one-line detail. Skipped checks do not fail the gate but must be listed.
+
+**Required checks.** If the wave has `required_checks` (a list of check names), report each one in `checks` with `name` exactly as written there. The gate notebook fails the wave when a required check is missing or its result is not `pass`, so `skipped` (for example, no Node runtime for tsc) fails it. Set up what the check needs from the wave's `gate` text (the bundle does not install toolchains); if you still cannot run it, report `skipped` with the reason.
 
 If a `gate` line describes runtime state that is also covered by `runtime_gate` (app running, no error logs, soak), record it as `skipped` with detail `deferred to runtime_gate`.
 

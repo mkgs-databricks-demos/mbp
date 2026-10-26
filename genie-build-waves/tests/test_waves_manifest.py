@@ -66,7 +66,7 @@ def test_same_wave_would_fail_rule_7_if_runnable():
 def test_archived_wave_generates_no_tasks():
     tasks = wm.generate_wave_tasks(_manifest(), CFG, GATE)
     keys = [t["task_key"] for t in tasks]
-    assert keys == ["w2-0_sessions", "w2-0_integrate", "w2-0_gate", "w2-0_gate_check"]
+    assert keys == ["w2-0_sessions", "w2-0_integrate", "w2-0_gate", "w2-0_gate_check", "build_verdict"]
     # First runnable wave has no upstream dependency on the archived wave.
     assert "depends_on" not in tasks[0]
     # Session-level depends_on never becomes a task dependency.
@@ -170,7 +170,7 @@ def test_examples_unchanged_without_archived(name):
     errors, _ = wm.validate_manifest(m)
     assert errors == []
     tasks = wm.generate_wave_tasks(m, CFG, GATE)
-    assert len(tasks) == 4 * len(m["waves"])
+    assert len(tasks) == 4 * len(m["waves"]) + 1  # + build_verdict
     # Wave chain: each wave's sessions depend on the previous wave's gate_check (outcome true).
     sessions_tasks = [t for t in tasks if t["task_key"].endswith("_sessions")]
     assert "depends_on" not in sessions_tasks[0]
@@ -199,8 +199,69 @@ def test_retries_applied_to_genie_tasks_only():
     assert "max_retries" not in tasks[2]  # gate notebook
 
 
+# --- build_verdict ---------------------------------------------------------------
+
+def test_verdict_task_depends_on_every_gate_all_done():
+    m = _manifest()
+    m["waves"].append({"wave_id": "2-1", "sessions": [{"session_id": "c1", "owned_paths": ["c/**"]}]})
+    tasks = wm.generate_wave_tasks(m, CFG, GATE)
+    v = tasks[-1]
+    assert v["task_key"] == wm.VERDICT_TASK_KEY == "build_verdict"
+    assert v["run_if"] == "ALL_DONE"
+    # The notebook gates, not the If/else gate_check tasks: an EXCLUDED gate counts as done.
+    assert v["depends_on"] == [{"task_key": "w2-0_gate"}, {"task_key": "w2-1_gate"}]
+    assert v["notebook_task"]["notebook_path"] == "/gate/build_verdict.ipynb"
+    assert v["notebook_task"]["base_parameters"] == {
+        "run_id": "{{job.run_id}}", "build_root": "{{job.parameters.build_root}}",
+        "manifest_path": "{{job.parameters.manifest_path}}"}
+    assert "max_retries" not in v
+    # The gate tasks themselves keep run_if ALL_DONE and the gate_check still reads gate_passed.
+    assert next(t for t in tasks if t["task_key"] == "w2-1_gate")["run_if"] == "ALL_DONE"
+
+
+def test_verdict_path_override_and_extension():
+    assert wm.verdict_notebook_path("/a/b/wave_gate_check") == "/a/b/build_verdict"
+    tasks = wm.generate_wave_tasks(_manifest(), CFG, GATE, verdict_path="/x/v.ipynb")
+    assert tasks[-1]["notebook_task"]["notebook_path"] == "/x/v.ipynb"
+
+
+# --- required_checks / source_file -------------------------------------------------
+
+@pytest.mark.parametrize("value,ok", [(["tsc", "vitest"], True), ([], True), ("tsc", False),
+                                      (["tsc", ""], False), (["tsc", "tsc"], False)])
+def test_required_checks_validation(value, ok):
+    m = _manifest()
+    m["waves"][1]["required_checks"] = value
+    errors, _ = wm.validate_manifest(m)
+    assert (not any("required_checks" in e for e in errors)) == ok, errors
+
+
+def _genie_manifest(**target):
+    m = _manifest()
+    m["runtime_targets"]["space"] = {"type": "genie_space", "id": "01f1", **target}
+    return m
+
+
+def test_source_file_validation():
+    assert wm.validate_manifest(_genie_manifest(source_file="genie/x.geniespace.json"))[0] == []
+    for bad in ("", "/abs/x.json", 3):
+        errors, _ = wm.validate_manifest(_genie_manifest(source_file=bad))
+        assert any("source_file must be a path relative to bundle_root" in e for e in errors), bad
+    m = _manifest()
+    m["runtime_targets"]["app"]["source_file"] = "x.json"
+    assert any("source_file is only supported on genie_space" in e for e in wm.validate_manifest(m)[0])
+
+
+def test_genie_space_without_source_warns_unless_freshness_off():
+    _, warnings = wm.validate_manifest(_genie_manifest())
+    assert any("without source_file or resource_key" in w for w in warnings)
+    for t in ({"resource_key": "k"}, {"source_file": "x.json"}, {"require_fresh_deployment": False}):
+        _, warnings = wm.validate_manifest(_genie_manifest(**t))
+        assert not any("without source_file or resource_key" in w for w in warnings), t
+
+
 def test_more_than_100_tasks_from_runnable_waves():
-    """30 runnable waves after 22 archived ones: 120 tasks, chained from the first runnable wave."""
+    """30 runnable waves after 22 archived ones: 120 wave tasks + build_verdict, chained from the first runnable wave."""
     waves = [{"wave_id": f"{b}-{n}", "archived": True, "sessions": [{"session_id": f"old{b}{n}", "owned_paths": ["x"]}]}
              for b in (1, 2, 3) for n in range(8)][:22]
     waves += [{"wave_id": f"4-{n}", "sessions": [{"session_id": f"s{n}", "owned_paths": [f"p{n}/**"]}]}
@@ -208,7 +269,9 @@ def test_more_than_100_tasks_from_runnable_waves():
     m = {"waves": waves}
     assert wm.validate_manifest(m)[0] == []
     tasks = wm.generate_wave_tasks(m, CFG, GATE)
-    assert len(tasks) == 120
-    assert all(t["task_key"].startswith("w4-") for t in tasks)
+    assert len(tasks) == 121
+    assert all(t["task_key"].startswith("w4-") for t in tasks[:-1])
+    assert tasks[-1]["task_key"] == "build_verdict"
+    assert len(tasks[-1]["depends_on"]) == 30
     assert "depends_on" not in tasks[0]
     assert wm.manifest_summary(m) == "Manifest OK: 52 waves (22 archived, 30 runnable), 52 sessions, 0 runtime targets"

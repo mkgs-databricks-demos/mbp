@@ -119,3 +119,49 @@ def test_edit_mode_session_not_checked():
     edit = dict(SESSION, mode="edit")
     st = {"status": "pass", "files_changed": ["app/a.ts"]}
     assert ss.check_files_changed(edit, st, {}) == {"inherited": [], "problems": []}
+
+
+# --- session outcome -------------------------------------------------------------------
+
+# Verbatim genie_task_output.agent_output.response of iteration 861320051785964 (run 110489694161084).
+STEP_LIMIT = "I've reached the maximum number of steps for this turn. Would you like me to continue?"
+NORMAL = "session_id 33, mode edit, status pass, 4 files changed, no failed checks."
+
+
+def test_session_outcome_cases():
+    assert ss.session_outcome(STEP_LIMIT, {"status": "in_progress"}) == {"outcome": "step_limit", "warning": None}
+    oc = ss.session_outcome(STEP_LIMIT, {"status": "pass"})
+    assert oc["outcome"] == "complete" and "step limit" in oc["warning"]
+    assert ss.session_outcome(NORMAL, {"status": "in_progress"}) == {"outcome": "in_progress", "warning": None}
+    assert ss.session_outcome(NORMAL, None) == {"outcome": "missing", "warning": None}
+    assert ss.session_outcome(NORMAL, {"status": "pass"}) == {"outcome": "complete", "warning": None}
+    # A final non-pass status is complete here; the status check reports it.
+    assert ss.session_outcome(NORMAL, {"status": "blocked"})["outcome"] == "complete"
+    # Step limit and no status file at all: the step limit is the more useful diagnosis.
+    assert ss.session_outcome(STEP_LIMIT, None)["outcome"] == "step_limit"
+    # Jobs API unavailable (no response): decided by the status file alone.
+    assert ss.session_outcome(None, {"status": "in_progress"})["outcome"] == "in_progress"
+
+
+def test_session_problem_names_session_conversation_and_repair():
+    msg = ss.session_problem("33", "step_limit", "3614498846438467", "4-1")
+    assert msg == ("session 33 hit the Genie Code step limit (conversation 3614498846438467): "
+                   "resume that conversation, then repair from w4-1_integrate")
+    msg = ss.session_problem("35", "in_progress", None, "4-3", {"next": "attempt 2: fix TS2345"})
+    assert "conversation unknown; next step: attempt 2: fix TS2345" in msg
+    assert msg.endswith("repair from w4-3_integrate")
+    assert "wrote no status file" in ss.session_problem("36", "missing", "1", "4-4")
+
+
+def test_iteration_index_and_latest_attempt():
+    assert ss.iteration_index("w4-1_session iteration #0") == 0
+    assert ss.iteration_index("w4-1_session iteration #12") == 12
+    assert ss.iteration_index(None) is None
+    best = ss.latest_by_index([
+        {"index": 0, "attempt_number": 0, "run_id": 1},
+        {"index": 0, "attempt_number": 2, "run_id": 3},
+        {"index": 0, "attempt_number": 1, "run_id": 2},
+        {"index": 1, "attempt_number": 0, "run_id": 4},
+        {"index": None, "attempt_number": 0, "run_id": 5},
+    ])
+    assert {i: e["run_id"] for i, e in best.items()} == {0: 3, 1: 4}
