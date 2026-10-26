@@ -15,15 +15,15 @@ The build run `[run_id]` on job `[job_id]` has a failed wave `[wave_number]`. I 
 
 Before repairing, understand what went wrong:
 
-1. Read the `w[wave_number]_gate` task output in the run.
-2. Read `.build-status/[run_id]/wave_[wave_number]_gate.json` — this lists which checks failed and why.
+1. Read the `build_verdict` task error (`BUILD_FAILED: ...`, the failed waves and their first problems) and the `w[wave_number]_gate` task output (`GATE_FAILED: wave [wave_number]: ...` plus the result JSON, also in `.build-status/[run_id]/wave_[wave_number]_gate_result.json`).
+2. Read `.build-status/[run_id]/wave_[wave_number]_gate.json` — this lists which checks failed and why. A session that hit the Genie Code step limit, is still `in_progress`, or wrote no status file is named in the gate problems with its conversation id and `progress.next`: resume that conversation in Genie Code first, then repair from `w[wave_number]_integrate`.
 3. If it's a convergence wave, also read `.build-status/[run_id]/wave_[wave_number]_runtime.json` for deployment IDs, states, and error samples.
 4. Read the failing session's status file and summary in `docs/sessions/`.
 5. Check for `requests` in the gate file — these list changes a session needed outside its owned paths. Apply them before repairing.
 6. Passing sessions are already committed (in `git`/`hybrid` mode). Failing sessions' code is left uncommitted.
-7. Fix the root cause (plan, manifest, or code) before attempting the repair.
+7. Fix the root cause (plan, manifest, or code) before attempting the repair. Commit any fix outside every session's `owned_paths` (manifest, shared config, plan files) to the build branch yourself first, or the integrator reports it as a stray.
 
-Note: downstream waves show as **Excluded** (not failed). This is correct cascade behavior — they never ran and consumed no compute.
+Note: downstream waves show as **Excluded** (not failed). This is correct cascade behavior — they never ran and consumed no compute. The wave gate itself ends SUCCESS with `gate_passed=false`; the run is FAILED because `build_verdict` failed.
 
 ### Step 2: Repair the run
 
@@ -36,7 +36,7 @@ w = WorkspaceClient()
 w.jobs.repair_run(
     run_id=[run_id],
     rerun_tasks=["w[wave_number]_sessions", "w[wave_number]_integrate", "w[wave_number]_gate"],
-    rerun_dependent_tasks=True,  # re-runs wN_gate_check and every later wave
+    rerun_dependent_tasks=True,  # re-runs wN_gate_check, every later wave and build_verdict
 )
 ```
 
@@ -52,7 +52,7 @@ repair_history = w.jobs.get_run(run_id=[run_id], include_history=True).repair_hi
 # Use the latest repair_id from repair_history
 ```
 
-In the UI: choose **Repair run** and select the failed wave's tasks **and** everything after them, including each `wN_gate_check`.
+In the UI: choose **Repair run** and select the failed wave's tasks **and** everything after them, including each `wN_gate_check` and `build_verdict`. The default selection is only the FAILED `build_verdict`, which just repeats the verdict.
 
 ### Which tasks to rerun
 
@@ -92,6 +92,7 @@ w = WorkspaceClient()
 only_tasks = [
     "w[wave_number]_sessions", "w[wave_number]_integrate", "w[wave_number]_gate", "w[wave_number]_gate_check",
     # ... all tasks from later waves too
+    "build_verdict",  # without it, a failed gate leaves the run SUCCESS
 ]
 
 w.jobs.run_now(

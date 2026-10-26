@@ -1,5 +1,11 @@
 # Session Summaries — genie-build-waves
 
+## 2026-10-26
+
+| Session | Summary |
+|---|---|
+| [visible-failures](2026-10-26_visible-failures.md) | Failed waves and sessions made visible: final `build_verdict` task (`ALL_DONE`, depends on every gate) fails the run with `BUILD_FAILED` (the gate never raises, so the Exclusion cascade stays); gate names step-limited / incomplete sessions with conversation id from the Jobs API; runner `progress` at milestones; wave `required_checks`; Genie space freshness passes when content matches the bundle source (`source_file` / `resource_key`), probes still run. New `gate_helpers.py`, `build_verdict.ipynb`; 65 tests pass. Needs setup rerun after merge. |
+
 ## 2026-10-25
 
 | Session | Summary |

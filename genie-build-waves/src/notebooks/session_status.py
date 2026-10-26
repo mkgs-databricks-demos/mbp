@@ -14,6 +14,10 @@ another run (status_dir/<other_run_id>/<session_id>.json) lists it. For a conver
 An inherited file must still match the session's owned_paths and not its exclude_paths.
 A file no attempt and no earlier run explains is still inconsistent.
 
+Session outcome. A Genie Code session that stops at the step limit still ends its for_each
+iteration SUCCESS. session_outcome combines the iteration's agent response (jobs/runs/get-output)
+with the status file, so the gate can name the session, its conversation and the next step.
+
 Plain Python (no Spark / dbutils imports), so the tests can import it directly.
 """
 
@@ -136,3 +140,70 @@ def check_files_changed(session: dict, status: dict, prior_files: dict) -> dict:
         problems.append(f"session {sid}: inherited files outside owned_paths or in exclude_paths: {not_owned}")
 
     return {"inherited": inherited, "problems": problems}
+
+
+# --- Session outcome (step limit / unfinished sessions) ------------------------------
+
+# Genie Code's reply when a turn runs out of steps (genie_task_output.agent_output.response).
+STEP_LIMIT_TEXT = "reached the maximum number of steps"
+
+
+def is_step_limit(response) -> bool:
+    return STEP_LIMIT_TEXT in str(response or "").lower()
+
+
+def session_outcome(response, status) -> dict:
+    """{"outcome": complete | step_limit | in_progress | missing, "warning": str | None}.
+
+    response: the iteration's agent response text (None when unknown).
+    status: the parsed status file, or None when it does not exist.
+    A final status (anything but in_progress) is complete: the final status write is the
+    session's last step, so a step limit after it gets a warning but changes nothing.
+    """
+    hit = is_step_limit(response)
+    st = (status or {}).get("status") if status is not None else None
+    if status is not None and st != "in_progress":
+        warn = "hit the step limit after writing its final status" if hit else None
+        return {"outcome": "complete", "warning": warn}
+    if hit:
+        return {"outcome": "step_limit", "warning": None}
+    return {"outcome": "in_progress" if status is not None else "missing", "warning": None}
+
+
+def session_problem(session_id, outcome: str, conversation_id, wave, progress=None) -> str:
+    """Gate problem text for a session that is not complete: who, which conversation, what next."""
+    conv = f"conversation {conversation_id}" if conversation_id else "conversation unknown"
+    what = {
+        "step_limit": "hit the Genie Code step limit",
+        "in_progress": "stopped before finishing (status file still in_progress)",
+        "missing": "wrote no status file",
+    }.get(outcome, outcome)
+    nxt = ""
+    if isinstance(progress, dict) and progress.get("next"):
+        nxt = f"; next step: {progress['next']}"
+    return (f"session {session_id} {what} ({conv}{nxt}): resume that conversation, "
+            f"then repair from w{wave}_integrate")
+
+
+_ITER_RE = re.compile(r"iteration #(\d+)")
+
+
+def iteration_index(run_name):
+    """for_each iteration index from its run name ('w4-1_session iteration #0' -> 0), else None."""
+    m = _ITER_RE.search(str(run_name or ""))
+    return int(m.group(1)) if m else None
+
+
+def latest_by_index(entries) -> dict:
+    """{index: entry} keeping the highest attempt_number per iteration index (retries).
+
+    entries: dicts with index, attempt_number and anything else.
+    """
+    best = {}
+    for e in entries:
+        i = e.get("index")
+        if i is None:
+            continue
+        if i not in best or int(e.get("attempt_number") or 0) >= int(best[i].get("attempt_number") or 0):
+            best[i] = e
+    return best

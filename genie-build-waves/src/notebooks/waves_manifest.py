@@ -10,6 +10,7 @@ but generate no job tasks, and their sessions count as already done for `depends
 """
 
 import json
+import os
 import re
 
 from app_probes import validate_probe, validate_probe_auth
@@ -102,6 +103,15 @@ def _validate_targets(m: dict, targets: dict, errors: list, warnings: list) -> N
             pts = t.get("probe_timeout_seconds")
             if pts is not None and (not isinstance(pts, int) or isinstance(pts, bool) or pts <= 0):
                 errors.append(f"runtime_targets.{tname}: probe_timeout_seconds must be a positive integer")
+            sf = t.get("source_file")
+            if sf is not None and (not isinstance(sf, str) or not sf.strip() or os.path.isabs(sf)):
+                errors.append(f"runtime_targets.{tname}: source_file must be a path relative to bundle_root")
+            if (t.get("require_fresh_deployment", True) is not False
+                    and not t.get("source_file") and not t.get("resource_key")):
+                warnings.append(f"runtime_targets.{tname}: genie_space without source_file or resource_key; "
+                                f"a no-op deploy fails freshness (content cannot be compared)")
+        elif "source_file" in t:
+            errors.append(f"runtime_targets.{tname}: source_file is only supported on genie_space targets")
         elif any(k in t for k in ("probe_questions", "probe_mode")):
             errors.append(f"runtime_targets.{tname}: probe_questions / probe_mode are only supported on genie_space targets")
         if t.get("type") == "table":
@@ -201,6 +211,12 @@ def validate_manifest(m: dict) -> tuple[list[str], list[str]]:
         for vb in wv.get("validate_bundles") or []:
             if not isinstance(vb, dict) or not vb.get("root") or not vb.get("target"):
                 errors.append(f"wave {wid}: validate_bundles entries need root and target (got {vb!r})")
+        rc = wv.get("required_checks")
+        if rc is not None:
+            if not isinstance(rc, list) or not all(isinstance(c, str) and c.strip() for c in rc):
+                errors.append(f"wave {wid}: required_checks must be a list of check names")
+            elif len(set(rc)) != len(rc):
+                errors.append(f"wave {wid}: required_checks has duplicate names")
 
         deployers = []
         for s in sessions:
@@ -337,13 +353,44 @@ def gate_timeout_minutes(m: dict, wave_cfg: dict) -> int:
     return 20 + extra
 
 
+VERDICT_TASK_KEY = "build_verdict"
+
+
+def verdict_notebook_path(gate_notebook_path: str) -> str:
+    """build_verdict sits next to the gate notebook, with the same extension."""
+    ext = os.path.splitext(gate_notebook_path)[1]
+    return os.path.join(os.path.dirname(gate_notebook_path), f"build_verdict{ext}")
+
+
+def make_verdict_task(gate_keys: list[str], notebook_path: str) -> dict:
+    """Final task: fails the run when any wave gate failed.
+
+    A failed gate does not raise (the next wave's ALL_DONE integrator and gate would run on
+    UPSTREAM_FAILED). This task depends on every gate with run_if ALL_DONE; Excluded gates
+    count as done, so it runs after the cascade stops.
+    """
+    return make_notebook_task(
+        task_key=VERDICT_TASK_KEY,
+        notebook_path=notebook_path,
+        params={
+            "run_id": "{{job.run_id}}",
+            "build_root": "{{job.parameters.build_root}}",
+            "manifest_path": "{{job.parameters.manifest_path}}",
+        },
+        depends_on=gate_keys,
+        run_if="ALL_DONE",
+        timeout_minutes=15,
+    )
+
+
 def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: str,
-                        retries: dict | None = None) -> list[dict]:
+                        retries: dict | None = None, verdict_path: str | None = None) -> list[dict]:
     """Generate the build job's task graph from the manifest's runnable waves.
 
     Archived waves generate nothing, so the first runnable wave has no upstream
     dependency. Session-level depends_on never becomes a task dependency: wave order
-    enforces it, and sessions in archived waves are already done.
+    enforces it, and sessions in archived waves are already done. A final build_verdict
+    task depends on every wave gate (see make_verdict_task).
     """
     retries = genie_task_retries(m) if retries is None else retries
     tasks = []
@@ -443,4 +490,7 @@ def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: st
 
         prev_gate_key = f"{prefix}_gate_check"
 
+    gate_keys = [t["task_key"] for t in tasks if t["task_key"].endswith("_gate") and "notebook_task" in t]
+    if gate_keys:
+        tasks.append(make_verdict_task(gate_keys, verdict_path or verdict_notebook_path(gate_notebook_path)))
     return tasks

@@ -91,7 +91,9 @@ If the session has `context_notes`, treat them as a hand-over from an interactiv
 
 ### 4. Do the work
 
-**Write a provisional status file first.** Before any work, write `build_root/<status_dir>/<run_id>/<session_id>.json` with `status: "in_progress"` and empty arrays for `files_changed`, `assets_changed`, `checks`, `assumptions`, `requests`. This ensures the integrator can attribute files under your `owned_paths` to your session even if you run out of turns before writing the final status file (step 7). Update this file after each converge attempt (for `converge` mode) or after completing all tasks (for other modes), then replace it with the final version in step 7.
+**Write a provisional status file first.** Before any work, write `build_root/<status_dir>/<run_id>/<session_id>.json` with `status: "in_progress"`, empty arrays for `files_changed`, `assets_changed`, `checks`, `assumptions`, `requests`, and a `progress` object: `{"done": [], "next": "<first step>", "attempt": null}`. This ensures the integrator can attribute files under your `owned_paths` to your session even if you run out of turns before writing the final status file (step 7).
+
+**Record progress at milestones only.** Update the status file (including `files_changed` so far and `progress`) at these points and no others: the start and the end of each converge attempt (`attempt` = the attempt in flight, `null` between attempts), and after each major task in your plan for other modes. `done` lists the finished steps in a few words each; `next` is the next step a resumed session should take. Every write costs steps, and running out of steps is what this record is for, so do not update it after every small step. Replace it with the final version in step 7 (keep `progress` there; `next` empty when finished).
 
 Based on your `session_mode`:
 
@@ -169,9 +171,12 @@ Path: `build_root/<status_dir>/<run_id>/<session_id>.json`. Exactly this shape:
   "suppressions": [{"path": "tsconfig.server.json", "kind": "compile-exclude | ts-ignore | lint-disable | test-skip | catch-swallow | feature-flag | other", "why": ""}],
   "attempts": [{"n": 1, "target": "app", "deployment_id": "", "result": "deploy_failed | build_failed | crashed | unhealthy | stable", "errors": ["server/x.ts(12,3): TS2345 ..."], "fix": "", "files_changed": []}],
   "runtime": {"app": {"deployment_id": "", "state": "RUNNING"}},
+  "progress": {"done": ["migrations written", "attempt 1 deployed"], "next": "", "attempt": null},
   "blocking": ""
 }
 ```
+
+`progress` is the milestone record from the provisional status file (step 4). If the session stops early (step limit, crash), the gate quotes `progress.next` with the session's conversation id so it can be resumed.
 
 `suppressions`, `attempts` and `runtime` are required for `converge` sessions (use empty values when not applicable) and optional otherwise.
 

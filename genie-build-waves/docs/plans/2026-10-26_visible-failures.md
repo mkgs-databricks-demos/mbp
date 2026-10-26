@@ -1,6 +1,15 @@
 # Plan: make failed sessions and failed waves visible (low-risk version)
 
-Status: **planned, on hold.** Do not start while other projects (AgenticTrading, Semantic Ground Truth) are running builds from the live `mbp` folder. The build jobs read the gate notebook and the workspace skill fallback from that folder, so any edit takes effect immediately.
+Status: **implemented 2026-10-26 on branch `mg-genie-build-waves-visible-failures-plan`, as one PR (A, B and C together, at the user's request).** Changes 1 (as redesigned below: verdict task, not a raising gate), 2, 3, 4 and 5 and the Genie space half of 6 are in; the dashboard half of 6 is still open. Because change 1 adds a task, the whole PR needs a setup rerun per instance after merge (see Rollout); merge only when no build is running from the live `mbp` folder, and finish or abandon runs that still need a repair first.
+
+Original status: planned, on hold. Do not start while other projects (AgenticTrading, Semantic Ground Truth) are running builds from the live `mbp` folder. The build jobs read the gate notebook and the workspace skill fallback from that folder, so any edit takes effect immediately.
+
+Implementation notes (2026-10-26):
+
+* Change 1 does **not** raise in the gate. A FAILED gate makes the next wave's tasks `UPSTREAM_FAILED`, and `run_if: ALL_DONE` tasks (the next integrator and gate) run anyway. Instead the gate prints `GATE_FAILED: wave <w>: ...` and the result JSON, writes `wave_<w>_gate_result.json`, keeps setting `gate_passed` (the If/else Exclusion cascade is unchanged), and a new final notebook task `build_verdict` (`run_if: ALL_DONE`, depends on every `w<w>_gate`) reads the gate task states and result files and raises `BUILD_FAILED: ...`. Excluded gates are ignored; a gate task that did not end SUCCESS fails the verdict. `only` runs must include `build_verdict`.
+* Change 4 went in (required checks are a wave-level `required_checks: string[]`, not a per-check flag, because `gate` is free text).
+* Change 6 (Genie half): `source_file` or `resource_key` locates the source; setup warns for a `genie_space` target with neither. The AgenticTrading `genie_trade_analysis` target has neither; add `resource_key: trade_analysis` there to get content matching.
+* Code: `src/notebooks/gate_helpers.py` (new), `session_status.py` (session outcome helpers), `wave_gate_check.ipynb`, `build_verdict.ipynb` (new), `waves_manifest.py`, setup notebook comment; tests in `tests/test_gate_helpers.py` (new), `test_session_status.py`, `test_waves_manifest.py`.
 
 Reviewed 2026-10-26: implement, split into three PRs (see Rollout), with change 3 cut back and change 4 optional. Changes 1 and 6 are notebook / helper-module only, so they go live when merged into the `mbp` folder's checked-out branch without a setup rerun, and older runs stay repairable. Only changes 3 and 4 (skills, manifest schema) need setup. The on-hold rule applies at merge time, not only at setup.
 
