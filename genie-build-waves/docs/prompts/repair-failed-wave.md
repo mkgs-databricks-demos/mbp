@@ -100,7 +100,7 @@ w.jobs.run_now(
 )
 ```
 
-Earlier waves show as SKIPPED. Files left in the working tree by the earlier run (uncommitted summaries, code from failed sessions) are reported by the integrator as `carryover_files`, not strays, so they no longer fail the new run's first gate. Summary carryover is committed; code carryover is left for the session that owns it. The last wave fails on any carryover code nobody claimed, so a human decides what to do with it.
+Earlier waves show as SKIPPED. Files left in the working tree by the earlier run (uncommitted summaries, code from failed sessions) are reported by the integrator as `carryover_files`, not strays, so they no longer fail the new run's first gate. Summary carryover is committed; code carryover is left for the session that owns it. The last wave fails on any carryover code nobody claimed, so a human decides what to do with it. When the failed session reruns, it keeps its earlier changes; the gate credits them as inherited (same session's status file in the earlier run, inside its `owned_paths`), so they do not need to appear in any attempt of the new run.
 
 ### Step 4: Transient agent errors
 

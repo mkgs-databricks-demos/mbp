@@ -1,0 +1,7 @@
+[project]
+name = "mbp"
+version = "0.1.0"
+dependencies = []
+
+[tool.databricks.environment]
+environment_version = "6"

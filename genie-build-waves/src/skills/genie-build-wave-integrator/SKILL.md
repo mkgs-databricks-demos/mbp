@@ -50,7 +50,9 @@ For each session, read `build_root/<status_dir>/<run_id>/<session_id>.json`. A m
 
 **Incomplete session file credit.** When a session's status is `error` because its file is missing or `in_progress`, scan the working tree for files under its `owned_paths` (and not its `exclude_paths`). If any exist, add them to that session's `files_changed` in your table and note `reason: "incomplete session file credit"`. This prevents the stray detector from flagging code a partially-complete session left behind. The session still fails the gate (its status is `error`), so the repair run re-executes it.
 
-A `converge` session whose `files_changed` is not the union of its attempts' `files_changed`, or whose last attempt is not `stable` while `status` is `pass`, is inconsistent: treat it as `fail`.
+**Inherited files.** A session rerun in a new build run keeps the uncommitted changes an earlier run of it left in its `owned_paths` (the usual recovery after a failed gate is a new run, not a repair). Those files are in its top-level `files_changed` but in none of this run's attempts. A file in a `converge` session's `files_changed` that no attempt lists is **inherited** when a status file of the **same session** from another run (`status_dir/<other_run_id>/<session_id>.json`, top-level or attempt `files_changed`) lists it; the newest such run is its source. An inherited file must match the session's `owned_paths` and not its `exclude_paths`; if it does not, the session is inconsistent.
+
+A `converge` session is inconsistent, and you treat it as `fail`, when `status` is `pass` and any of these holds: its last attempt is not `stable`; an attempt's file is missing from `files_changed`; `files_changed` has a file that is neither in an attempt nor inherited; an inherited file is outside its `owned_paths` or in its `exclude_paths`. In short: `files_changed` must equal the inherited files plus the union of the attempts' `files_changed`. The gate notebook applies the same rule independently (`session_status.py`).
 
 For each manual prereq, check its `done_when` condition by reading the files on disk (and branch history, if Git is available).
 
@@ -70,6 +72,8 @@ Anything else is a **stray**. Do not stage strays; list them in the gate file. S
 1. `summary`: it is under `sessions_dir` and is named like a runner summary (`<YYYY-MM-DD>_w<wave>-<session_id>-<slug>.md`) for a session that exists in the manifest, or it is named as a summary in a status file under `status_dir/<other_run_id>/`.
 2. `prior_run_code`: it is in the `files_changed` of a status file under `status_dir/<other_run_id>/` and matches that session's `owned_paths`.
 3. `owned_by_later_wave`: it matches the `owned_paths` (and not the `exclude_paths`) of an `edit` or `converge` session in a runnable wave that comes **after** this one in the manifest. That session will rewrite and claim it.
+
+Inherited files (step 2) are claimed by this run, so they are not strays and do not go through the list above; record each one in `carryover_files` with `kind: "inherited"`, `source: "run <earlier_run_id> / session <session_id>"`, `claimed_by: "<session_id>"`, and `staged` set to whether you staged it (step 6).
 
 Record each carryover file with its `kind` and the run id or session id that explains it. Carryover does not fail the gate, with one exception: in the manifest's **last** runnable wave, any remaining `prior_run_code` or `owned_by_later_wave` file is unclaimed and fails the gate (`reason: "unclaimed carryover"`), so a human decides whether to keep or discard it. Never discard or revert carryover yourself.
 
@@ -98,7 +102,7 @@ If `workflow_mode` is `workspace`: **skip this step.** Go directly to step 7.
 
 Otherwise:
 
-1. Stage, by explicit path: the `files_changed` of every `edit`- or `converge`-mode session with status `pass`, their summary files, the summary files of non-passing sessions, every `summary` carryover file (add an `INDEX.md` line for any that is not listed yet), and `INDEX.md`. Do **not** stage `prior_run_code` or `owned_by_later_wave` carryover; the owning session claims it. Do **not** stage code from sessions whose status is not `pass`; leave it in the working tree for the repair run. Do **not** stage anything from `execute`/`configure` sessions (they don't produce tracked files).
+1. Stage, by explicit path: the `files_changed` of every `edit`- or `converge`-mode session with status `pass`, their summary files, the summary files of non-passing sessions, every `summary` carryover file (add an `INDEX.md` line for any that is not listed yet), and `INDEX.md`. A passing session's `files_changed` includes its inherited files, so they are committed with the session that inherited them. Do **not** stage `prior_run_code` or `owned_by_later_wave` carryover; the owning session claims it. Do **not** stage code from sessions whose status is not `pass`; leave it in the working tree for the repair run. Do **not** stage anything from `execute`/`configure` sessions (they don't produce tracked files).
 2. If anything is staged, commit with message:
    ```
    wave(<wave>): <comma-separated session ids that passed>
@@ -107,6 +111,7 @@ Otherwise:
    Sessions: <id>=<status>, ...
    Gate: <pass|fail> (<n> checks, <m> skipped)
    Carryover: <k> summaries staged, <j> code files left for their owners
+   Inherited: <session_id> <n> files from run <earlier_run_id>, ...   (omit when none)
    ```
    then push the `branch` parameter. Record the commit SHA.
 3. If nothing is staged, skip the commit and note it.
@@ -126,7 +131,7 @@ Path: `build_root/<status_dir>/<run_id>/wave_<wave>_gate.json`:
   "checks": [{"name": "bundle validate --strict", "result": "pass", "detail": ""}],
   "bundle_validations": [{"root": "my-app", "target": "dev", "result": "pass | fail", "detail": "first error line when fail"}],
   "stray_files": [],
-  "carryover_files": [{"path": "docs/sessions/2026-10-20_w3-09-routes.md", "kind": "summary | prior_run_code | owned_by_later_wave", "source": "run 376065156883918 / session 09", "staged": true}],
+  "carryover_files": [{"path": "docs/sessions/2026-10-20_w3-09-routes.md", "kind": "summary | prior_run_code | owned_by_later_wave | inherited", "source": "run 376065156883918 / session 09", "claimed_by": "09 (inherited only)", "staged": true}],
   "requests": [{"from": "07", "path": "package.json", "change": "..."}],
   "suppressions": [{"from": "14", "path": "tsconfig.server.json", "kind": "compile-exclude", "why": "..."}],
   "commit_sha": "abc1234 or empty",
