@@ -15,6 +15,9 @@ resources:
       parameters:
         - name: run_smoke
           default: "false"
+        # true skips the instance ownership guard (see instance_guard.py)
+        - name: force
+          default: "false"
       tasks:
         - task_key: setup
           notebook_task:
@@ -34,3 +37,8 @@ resources:
               placeholder_path: ${workspace.file_path}/src/notebooks/genie_task_placeholder.ipynb
               create_skills_schema: ${var.create_skills_schema}
               run_smoke: "{{job.parameters.run_smoke}}"
+              # Instance ownership guard: refuse to patch another instance's jobs
+              bundle_root_path: ${workspace.root_path}
+              project_name: ${var.project_name}
+              setup_job_id: "{{job.id}}"
+              force: "{{job.parameters.force}}"

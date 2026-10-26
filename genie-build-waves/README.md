@@ -76,6 +76,8 @@ A manifest can span several bundles. List them in a wave's `validate_bundles` (`
 | Placeholder notebook | `src/notebooks/genie_task_placeholder.ipynb` | Stand-in for `genie_task` (bundle CLI has no schema); fails loud if run |
 | Build verdict notebook | `src/notebooks/build_verdict.ipynb` | Final task (`run_if: ALL_DONE`, depends on every wave gate): fails the run with `BUILD_FAILED` when any gate failed or did not finish |
 | Gate helpers | `src/notebooks/gate_helpers.py` | Pure helpers (tested): verdict, `required_checks`, Genie space content matching for freshness |
+| Instance guard | `src/notebooks/instance_guard.py` | Pure ownership checks (tested), shared by the deploy script and setup: job `deployment.metadata_file_path` under the instance root, summary IDs vs remote state, build job manifest and latest run |
+| Deploy script | `scripts/deploy_instance.py` | The supported way to deploy an instance: moves the local state cache aside, runs the instance guard, deploys, then checks job ownership again |
 | Setup notebook | `src/notebooks/setup_build_waves_job.ipynb` | Validates the manifest, publishes the runner and integrator skills to UC, creates/reuses automations, generates the task graph (with per-task timeouts and retries) from the manifest, resets the build and smoke jobs |
 | Build job YAML | `resources/build_waves.job.yml` | Shell job (one placeholder); setup notebook replaces with full wave graph |
 | Setup job YAML | `resources/setup_build_waves.job.yml` | Runs the setup notebook. Run it after every deploy (deploy restores the placeholders); `run_smoke=true` also runs the smoke job |
@@ -102,13 +104,13 @@ Genie Code will:
 2. Analyze your project's files and structure
 3. Propose a wave/session decomposition
 4. Write the plan files, waves.json manifest, and plan index in your project
-5. Deploy the bundle with `--var` flags (does not modify `databricks.yml` — the bundle stays generic)
+5. Deploy the bundle with `scripts/deploy_instance.py` and a vars file (does not modify `databricks.yml` — the bundle stays generic)
 
 ### Deploy and run
 
 If you've already written your plans and manifest and just need to deploy:
 
-> Read `[/Workspace/Users/you@example.com/genie-build-waves]/README.md`. Deploy the bundle using `--var` flags — do **not** edit `databricks.yml` (keep it generic so multiple projects can share the same bundle). My project is at `[project workspace path]` on branch `[branch name]`. Use catalog `[catalog]` and schema `[schema]` for skills. [Create the schema automatically / I already have this schema].
+> Read `[/Workspace/Users/you@example.com/genie-build-waves]/README.md`. Deploy the bundle with `scripts/deploy_instance.py` (run it with Python `subprocess`, not the CLI tool) and a vars file — do **not** edit `databricks.yml` (keep it generic so multiple projects can share the same bundle). My project is at `[project workspace path]` on branch `[branch name]`. Use catalog `[catalog]` and schema `[schema]` for skills. [Create the schema automatically / I already have this schema].
 
 **Important:** Always pass project-specific values as `--var` flags at deploy time. Never edit `databricks.yml` with project-specific values — the bundle is a shared tool, not a per-project config file.
 
@@ -146,9 +148,32 @@ In your target project folder (Git folder for `git`/`hybrid` mode, any workspace
 4. Create a `docs/sessions/` directory for session summaries.
 5. For `git`/`hybrid` mode: add `.build-status/` to `.gitignore`.
 
-### 2. Deploy with `--var` flags
+### 2. Deploy with `scripts/deploy_instance.py`
 
 Pass all project-specific values at deploy time. Do **not** edit `databricks.yml` — keep the bundle generic so it can be shared across projects.
+
+Put the variables in a JSON file next to your project's `waves.json` (for example `docs/plans/build-waves.vars.json`) and deploy with the script:
+
+```json
+{
+  "project_name": "My App",
+  "instance_suffix": "-my-app",
+  "build_root": "/Workspace/Users/you@example.com/my-project",
+  "build_branch": "feature-genie-build",
+  "manifest_path": "/Workspace/Users/you@example.com/my-project/docs/plans/waves.json",
+  "skills_catalog": "my_catalog",
+  "skills_schema": "my_schema"
+}
+```
+
+```bash
+python scripts/deploy_instance.py --target dev --vars /Workspace/Users/you@example.com/my-project/docs/plans/build-waves.vars.json --check-only
+python scripts/deploy_instance.py --target dev --vars /Workspace/Users/you@example.com/my-project/docs/plans/build-waves.vars.json
+```
+
+The script moves the local state cache aside, checks that every job `bundle summary` names belongs to this instance, deploys, and checks again (see "One deployment per project" below). It exits 2 without deploying when a check fails; `--force` overrides. From Genie Code, run it through Python `subprocess` in the bundle folder.
+
+The plain CLI equivalent, only safe after you have checked `bundle summary` yourself:
 
 ```bash
 databricks bundle deploy --target dev \
@@ -163,7 +188,16 @@ databricks bundle deploy --target dev \
 
 Optional variables (with defaults): `project_name` (`"Genie Build Waves"`, used in job names), `instance_suffix` (`""`), `create_skills_schema` (`"true"`), `runner_skill_id`, `integrator_skill_id`.
 
-**One deployment per project.** `instance_suffix` is appended to the bundle root path (`.bundle/genie-build-waves<suffix>/<target>`), so each project gets its own deployment state and its own build, setup and smoke jobs. Use the same suffix every time you deploy or validate for a project. Without it, deploying for a second project replaces the first project's jobs.
+**One deployment per project.** `instance_suffix` is appended to the bundle root path (`.bundle/genie-build-waves<suffix>/<target>`), so each project gets its own **remote** deployment state and its own build, setup and smoke jobs. Use the same suffix every time you deploy or validate for a project. Without it, deploying for a second project replaces the first project's jobs.
+
+`instance_suffix` does **not** isolate the CLI's local state cache. Every instance deployed from this folder shares `.databricks/bundle/<target>/`, and the Genie Code CLI tool keeps a cache of its own. If that cache holds instance A's state, deploying instance B binds to A's jobs: it renames them, resets the build job to the placeholder and points its defaults at B's manifest, so A's runs can no longer be repaired. Nothing warns. So:
+
+* Deploy instances only with `scripts/deploy_instance.py`, which clears the folder cache and refuses foreign jobs.
+* If you deploy with the plain CLI, first run `bundle summary` with the same `--var` flags and check the job IDs and names: a first deploy must show no job IDs, and an existing instance must show its own.
+* Do not deploy instances through the Genie Code CLI tool; its cache cannot be cleared.
+* Setup runs the same guard before it publishes or resets anything, and fails with `INSTANCE_GUARD_FAILED` when the jobs look like another instance's (for example the build job's latest run used a different manifest). If you deliberately moved a project to a new manifest, run setup once with `force=true`.
+
+Background: [docs/plans/2026-10-26_instance-state-isolation.md](docs/plans/2026-10-26_instance-state-isolation.md).
 
 ### 3. Run setup to patch jobs
 
