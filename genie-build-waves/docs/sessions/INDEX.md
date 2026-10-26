@@ -4,6 +4,7 @@
 
 | Session | Summary |
 |---|---|
+| [probe-helpers-skill-doc](2026-10-26_probe-helpers-skill-doc.md) | Session runner `SKILL.md` now states that `probe_client` returns `(client, identity_label)` and `run_app_probes` returns `(results, problems)`, shows both unpacked as the gate does, and says to catch `probe_client`'s `ValueError` (missing `probe_auth` / secret) as `blocked`. Doc-only; raised twice by sGt build 4 session 36. README needs no change. |
 | [instance-state-isolation](2026-10-26_instance-state-isolation.md) | A `-smoke` deploy took over the sGt jobs through the CLI's shared local state cache (`instance_suffix` isolates remote state only); sGt build job restored. New `instance_guard.py` ownership checks, `scripts/deploy_instance.py` (cache aside, check, deploy, check), setup guard (`INSTANCE_GUARD_FAILED`, `force=true`), README rewrite. Bug reproduced and fix verified on throwaway `-iso-a` / `-iso-b`; 83 tests pass. |
 | [visible-failures](2026-10-26_visible-failures.md) | Failed waves and sessions made visible: final `build_verdict` task (`ALL_DONE`, depends on every gate) fails the run with `BUILD_FAILED` (the gate never raises, so the Exclusion cascade stays); gate names step-limited / incomplete sessions with conversation id from the Jobs API; runner `progress` at milestones; wave `required_checks`; Genie space freshness passes when content matches the bundle source (`source_file` / `resource_key`), probes still run. New `gate_helpers.py`, `build_verdict.ipynb`; 65 tests pass. Needs setup rerun after merge. |
 
