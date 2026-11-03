@@ -1,4 +1,4 @@
-"""Manifest validation and task generation, including wave-level "archived": true."""
+"""Manifest validation and task generation, including wave-level "archived": true and continuation passes."""
 
 import copy
 import json
@@ -63,18 +63,32 @@ def test_same_wave_would_fail_rule_7_if_runnable():
     assert any("a2: edit session has no owned_paths" in w for w in warnings)
 
 
+def _by_key(tasks):
+    return {t["task_key"]: t for t in tasks}
+
+
+def _deps(task):
+    return [d["task_key"] for d in task.get("depends_on") or []]
+
+
+BASE_KEYS = ["w2-0_sessions", "w2-0_integrate", "w2-0_gate", "w2-0_gate_check", "build_verdict"]
+PASS1_KEYS = ["w2-0_sessions", "w2-0_find_incomplete", "w2-0_has_incomplete", "w2-0_continue",
+              "w2-0_integrate", "w2-0_gate", "w2-0_gate_check", "build_verdict"]
+
+
 def test_archived_wave_generates_no_tasks():
     tasks = wm.generate_wave_tasks(_manifest(), CFG, GATE)
     keys = [t["task_key"] for t in tasks]
-    assert keys == ["w2-0_sessions", "w2-0_integrate", "w2-0_gate", "w2-0_gate_check", "build_verdict"]
+    assert keys == PASS1_KEYS
+    by = _by_key(tasks)
     # First runnable wave has no upstream dependency on the archived wave.
     assert "depends_on" not in tasks[0]
     # Session-level depends_on never becomes a task dependency.
     inputs = json.loads(tasks[0]["for_each_task"]["inputs"])
     assert [i["session_id"] for i in inputs] == ["b1", "b2"]
-    assert tasks[2]["notebook_task"]["base_parameters"]["wave"] == "2-0"
+    assert by["w2-0_gate"]["notebook_task"]["base_parameters"]["wave"] == "2-0"
     # Hyphenated task keys must be backtick-escaped inside dynamic value references.
-    assert tasks[3]["condition_task"]["left"] == "{{tasks.`w2-0_gate`.values.gate_passed}}"
+    assert by["w2-0_gate_check"]["condition_task"]["left"] == "{{tasks.`w2-0_gate`.values.gate_passed}}"
 
 
 def test_ref_ident_escapes_only_when_needed():
@@ -102,7 +116,8 @@ def test_first_and_last_runnable_wave():
 
 def test_summary_line():
     assert wm.manifest_summary(_manifest()) == (
-        "Manifest OK: 2 waves (1 archived, 1 runnable), 4 sessions, 1 runtime targets")
+        "Manifest OK: 2 waves (1 archived, 1 runnable), 4 sessions, 1 runtime targets, "
+        "1 continuation pass(es) per wave")
 
 
 def test_archived_wave_keeps_id_and_target_checks():
@@ -170,7 +185,9 @@ def test_examples_unchanged_without_archived(name):
     errors, _ = wm.validate_manifest(m)
     assert errors == []
     tasks = wm.generate_wave_tasks(m, CFG, GATE)
-    assert len(tasks) == 4 * len(m["waves"]) + 1  # + build_verdict
+    assert len(tasks) == 7 * len(m["waves"]) + 1  # 4 wave tasks + 3 for one continuation pass, + build_verdict
+    # continuation_passes 0 gives the graph from before continuation passes.
+    assert len(wm.generate_wave_tasks({**m, "continuation_passes": 0}, CFG, GATE)) == 4 * len(m["waves"]) + 1
     # Wave chain: each wave's sessions depend on the previous wave's gate_check (outcome true).
     sessions_tasks = [t for t in tasks if t["task_key"].endswith("_sessions")]
     assert "depends_on" not in sessions_tasks[0]
@@ -192,11 +209,13 @@ def test_examples_unchanged_without_archived(name):
 def test_retries_applied_to_genie_tasks_only():
     m = _manifest()
     m["task_retries"] = {"max_retries": 3, "min_retry_interval_seconds": 5}
-    tasks = wm.generate_wave_tasks(m, CFG, GATE)
-    inner = tasks[0]["for_each_task"]["task"]
-    assert inner["max_retries"] == 3 and inner["min_retry_interval_millis"] == 5000
-    assert tasks[1]["max_retries"] == 3
-    assert "max_retries" not in tasks[2]  # gate notebook
+    by = _by_key(wm.generate_wave_tasks(m, CFG, GATE))
+    for fe in ("w2-0_sessions", "w2-0_continue"):
+        inner = by[fe]["for_each_task"]["task"]
+        assert inner["max_retries"] == 3 and inner["min_retry_interval_millis"] == 5000
+    assert by["w2-0_integrate"]["max_retries"] == 3
+    assert "max_retries" not in by["w2-0_gate"]  # gate notebook
+    assert "max_retries" not in by["w2-0_find_incomplete"]  # find notebook
 
 
 # --- build_verdict ---------------------------------------------------------------
@@ -261,7 +280,7 @@ def test_genie_space_without_source_warns_unless_freshness_off():
 
 
 def test_more_than_100_tasks_from_runnable_waves():
-    """30 runnable waves after 22 archived ones: 120 wave tasks + build_verdict, chained from the first runnable wave."""
+    """30 runnable waves after 22 archived ones: 210 wave tasks + build_verdict, chained from the first runnable wave."""
     waves = [{"wave_id": f"{b}-{n}", "archived": True, "sessions": [{"session_id": f"old{b}{n}", "owned_paths": ["x"]}]}
              for b in (1, 2, 3) for n in range(8)][:22]
     waves += [{"wave_id": f"4-{n}", "sessions": [{"session_id": f"s{n}", "owned_paths": [f"p{n}/**"]}]}
@@ -269,9 +288,107 @@ def test_more_than_100_tasks_from_runnable_waves():
     m = {"waves": waves}
     assert wm.validate_manifest(m)[0] == []
     tasks = wm.generate_wave_tasks(m, CFG, GATE)
-    assert len(tasks) == 121
+    assert len(tasks) == 211  # 30 waves x (4 + 3 continuation) + build_verdict
     assert all(t["task_key"].startswith("w4-") for t in tasks[:-1])
     assert tasks[-1]["task_key"] == "build_verdict"
     assert len(tasks[-1]["depends_on"]) == 30
     assert "depends_on" not in tasks[0]
-    assert wm.manifest_summary(m) == "Manifest OK: 52 waves (22 archived, 30 runnable), 52 sessions, 0 runtime targets"
+    assert wm.manifest_summary(m) == ("Manifest OK: 52 waves (22 archived, 30 runnable), 52 sessions, "
+                                      "0 runtime targets, 1 continuation pass(es) per wave")
+
+
+# --- continuation passes -----------------------------------------------------------
+
+def test_continuation_pass_graph():
+    m = _manifest()
+    m["waves"][1]["sessions"][0]["timeout_minutes"] = 90
+    m["waves"][1]["concurrency"] = 2
+    by = _by_key(wm.generate_wave_tasks(m, CFG, GATE))
+
+    find = by["w2-0_find_incomplete"]
+    assert _deps(find) == ["w2-0_sessions"] and find["run_if"] == "ALL_DONE"
+    assert find["notebook_task"]["notebook_path"] == "/gate/find_incomplete_sessions.ipynb"
+    assert find["notebook_task"]["base_parameters"] == {
+        "wave": "2-0", "continuation": "1", "run_id": "{{job.run_id}}",
+        "build_root": "{{job.parameters.build_root}}", "manifest_path": "{{job.parameters.manifest_path}}"}
+    assert find["timeout_seconds"] == wm.FIND_INCOMPLETE_TIMEOUT_MIN * 60
+
+    has = by["w2-0_has_incomplete"]
+    assert _deps(has) == ["w2-0_find_incomplete"]
+    assert has["condition_task"] == {"op": "EQUAL_TO", "right": "true",
+                                     "left": "{{tasks.`w2-0_find_incomplete`.values.has_incomplete}}"}
+
+    cont = by["w2-0_continue"]
+    assert cont["depends_on"] == [{"task_key": "w2-0_has_incomplete", "outcome": "true"}]
+    fe = cont["for_each_task"]
+    assert fe["inputs"] == "{{tasks.`w2-0_find_incomplete`.values.incomplete}}"
+    assert fe["concurrency"] == by["w2-0_sessions"]["for_each_task"]["concurrency"] == 2
+    inner, first = fe["task"], by["w2-0_sessions"]["for_each_task"]["task"]
+    assert inner["task_key"] == "w2-0_continue_session"
+    assert inner["genie_task"]["configuration_id"] == CFG["runner"]
+    assert inner["genie_task"]["parameters"] == {**first["genie_task"]["parameters"], "continuation": "1"}
+    assert "continuation" not in first["genie_task"]["parameters"]
+    assert inner["timeout_seconds"] == first["timeout_seconds"] == 90 * 60
+    assert inner["description"] == "{{input.session_id}}: {{input.title}} (continuation 1)"
+
+    integ = by["w2-0_integrate"]
+    # Depends on the find task too: if every dependency were Excluded, the integrator would be Excluded.
+    assert _deps(integ) == ["w2-0_find_incomplete", "w2-0_continue"] and integ["run_if"] == "ALL_DONE"
+
+
+def test_continuation_passes_zero_is_the_previous_graph():
+    m = {**_manifest(), "continuation_passes": 0}
+    tasks = wm.generate_wave_tasks(m, CFG, GATE)
+    assert [t["task_key"] for t in tasks] == BASE_KEYS
+    assert _deps(_by_key(tasks)["w2-0_integrate"]) == ["w2-0_sessions"]
+    assert wm.manifest_summary(m).endswith("0 continuation pass(es) per wave")
+
+
+def test_three_passes_chain_through_find_tasks():
+    m = _manifest()
+    m["waves"].append({"wave_id": "2-1", "sessions": [{"session_id": "c1", "owned_paths": ["c/**"]}]})
+    m["continuation_passes"] = 3
+    assert wm.validate_manifest(m)[0] == []
+    tasks = wm.generate_wave_tasks(m, CFG, GATE)
+    by = _by_key(tasks)
+    assert [t["task_key"] for t in tasks][:11] == [
+        "w2-0_sessions",
+        "w2-0_find_incomplete", "w2-0_has_incomplete", "w2-0_continue",
+        "w2-0_find_incomplete2", "w2-0_has_incomplete2", "w2-0_continue2",
+        "w2-0_find_incomplete3", "w2-0_has_incomplete3", "w2-0_continue3",
+        "w2-0_integrate"]
+    # A pass that finds nothing Excludes its continue task; the next find still runs via the previous find.
+    assert _deps(by["w2-0_find_incomplete2"]) == ["w2-0_find_incomplete", "w2-0_continue"]
+    assert _deps(by["w2-0_find_incomplete3"]) == ["w2-0_find_incomplete2", "w2-0_continue2"]
+    assert all(by[f"w2-0_find_incomplete{s}"]["run_if"] == "ALL_DONE" for s in ("", "2", "3"))
+    assert _deps(by["w2-0_integrate"]) == ["w2-0_find_incomplete3", "w2-0_continue3"]
+    assert by["w2-0_continue3"]["for_each_task"]["task"]["task_key"] == "w2-0_continue3_session"
+    assert by["w2-0_continue3"]["for_each_task"]["task"]["genie_task"]["parameters"]["continuation"] == "3"
+    assert by["w2-0_find_incomplete2"]["notebook_task"]["base_parameters"]["continuation"] == "2"
+    # The next wave still chains on the gate check, and only notebook gates feed build_verdict.
+    assert by["w2-1_sessions"]["depends_on"] == [{"task_key": "w2-0_gate_check", "outcome": "true"}]
+    assert _deps(by["build_verdict"]) == ["w2-0_gate", "w2-1_gate"]
+    assert len(tasks) == 2 * (4 + 3 * 3) + 1
+    # Every key is unique and within the 100-character limit.
+    assert len(by) == len(tasks) and all(len(k) <= 100 for k in by)
+
+
+def test_plain_wave_id_keeps_unescaped_references():
+    m = {"waves": [{"wave_id": "5", "sessions": [{"session_id": "s", "owned_paths": ["s/**"]}]}]}
+    by = _by_key(wm.generate_wave_tasks(m, CFG, GATE))
+    assert by["w5_has_incomplete"]["condition_task"]["left"] == "{{tasks.w5_find_incomplete.values.has_incomplete}}"
+    assert by["w5_continue"]["for_each_task"]["inputs"] == "{{tasks.w5_find_incomplete.values.incomplete}}"
+
+
+@pytest.mark.parametrize("value,ok", [(0, True), (1, True), (3, True), (4, False), (-1, False),
+                                      (True, False), ("1", False), (1.5, False)])
+def test_continuation_passes_validation(value, ok):
+    m = {**_manifest(), "continuation_passes": value}
+    errors, _ = wm.validate_manifest(m)
+    assert (not any("continuation_passes" in e for e in errors)) == ok, errors
+
+
+def test_find_incomplete_path_override_and_extension():
+    assert wm.find_incomplete_notebook_path("/a/b/wave_gate_check") == "/a/b/find_incomplete_sessions"
+    by = _by_key(wm.generate_wave_tasks(_manifest(), CFG, GATE, find_incomplete_path="/x/f.ipynb"))
+    assert by["w2-0_find_incomplete"]["notebook_task"]["notebook_path"] == "/x/f.ipynb"

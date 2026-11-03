@@ -7,6 +7,13 @@ imports, so the tests can import it directly.
 Archived waves (`"archived": true`) are earlier builds kept in the manifest as
 history. They are validated (ids, duplicate session ids, runtime target references)
 but generate no job tasks, and their sessions count as already done for `depends_on`.
+
+Continuation passes (`"continuation_passes"`, default 1, 0 turns them off, max 3). A
+session that stops at the Genie Code step limit still ends its for_each iteration SUCCESS,
+and a repair cannot re-run a SUCCESS iteration. After the sessions, each pass k runs
+w<w>_find_incomplete[k] (notebook: sessions with no final status) -> w<w>_has_incomplete[k]
+(If/else) -> w<w>_continue[k] (for_each over the incomplete sessions, runner with
+continuation=k). See docs/plans/2026-11-03_continuation-pass.md.
 """
 
 import json
@@ -18,6 +25,9 @@ from app_probes import validate_probe, validate_probe_auth
 VALID_MODES = {"edit", "execute", "configure", "converge"}
 VALID_TARGET_TYPES = {"app", "job", "pipeline", "dashboard", "genie_space", "table"}
 DEFAULT_TIMEOUT_MIN = {"edit": 60, "execute": 60, "configure": 60, "converge": 180}
+DEFAULT_CONTINUATION_PASSES = 1
+MAX_CONTINUATION_PASSES = 3
+FIND_INCOMPLETE_TIMEOUT_MIN = 10
 
 # Task keys allow letters, digits, '_' and '-' (max 100 chars). Wave ids become the
 # task prefix w<wave_id>, e.g. wave "4-1" -> w4-1_sessions.
@@ -67,12 +77,36 @@ def unmet_dependencies(m: dict, session: dict) -> list[str]:
     return [d for d in session.get("depends_on") or [] if d not in done]
 
 
+def continuation_passes(m: dict) -> int:
+    """Continuation passes per wave (manifest "continuation_passes"; validate_manifest rejects bad values)."""
+    v = m.get("continuation_passes", DEFAULT_CONTINUATION_PASSES)
+    if isinstance(v, bool) or not isinstance(v, int) or not 0 <= v <= MAX_CONTINUATION_PASSES:
+        return DEFAULT_CONTINUATION_PASSES
+    return v
+
+
+def continuation_keys(prefix: str, k: int) -> dict:
+    """Task keys for continuation pass k (1-based) of wave prefix w<wave_id>.
+
+    Pass 1 has no suffix (w4-1_find_incomplete, w4-1_continue); later passes add the number
+    (w4-1_find_incomplete2). 'inner' is the for_each nested task key.
+    """
+    sfx = "" if k == 1 else str(k)
+    return {
+        "find": f"{prefix}_find_incomplete{sfx}",
+        "has": f"{prefix}_has_incomplete{sfx}",
+        "continue": f"{prefix}_continue{sfx}",
+        "inner": f"{prefix}_continue{sfx}_session",
+    }
+
+
 def manifest_summary(m: dict) -> str:
     waves = m.get("waves") or []
     n_arch = sum(1 for wv in waves if is_archived(wv))
     n_sessions = sum(len(wv.get("sessions") or []) for wv in waves)
     return (f"Manifest OK: {len(waves)} waves ({n_arch} archived, {len(waves) - n_arch} runnable), "
-            f"{n_sessions} sessions, {len(m.get('runtime_targets') or {})} runtime targets")
+            f"{n_sessions} sessions, {len(m.get('runtime_targets') or {})} runtime targets, "
+            f"{continuation_passes(m)} continuation pass(es) per wave")
 
 
 # --- Validation ----------------------------------------------------------------
@@ -176,6 +210,11 @@ def validate_manifest(m: dict) -> tuple[list[str], list[str]]:
     wf_mode = (m.get("workflow") or {}).get("mode", "git")
     targets = m.get("runtime_targets") or {}
     _validate_targets(m, targets, errors, warnings)
+
+    cp = m.get("continuation_passes")
+    if cp is not None and (isinstance(cp, bool) or not isinstance(cp, int)
+                           or not 0 <= cp <= MAX_CONTINUATION_PASSES):
+        errors.append(f"continuation_passes must be an integer from 0 to {MAX_CONTINUATION_PASSES} (got {cp!r})")
 
     waves = m.get("waves") or []
     if not waves:
@@ -362,6 +401,12 @@ def verdict_notebook_path(gate_notebook_path: str) -> str:
     return os.path.join(os.path.dirname(gate_notebook_path), f"build_verdict{ext}")
 
 
+def find_incomplete_notebook_path(gate_notebook_path: str) -> str:
+    """find_incomplete_sessions sits next to the gate notebook, with the same extension."""
+    ext = os.path.splitext(gate_notebook_path)[1]
+    return os.path.join(os.path.dirname(gate_notebook_path), f"find_incomplete_sessions{ext}")
+
+
 def make_verdict_task(gate_keys: list[str], notebook_path: str) -> dict:
     """Final task: fails the run when any wave gate failed.
 
@@ -384,15 +429,24 @@ def make_verdict_task(gate_keys: list[str], notebook_path: str) -> dict:
 
 
 def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: str,
-                        retries: dict | None = None, verdict_path: str | None = None) -> list[dict]:
+                        retries: dict | None = None, verdict_path: str | None = None,
+                        find_incomplete_path: str | None = None) -> list[dict]:
     """Generate the build job's task graph from the manifest's runnable waves.
 
     Archived waves generate nothing, so the first runnable wave has no upstream
     dependency. Session-level depends_on never becomes a task dependency: wave order
     enforces it, and sessions in archived waves are already done. A final build_verdict
     task depends on every wave gate (see make_verdict_task).
+
+    Continuation passes sit between the sessions and the integrator. A task whose
+    dependencies are all Excluded is itself Excluded, so pass k+1's find task depends on
+    pass k's find task (never Excluded) as well as its continue task, and the integrator
+    depends on the last pass's find and continue tasks (run_if ALL_DONE). When nothing is
+    incomplete, every continue task is Excluded and the integrator still runs.
     """
     retries = genie_task_retries(m) if retries is None else retries
+    passes = continuation_passes(m)
+    find_path = find_incomplete_path or find_incomplete_notebook_path(gate_notebook_path)
     tasks = []
     prev_gate_key = None
 
@@ -444,13 +498,62 @@ def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: st
             sessions_task["depends_on"] = [{"task_key": prev_gate_key, "outcome": "true"}]
         tasks.append(sessions_task)
 
+        # --- Continuation passes (sessions that stopped before a final status) ---
+        integrate_deps = [f"{prefix}_sessions"]
+        for k in range(1, passes + 1):
+            keys = continuation_keys(prefix, k)
+            tasks.append(
+                make_notebook_task(
+                    task_key=keys["find"],
+                    notebook_path=find_path,
+                    params={
+                        "wave": wid,
+                        "continuation": k,
+                        "run_id": "{{job.run_id}}",
+                        "build_root": "{{job.parameters.build_root}}",
+                        "manifest_path": "{{job.parameters.manifest_path}}",
+                    },
+                    depends_on=integrate_deps,
+                    run_if="ALL_DONE",
+                    timeout_minutes=FIND_INCOMPLETE_TIMEOUT_MIN,
+                )
+            )
+            tasks.append({
+                "task_key": keys["has"],
+                "condition_task": {
+                    "op": "EQUAL_TO",
+                    "left": "{{" + f"tasks.{ref_ident(keys['find'])}.values.has_incomplete" + "}}",
+                    "right": "true",
+                },
+                "depends_on": [{"task_key": keys["find"]}],
+            })
+            cont_inner = make_genie_task(
+                task_key=keys["inner"],
+                config_id=configuration_ids["runner"],
+                params={**session_params, "continuation": k},
+                timeout_minutes=session_timeout_minutes(wave_cfg),
+                retries=retries,
+            )
+            cont_inner["description"] = f"{{{{input.session_id}}}}: {{{{input.title}}}} (continuation {k})"
+            tasks.append({
+                "task_key": keys["continue"],
+                "description": f"Wave {wid} continuation pass {k}: re-run sessions with no final status",
+                "for_each_task": {
+                    "inputs": "{{" + f"tasks.{ref_ident(keys['find'])}.values.incomplete" + "}}",
+                    "concurrency": concurrency,
+                    "task": cont_inner,
+                },
+                "depends_on": [{"task_key": keys["has"], "outcome": "true"}],
+            })
+            integrate_deps = [keys["find"], keys["continue"]]
+
         # --- Integrator ---
         tasks.append(
             make_genie_task(
                 task_key=f"{prefix}_integrate",
                 config_id=configuration_ids["integrator"],
                 params={**common, "wave": wid},
-                depends_on=[f"{prefix}_sessions"],
+                depends_on=integrate_deps,
                 run_if="ALL_DONE",
                 timeout_minutes=60,
                 retries=retries,

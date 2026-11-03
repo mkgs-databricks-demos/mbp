@@ -31,6 +31,7 @@ build_verdict (run_if ALL_DONE, depends on every gate): fails the run if any gat
 Each wave follows a four-phase pattern:
 
 1. **Sessions** (`for_each` at full wave concurrency) — Genie Code tasks that each complete one plan file. `edit` sessions write files within `owned_paths`; `execute` sessions run notebooks/SQL; `configure` sessions set up resources; `converge` sessions (follow-up builds) deploy, read telemetry, fix and redeploy.
+   * **Continuation passes** (manifest `continuation_passes`, default 1, `0` = off) — a session that hits the Genie Code step limit still ends its iteration SUCCESS, and a repair cannot re-run it. `wN_find_incomplete` (notebook, `run_if: ALL_DONE`) lists sessions whose status file is missing, unreadable or `in_progress`; `wN_has_incomplete` (If/else) and `wN_continue` (`for_each`) re-run only those, with `continuation=k`, so each resumes from `progress.next`. When nothing is incomplete the continue task is Excluded and the integrator runs as before. See [Continuation Passes](docs/manifest-schema.md#continuation-passes).
 2. **Integrator** (single Genie Code task, `run_if: ALL_DONE`) — Collects session status files, runs gate checks. In `git`/`hybrid` mode: checks for stray files and commits by explicit path (the *only* committer). In `workspace` mode: status collection and gates only.
 3. **Gate notebook** (`run_if: ALL_DONE`) — Reads the integrator's gate JSON and every session's status file independently. Sets a `gate_passed` task value (`true`/`false`).
 4. **Gate check** (If/else condition task) — Checks `gate_passed == "true"`. If false, all downstream wave tasks are **Excluded** — zero compute on cascade failure.
@@ -68,6 +69,7 @@ A manifest can span several bundles. List them in a wave's `validate_bundles` (`
 | Session Runner skill | `src/skills/genie-build-session-runner/SKILL.md` | Prompt for one session: load manifest, read plan, implement within owned paths, validate, write status JSON |
 | Wave Integrator skill | `src/skills/genie-build-wave-integrator/SKILL.md` | Prompt for per-wave integration: collect status, check strays, commit+push, write gate JSON |
 | Build Planner skill | `src/skills/genie-build-planner/SKILL.md` | Planning guide you give Genie Code in your project folder: decompose into waves/sessions, write plans and `waves.json`. Not published to UC |
+| Find incomplete notebook | `src/notebooks/find_incomplete_sessions.ipynb` | Continuation pass: lists the wave's sessions with no final status (helper `incomplete_sessions` in `session_status.py`) and sets the `incomplete` / `has_incomplete` task values for `wN_continue` |
 | Gate check notebook | `src/notebooks/wave_gate_check.ipynb` | Deterministic stop: reads gate + status files; for `runtime_gate` waves also checks app/job/pipeline/dashboard/Genie space state, soak stability, OTel error lines, app probes and traces, dashboard datasets, Genie space tables, example SQL and probe questions, pipeline expectation budgets, and `table` row counts, columns and freshness itself; checks `validate_bundles` results |
 | App probe module | `src/notebooks/app_probes.py` | HTTP / MCP `initialize` probes against an app's own URL as the `probe_auth` service principal, plus MLflow 3 trace counts; shared by the gate and the smoke job |
 | Manifest module | `src/notebooks/waves_manifest.py` | Manifest validation (including `archived` waves) and task-graph generation; shared by setup and the gate |
@@ -222,12 +224,12 @@ Pass = both iterations SUCCESS, each echoing its `session_id` and the nonce. Bef
 databricks bundle run build_waves --target dev
 ```
 
-Or choose **Run now** on the build job in the Jobs UI. `branch` defaults to `build_branch`; override it with `--params branch=<branch>`. Each wave runs `wN_sessions` → `wN_integrate` → `wN_gate` → `wN_gate_check`, and the next wave starts only when `wN_gate_check` is true. Watch each `wN_gate` task. The run's result comes from `build_verdict`: FAILED when any wave gate failed.
+Or choose **Run now** on the build job in the Jobs UI. `branch` defaults to `build_branch`; override it with `--params branch=<branch>`. Each wave runs `wN_sessions` → (`wN_find_incomplete` → `wN_has_incomplete` → `wN_continue`, per continuation pass) → `wN_integrate` → `wN_gate` → `wN_gate_check`, and the next wave starts only when `wN_gate_check` is true. Watch each `wN_gate` task. The run's result comes from `build_verdict`: FAILED when any wave gate failed.
 
 ## When a wave fails
 
 1. Read the `build_verdict` error (`BUILD_FAILED: ...` with each failed wave's first problems), the `wN_gate` output (`GATE_FAILED: wave N: ...` and the result JSON, also in `.build-status/<run_id>/wave_<N>_gate_result.json`), `.build-status/<run_id>/wave_<N>_gate.json` and, for convergence waves, `wave_<N>_runtime.json` (deployment id, states, error samples, missing markers, Genie space `freshness`).
-2. Read the failing session's status file and summary in `docs/sessions/`. A session that hit the Genie Code step limit, is still `in_progress`, or wrote no status file is named in the gate problems with its conversation id and its `progress.next`: resume that conversation, then repair from `wN_integrate`.
+2. Read the failing session's status file and summary in `docs/sessions/`. A session that hit the Genie Code step limit, is still `in_progress`, or wrote no status file is named in the gate problems with its conversation id and its `progress.next`: resume that conversation, then repair from `wN_integrate`. Such a session has usually already been re-run by the continuation passes; the problem then says `after continuation pass k` and names the latest conversation. A repair does not re-run continuation iterations that ended SUCCESS, so resume by hand.
 3. Passing sessions are already committed. Failing sessions' code is left uncommitted.
 4. Fix the cause (plan, manifest, or code), then repair the run (below).
 5. `requests` in the gate file list changes a session needed outside its owned paths. Apply them before repairing.

@@ -1,6 +1,13 @@
 # Plan: continuation pass for sessions that stop before finishing
 
-Status: **planned 2026-11-03, not started.** Branch `mg-genie-build-waves-continuation` (from `main`). Adds tasks to every wave, so it needs a setup rerun per instance after merge (see Rollout).
+Status: **implemented 2026-11-03, not yet run with real Genie Code sessions.** Branch `mg-genie-build-waves-continuation` (from `main`). Adds tasks to every wave, so it needs a setup rerun per instance after merge (see Rollout).
+
+Implementation notes (where it differs from or adds to the plan below):
+
+* **Chaining.** Jobs Excludes a task when all of its dependencies are Excluded. So pass k+1's `find_incomplete` depends on pass k's `find_incomplete` (never Excluded) and `continue`, both ALL_DONE, and the integrator depends on the last pass's `find_incomplete` and `continue`. Pass 1 keys have no suffix; later passes add the number (`w4-1_find_incomplete2`).
+* **Gate mapping.** The run's `for_each_task.inputs` for a continue task shows the unresolved `{{tasks...values.incomplete}}` reference, not the list. The gate falls back to `dbutils.jobs.taskValues.get` on the find task to map iteration index to session id.
+* **Repair.** Not changed to start from `w<w>_find_incomplete`: Jobs keeps `for_each` iterations that ended SUCCESS on repair, so a repair cannot be relied on to re-run a continuation. The docs keep resume-by-hand plus repair from `w<w>_integrate` for a session that stops again.
+* **Smoke (fake sessions).** A one-time `runs/submit` of the generated graph with notebook stand-ins for the Genie Code tasks (2 waves, `continuation_passes: 2`; one session `in_progress` until continuation 2) ended SUCCESS: both continue passes ran for that session only, the second wave's continue tasks were Excluded and its integrator still ran, and the gate reported the session complete at continuation 2 with the continuation iteration's run id. Not covered: real Genie Code sessions resuming from `progress.next`.
 
 ## Problem
 

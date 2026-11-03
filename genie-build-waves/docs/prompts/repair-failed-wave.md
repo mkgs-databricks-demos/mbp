@@ -16,7 +16,7 @@ The build run `[run_id]` on job `[job_id]` has a failed wave `[wave_number]`. I 
 Before repairing, understand what went wrong:
 
 1. Read the `build_verdict` task error (`BUILD_FAILED: ...`, the failed waves and their first problems) and the `w[wave_number]_gate` task output (`GATE_FAILED: wave [wave_number]: ...` plus the result JSON, also in `.build-status/[run_id]/wave_[wave_number]_gate_result.json`).
-2. Read `.build-status/[run_id]/wave_[wave_number]_gate.json` — this lists which checks failed and why. A session that hit the Genie Code step limit, is still `in_progress`, or wrote no status file is named in the gate problems with its conversation id and `progress.next`: resume that conversation in Genie Code first, then repair from `w[wave_number]_integrate`.
+2. Read `.build-status/[run_id]/wave_[wave_number]_gate.json` — this lists which checks failed and why. A session that hit the Genie Code step limit, is still `in_progress`, or wrote no status file is named in the gate problems with its conversation id and `progress.next`: resume that conversation in Genie Code first, then repair from `w[wave_number]_integrate`. With continuation passes on (manifest `continuation_passes`, default 1), the job already re-ran such sessions before the integrator (`w[wave_number]_continue[k]`); the problem then says `after continuation pass k` and names the continuation's conversation, which is the one to resume.
 3. If it's a convergence wave, also read `.build-status/[run_id]/wave_[wave_number]_runtime.json` for deployment IDs, states, and error samples.
 4. Read the failing session's status file and summary in `docs/sessions/`.
 5. Check for `requests` in the gate file — these list changes a session needed outside its owned paths. Apply them before repairing.
@@ -62,7 +62,9 @@ In the UI: choose **Repair run** and select the failed wave's tasks **and** ever
 | Only the integrator (sessions passed) | `w[wave_number]_integrate`, `w[wave_number]_gate` |
 | Only the gate verdict (e.g. stray files, runtime soak) | `w[wave_number]_gate` |
 
-Keep `rerun_dependent_tasks=True` in every case. Without it, nothing after the named tasks runs.
+Keep `rerun_dependent_tasks=True` in every case. Without it, nothing after the named tasks runs. With continuation passes, rerunning `w[wave_number]_sessions` also reruns the wave's `_find_incomplete` / `_has_incomplete` / `_continue` tasks, because they depend on it.
+
+Do not count on a repair to continue a session that a continuation pass already ran: Jobs keeps `for_each` iterations that ended SUCCESS, including continuation iterations. For a session that stopped again after its last continuation pass, resume its conversation by hand, then repair from `w[wave_number]_integrate`.
 
 **Pass `job_parameters` on every repair.** A `repair_run` falls back to the job-level parameter defaults when `job_parameters` is omitted. The setup job writes these defaults from the manifest, but if the original run was started with custom parameters (e.g. a different branch), the repair would silently use the wrong values. Always pass the same `branch`, `build_root`, and `manifest_path` the original run used:
 
@@ -90,7 +92,10 @@ w = WorkspaceClient()
 
 # List all task keys from the failed wave onward
 only_tasks = [
-    "w[wave_number]_sessions", "w[wave_number]_integrate", "w[wave_number]_gate", "w[wave_number]_gate_check",
+    "w[wave_number]_sessions",
+    # continuation pass tasks, one set per pass (pass 2+ add the number: _find_incomplete2, ...)
+    "w[wave_number]_find_incomplete", "w[wave_number]_has_incomplete", "w[wave_number]_continue",
+    "w[wave_number]_integrate", "w[wave_number]_gate", "w[wave_number]_gate_check",
     # ... all tasks from later waves too
     "build_verdict",  # without it, a failed gate leaves the run SUCCESS
 ]

@@ -17,6 +17,7 @@ You are one of several Genie Code sessions running **in parallel** on the same p
 | `branch` | Feature branch (for `git`/`hybrid` workflows; may be empty for `workspace` mode) |
 | `build_root` | Absolute workspace path of the project |
 | `manifest_path` | Absolute path of `waves.json` |
+| `continuation` | Optional. Empty or `0` on the first run; `1`, `2`, ... when the job re-runs a session that stopped without a final status (see **Continuation passes** in step 1) |
 
 If any required parameter is missing or still looks like a `{{placeholder}}`, stop and write a status file with `status: "error"` (step 7) if you can, then end.
 
@@ -68,6 +69,12 @@ If the session is not found, stop with `status: "error"`. If its wave has `"arch
 **Archived dependencies.** A `depends_on` entry that names a session in an archived wave is already satisfied: that session finished in an earlier build, and its code is in the branch history. Never look for a `.build-status` (`status_dir`) file for it, in this run or any other, and never stop or warn because one is missing. Its summary in `sessions_dir` (step 3) is still useful context if it exists.
 
 **Task retries.** The job retries a Genie Code task automatically when the agent fails to start or crashes (`max_retries` on the job task). If your status file for this `run_id` or a summary for your session from today already exists, you are a retry: read them and the current state of your `owned_paths` / `owned_assets`, and continue from where the previous attempt stopped (keep finished work). In steps 6-7, update that same summary and status file so they describe the combined result of all attempts.
+
+**Continuation passes.** If `continuation` is `1` or more, an earlier run of your session in this job run stopped before writing a final status (usually at the Genie Code step limit), and the job started you again. Treat it as a retry with a head start:
+- Read your status file for this `run_id` first. Keep its `files_changed`, `assets_changed`, `checks`, `attempts` and `progress.done`; do not overwrite it with a fresh provisional file in step 4, and do not redo finished steps.
+- Start from `progress.next`. If the file is missing or has no `progress`, inspect your `owned_paths` / `owned_assets` and the latest session summary to work out what is left.
+- For `converge` sessions, continue the attempt count from the attempts already recorded; `max_attempts` covers all runs together.
+- Steps are limited again in this run, so reach step 7 (final status) before anything optional. If you cannot finish, write `status: "in_progress"` with an accurate `progress.next` rather than nothing.
 
 ### 2. Check the branch (git/hybrid only)
 

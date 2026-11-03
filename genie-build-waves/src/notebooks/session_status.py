@@ -18,6 +18,10 @@ Session outcome. A Genie Code session that stops at the step limit still ends it
 iteration SUCCESS. session_outcome combines the iteration's agent response (jobs/runs/get-output)
 with the status file, so the gate can name the session, its conversation and the next step.
 
+Continuation passes. incomplete_sessions lists the sessions of a wave whose status file is
+missing, unreadable or still in_progress. The build job re-runs them (runner continuation=k)
+before the integrator; blocked / fail / error are final and never re-run.
+
 Plain Python (no Spark / dbutils imports), so the tests can import it directly.
 """
 
@@ -170,14 +174,48 @@ def session_outcome(response, status) -> dict:
     return {"outcome": "in_progress" if status is not None else "missing", "warning": None}
 
 
-def session_problem(session_id, outcome: str, conversation_id, wave, progress=None) -> str:
-    """Gate problem text for a session that is not complete: who, which conversation, what next."""
+def read_status_file(path):
+    """(status, problem): the parsed status dict, or None with 'missing' / 'unreadable'."""
+    if not os.path.isfile(path):
+        return None, "missing"
+    try:
+        with open(path) as f:
+            st = json.load(f)
+    except (OSError, ValueError):
+        return None, "unreadable"
+    return (st, None) if isinstance(st, dict) else (None, "unreadable")
+
+
+def incomplete_sessions(wave_cfg: dict, status_dir: str) -> list[dict]:
+    """Sessions with no final status in status_dir, in manifest order.
+
+    Returns [{"session_id", "title", "reason"}], reason = missing | unreadable | in_progress.
+    Same rule as session_outcome without an agent response: any status other than
+    in_progress is final (pass, blocked, fail, error are not re-run).
+    """
+    out = []
+    for s in wave_cfg.get("sessions") or []:
+        sid = s.get("session_id")
+        st, problem = read_status_file(os.path.join(status_dir, f"{sid}.json"))
+        reason = problem or ("in_progress" if session_outcome(None, st)["outcome"] == "in_progress" else None)
+        if reason:
+            out.append({"session_id": sid, "title": s.get("title", sid), "reason": reason})
+    return out
+
+
+def session_problem(session_id, outcome: str, conversation_id, wave, progress=None, continued: int = 0) -> str:
+    """Gate problem text for a session that is not complete: who, which conversation, what next.
+
+    continued: the continuation pass that ran the session last (0 = only the first run).
+    """
     conv = f"conversation {conversation_id}" if conversation_id else "conversation unknown"
     what = {
         "step_limit": "hit the Genie Code step limit",
         "in_progress": "stopped before finishing (status file still in_progress)",
         "missing": "wrote no status file",
     }.get(outcome, outcome)
+    if continued:
+        what += f" after continuation pass {continued}"
     nxt = ""
     if isinstance(progress, dict) and progress.get("next"):
         nxt = f"; next step: {progress['next']}"

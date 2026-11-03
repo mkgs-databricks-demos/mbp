@@ -165,3 +165,55 @@ def test_iteration_index_and_latest_attempt():
         {"index": None, "attempt_number": 0, "run_id": 5},
     ])
     assert {i: e["run_id"] for i, e in best.items()} == {0: 3, 1: 4}
+
+
+# --- Continuation passes ---------------------------------------------------------
+
+def test_incomplete_sessions_by_status(tmp_path):
+    d = tmp_path / "111"
+    d.mkdir()
+    statuses = {"p": "pass", "b": "blocked", "f": "fail", "e": "error", "i": "in_progress"}
+    for sid, st in statuses.items():
+        (d / f"{sid}.json").write_text(json.dumps({"session_id": sid, "status": st}))
+    (d / "bad.json").write_text("{not json")
+    (d / "lst.json").write_text("[]")  # valid JSON, not a status object
+    wave = {"sessions": [{"session_id": s, "title": f"T {s}"} for s in ["p", "b", "f", "e", "i", "bad", "lst"]]
+            + [{"session_id": "m"}]}  # no status file, no title
+    got = ss.incomplete_sessions(wave, str(d))
+    # Final statuses are never re-run; manifest order is kept; title defaults to the session id.
+    assert got == [
+        {"session_id": "i", "title": "T i", "reason": "in_progress"},
+        {"session_id": "bad", "title": "T bad", "reason": "unreadable"},
+        {"session_id": "lst", "title": "T lst", "reason": "unreadable"},
+        {"session_id": "m", "title": "m", "reason": "missing"},
+    ]
+
+
+def test_incomplete_sessions_missing_status_dir(tmp_path):
+    wave = {"sessions": [{"session_id": "a"}, {"session_id": "b"}]}
+    got = ss.incomplete_sessions(wave, str(tmp_path / "no-such-run"))
+    assert [g["reason"] for g in got] == ["missing", "missing"]
+    assert ss.incomplete_sessions({"sessions": []}, str(tmp_path)) == []
+
+
+def test_incomplete_matches_gate_outcome_without_response(tmp_path):
+    """The find task and the gate agree: incomplete == session_outcome not complete (no agent response)."""
+    d = tmp_path / "1"
+    d.mkdir()
+    for sid, st in {"a": "pass", "b": "in_progress", "c": "blocked"}.items():
+        (d / f"{sid}.json").write_text(json.dumps({"status": st}))
+    wave = {"sessions": [{"session_id": s} for s in "abcd"]}
+    incomplete = {g["session_id"] for g in ss.incomplete_sessions(wave, str(d))}
+    by_outcome = set()
+    for s in "abcd":
+        st, _ = ss.read_status_file(str(d / f"{s}.json"))
+        if ss.session_outcome(None, st)["outcome"] != "complete":
+            by_outcome.add(s)
+    assert incomplete == by_outcome == {"b", "d"}
+
+
+def test_session_problem_names_continuation_pass():
+    msg = ss.session_problem("36", "step_limit", "conv-2", "4-4", {"next": "run tests"}, continued=1)
+    assert "hit the Genie Code step limit after continuation pass 1" in msg
+    assert "conversation conv-2" in msg and "next step: run tests" in msg
+    assert "continuation pass" not in ss.session_problem("36", "missing", None, "4-4")
