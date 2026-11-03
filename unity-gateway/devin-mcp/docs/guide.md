@@ -114,6 +114,26 @@ Then run `devin` in a project folder and sign in with your Devin account. Update
 
 A laptop session is not an unattended monitor. Use a Devin automation for recurring work.
 
+## MCP-Created Sessions and Devin Desktop
+
+Devin Desktop (the renamed Windsurf editor) runs **Devin Local**, an agent on your machine, and can delegate work to **Devin Cloud** ([Introducing Devin Desktop](https://docs.devin.ai/desktop)). A session that Genie Code or an agent creates with `devin_session_create` is a Devin Cloud session, the same kind Desktop delegates. How the two meet:
+
+| Question | Answer |
+| --- | --- |
+| Same session store? | Yes. Session metadata records an `origin` (`api`, `webapp`, `desktop`, `cli`, `slack`, `automation` and others), and `devin_session_search` returns sessions started from Desktop alongside API and MCP sessions. MCP sessions show as `origin=api`. |
+| Whose list does an MCP session land in? | The identity behind the `cog_` key. A **personal access token** makes the session yours, so it sits in your session list with your web, Desktop and CLI sessions. An **organization service user key** attributes it to the service user. The REST API can reassign it with `create_as_user_id` (needs the `ImpersonateOrgSessions` permission) ([Authentication](https://docs.devin.ai/api-reference/authentication)), but the MCP tool has no such parameter. |
+| Can I open it from my machine? | For sessions you own, yes. `devin --cloud --resume` reopens any cloud session started from the CLI, the web app or Desktop ([Devin Cloud in the Devin CLI](https://docs.devin.ai/cli/cloud)). The docs don't say whether API-created sessions are included. Message, archive or terminate them from the web app or with `devin_session_interact`. |
+| Can it reach my laptop? | Only with approval. With **Local Hands**, a cloud session can ask to run commands and edit files on your computer. You approve each tool call: in Desktop, by clicking **Approve** on the request card; for a session open in the web app, by running `devin connect <CODE>` from the card ([Devin Cloud in the Devin CLI](https://docs.devin.ai/cli/cloud)). An unattended MCP session that asks for this waits until someone approves. |
+| Does Devin Local show up via MCP? | No. Devin Local conversations run on your machine and are shared through Desktop's conversation sharing, not the session API. Only cloud work (including Desktop's cloud delegation, `origin=desktop`) is visible to `devin_session_search`. |
+| Who gets notified? | The session owner, through Devin notifications (web, desktop, mobile) for sessions that need attention or finish. MCP callers outside Devin get no callbacks: `notify_on_response` only works for callers that are Devin sessions themselves, so external clients such as Genie Code must poll `devin_session_interact` (`get`) or wait with `devin_session_gather`. |
+
+What this means for an agent that starts Devin sessions from Databricks:
+
+* **Pick the key for the hand-off you want.** If a person should pick up escalations in Desktop, create sessions with that person's personal access token (personal use only) so the sessions land in their list and trigger their notifications. For a shared service, use a service user key and have people find the sessions by tag (`devin_session_search`, `tags`) in the web app.
+* **Tag every session** (for example with the build or workload name) so people and agents can find it from any surface.
+* **Keep unattended sessions off Local Hands.** Say in the prompt that the session must not ask for local access, because every request waits for a person.
+* **Admins control Desktop separately.** Enterprise admins manage whether Desktop can delegate to the cloud, plus its model allowlist, MCP allowlist or registry, and sandbox enforcement, under **Settings > Desktop** ([Devin settings](https://app.devin.ai/settings/desktop)). Unity Gateway services that Desktop or Devin Local calls must pass that MCP allowlist.
+
 ## Common Pitfalls
 
 * Using a legacy `apk_` key with the Devin MCP server: only the wiki tools work.
@@ -121,6 +141,9 @@ A laptop session is not an unattended monitor. Use a Devin automation for recurr
 * Storing Databricks credentials as organization secrets in a shared Devin organization.
 * Expecting Devin to push to a repository it can only clone (public repository, no GitHub App).
 * Leaving an automation's network policy unrestricted instead of adding just the workspace host.
+* Expecting MCP-created sessions to call back the caller: external MCP clients must poll.
+* Creating sessions with a service user key and expecting them in a person's Desktop session list.
+* Letting an unattended session request Local Hands, which waits for a person to approve each call.
 
 ## References
 
@@ -128,5 +151,9 @@ A laptop session is not an unattended monitor. Use a Devin automation for recurr
 * [DeepWiki MCP](https://docs.devin.ai/work-with-devin/deepwiki-mcp)
 * [Devin GitHub integration](https://docs.devin.ai/integrations/gh)
 * [Devin CLI quickstart](https://docs.devin.ai/cli)
+* [Devin Cloud in the Devin CLI](https://docs.devin.ai/cli/cloud)
+* [Hand off to cloud Devins](https://docs.devin.ai/cli/handoff)
+* [Introducing Devin Desktop](https://docs.devin.ai/desktop)
+* [Devin API authentication](https://docs.devin.ai/api-reference/authentication)
 * [Authorize service principal access with OAuth](https://docs.databricks.com/aws/en/dev-tools/auth/oauth-m2m/)
 * [Register external MCP servers in Unity Gateway](https://docs.databricks.com/aws/en/ai-gateway/register-mcp-service/)
