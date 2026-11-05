@@ -17,9 +17,9 @@ You are one of several Genie Code sessions running **in parallel** on the same p
 | `branch` | Feature branch (for `git`/`hybrid` workflows; may be empty for `workspace` mode) |
 | `build_root` | Absolute workspace path of the project |
 | `manifest_path` | Absolute path of `waves.json` |
-| `continuation` | Optional. Empty or `0` on the first run; `1`, `2`, ... when the job re-runs a session that stopped without a final status (see **Continuation passes** in step 1) |
+| `continuation` | `0` on the first run (empty from older build jobs means `0`); `1`, `2`, ... when the job re-runs a session that stopped without a final status (see **Continuation passes** in step 1) |
 
-If any required parameter is missing or still looks like a `{{placeholder}}`, stop and write a status file with `status: "error"` (step 7) if you can, then end.
+If any required parameter is missing or still looks like a `{{placeholder}}` (except `continuation`: treat an empty or unresolved value as `0`), stop and write a status file with `status: "error"` (step 7) if you can, then end.
 
 ## Guardrails (hard rules)
 
@@ -73,7 +73,7 @@ If the session is not found, stop with `status: "error"`. If its wave has `"arch
 **Continuation passes.** If `continuation` is `1` or more, an earlier run of your session in this job run stopped before writing a final status (usually at the Genie Code step limit), and the job started you again. Treat it as a retry with a head start:
 - Read your status file for this `run_id` first. Keep its `files_changed`, `assets_changed`, `checks`, `attempts` and `progress.done`; do not overwrite it with a fresh provisional file in step 4, and do not redo finished steps.
 - Start from `progress.next`. If the file is missing or has no `progress`, inspect your `owned_paths` / `owned_assets` and the latest session summary to work out what is left.
-- For `converge` sessions, continue the attempt count from the attempts already recorded; `max_attempts` covers all runs together.
+- For `converge` sessions, `max_attempts` covers all runs together. If `progress.attempt` is not null, that attempt was cut off: append it to `attempts` with `result: "interrupted"`, the files it touched (from `files_changed` minus earlier attempts' files) and what `progress.done` says it did, and count it. Continue at the next attempt number; stop with `status: "fail"` if none are left.
 - Steps are limited again in this run, so reach step 7 (final status) before anything optional. If you cannot finish, write `status: "in_progress"` with an accurate `progress.next` rather than nothing.
 
 ### 2. Check the branch (git/hybrid only)
@@ -98,9 +98,9 @@ If the session has `context_notes`, treat them as a hand-over from an interactiv
 
 ### 4. Do the work
 
-**Write a provisional status file first.** Before any work, write `build_root/<status_dir>/<run_id>/<session_id>.json` with `status: "in_progress"`, empty arrays for `files_changed`, `assets_changed`, `checks`, `assumptions`, `requests`, and a `progress` object: `{"done": [], "next": "<first step>", "attempt": null}`. This ensures the integrator can attribute files under your `owned_paths` to your session even if you run out of turns before writing the final status file (step 7).
+**Write a provisional status file first, unless one exists.** If a status file for this `run_id` already exists (retry or continuation, step 1), keep it: do not reset `files_changed`, `assets_changed`, `checks`, `attempts` or `progress`; update it in place from here on. Otherwise, before any work, write `build_root/<status_dir>/<run_id>/<session_id>.json` with `status: "in_progress"`, empty arrays for `files_changed`, `assets_changed`, `checks`, `assumptions`, `requests`, and a `progress` object: `{"done": [], "next": "<first step>", "attempt": null}`, and for `converge` sessions an empty `attempts` array. This ensures the integrator can attribute files under your `owned_paths` to your session even if you run out of turns before writing the final status file (step 7).
 
-**Record progress at milestones only.** Update the status file (including `files_changed` so far and `progress`) at these points and no others: the start and the end of each converge attempt (`attempt` = the attempt in flight, `null` between attempts), and after each major task in your plan for other modes. `done` lists the finished steps in a few words each; `next` is the next step a resumed session should take. Every write costs steps, and running out of steps is what this record is for, so do not update it after every small step. Replace it with the final version in step 7 (keep `progress` there; `next` empty when finished).
+**Record progress at milestones only.** Update the status file (including `files_changed` so far and `progress`) at these points and no others: the start and the end of each converge attempt (`attempt` = the attempt in flight, `null` between attempts), and after each major task in your plan for other modes. At the end of each converge attempt, also append that attempt to `attempts` (step 6 fields), so a resumed session can count it and the gate can match its files. `done` lists the finished steps in a few words each; `next` is the next step a resumed session should take. Every write costs steps, and running out of steps is what this record is for, so do not update it after every small step. Replace it with the final version in step 7 (keep `progress` there; `next` empty when finished).
 
 Based on your `session_mode`:
 
@@ -137,7 +137,7 @@ Based on your `session_mode`:
    - Root cause inside your `owned_paths`: fix it (all errors you can see, not one at a time), then go to the next attempt.
    - Root cause outside your `owned_paths` (another bundle, a missing secret, infra, permissions): do not work around it. Record a `request` and stop with `status: "blocked"`.
    - Same errors two attempts in a row with no progress: stop with `status: "fail"`.
-6. **Record** each attempt in `attempts` (status file, step 7): deployment/run/update id, classification, the distinct errors (short, de-duplicated), the fix applied and the files touched.
+6. **Record** each attempt in `attempts` (written at the end of the attempt, see milestones above, and kept in step 7): deployment/run/update id, classification, the distinct errors (short, de-duplicated), the fix applied and the files touched.
 
 Stop early if fewer than ~15 minutes remain before the task timeout, so you still write the summary and status file.
 
@@ -176,7 +176,7 @@ Path: `build_root/<status_dir>/<run_id>/<session_id>.json`. Exactly this shape:
   "assumptions": [],
   "requests": [{"path": "package.json", "change": "add dependency x@1.2", "why": ""}],
   "suppressions": [{"path": "tsconfig.server.json", "kind": "compile-exclude | ts-ignore | lint-disable | test-skip | catch-swallow | feature-flag | other", "why": ""}],
-  "attempts": [{"n": 1, "target": "app", "deployment_id": "", "result": "deploy_failed | build_failed | crashed | unhealthy | stable", "errors": ["server/x.ts(12,3): TS2345 ..."], "fix": "", "files_changed": []}],
+  "attempts": [{"n": 1, "target": "app", "deployment_id": "", "result": "deploy_failed | build_failed | crashed | unhealthy | stable | interrupted", "errors": ["server/x.ts(12,3): TS2345 ..."], "fix": "", "files_changed": []}],
   "runtime": {"app": {"deployment_id": "", "state": "RUNNING"}},
   "progress": {"done": ["migrations written", "attempt 1 deployed"], "next": "", "attempt": null},
   "blocking": ""

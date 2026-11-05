@@ -8,7 +8,7 @@ Archived waves (`"archived": true`) are earlier builds kept in the manifest as
 history. They are validated (ids, duplicate session ids, runtime target references)
 but generate no job tasks, and their sessions count as already done for `depends_on`.
 
-Continuation passes (`"continuation_passes"`, default 1, 0 turns them off, max 3). A
+Continuation passes (`"continuation_passes"`, top level or per wave, default 1, 0 turns them off, max 3). A
 session that stops at the Genie Code step limit still ends its for_each iteration SUCCESS,
 and a repair cannot re-run a SUCCESS iteration. After the sessions, each pass k runs
 w<w>_find_incomplete[k] (notebook: sessions with no final status) -> w<w>_has_incomplete[k]
@@ -28,6 +28,13 @@ DEFAULT_TIMEOUT_MIN = {"edit": 60, "execute": 60, "configure": 60, "converge": 1
 DEFAULT_CONTINUATION_PASSES = 1
 MAX_CONTINUATION_PASSES = 3
 FIND_INCOMPLETE_TIMEOUT_MIN = 10
+MAX_JOB_TASKS = 1000  # Lakeflow Jobs limit per job
+
+# genie_task.parameters of the runner / integrator automations. The setup notebook puts a
+# {{param}} placeholder for each one in the automation prompt; a parameter missing here never
+# reaches the agent (tests check every generated parameter is listed).
+RUNNER_PARAMS = ["session_id", "wave", "run_id", "branch", "build_root", "manifest_path", "continuation"]
+INTEGRATOR_PARAMS = ["wave", "run_id", "branch", "build_root", "manifest_path"]
 
 # Task keys allow letters, digits, '_' and '-' (max 100 chars). Wave ids become the
 # task prefix w<wave_id>, e.g. wave "4-1" -> w4-1_sessions.
@@ -77,12 +84,38 @@ def unmet_dependencies(m: dict, session: dict) -> list[str]:
     return [d for d in session.get("depends_on") or [] if d not in done]
 
 
-def continuation_passes(m: dict) -> int:
-    """Continuation passes per wave (manifest "continuation_passes"; validate_manifest rejects bad values)."""
+def _valid_passes(v) -> bool:
+    return not isinstance(v, bool) and isinstance(v, int) and 0 <= v <= MAX_CONTINUATION_PASSES
+
+
+def continuation_passes(m: dict, wave_cfg: dict | None = None) -> int:
+    """Continuation passes for a wave: the wave's "continuation_passes", else the manifest's, else 1.
+
+    validate_manifest rejects bad values; here an invalid value falls back to the next level.
+    """
+    if wave_cfg is not None and _valid_passes(wave_cfg.get("continuation_passes")):
+        return wave_cfg["continuation_passes"]
     v = m.get("continuation_passes", DEFAULT_CONTINUATION_PASSES)
-    if isinstance(v, bool) or not isinstance(v, int) or not 0 <= v <= MAX_CONTINUATION_PASSES:
-        return DEFAULT_CONTINUATION_PASSES
-    return v
+    return v if _valid_passes(v) else DEFAULT_CONTINUATION_PASSES
+
+
+def passes_in_run(prefix: str, task_keys) -> int:
+    """Continuation passes the job actually has for wave prefix w<wave_id> (from its task keys).
+
+    The gate uses this instead of the live manifest, so a manifest edited after setup does not
+    change how the run's iterations are read.
+    """
+    keys = set(task_keys or [])
+    k = 0
+    while k < MAX_CONTINUATION_PASSES and continuation_keys(prefix, k + 1)["continue"] in keys:
+        k += 1
+    return k
+
+
+def job_task_count(m: dict) -> int:
+    """Tasks generate_wave_tasks makes: 4 + 3 per continuation pass per runnable wave, + build_verdict."""
+    waves = runnable_waves(m)
+    return sum(4 + 3 * continuation_passes(m, wv) for wv in waves) + (1 if waves else 0)
 
 
 def continuation_keys(prefix: str, k: int) -> dict:
@@ -106,7 +139,7 @@ def manifest_summary(m: dict) -> str:
     n_sessions = sum(len(wv.get("sessions") or []) for wv in waves)
     return (f"Manifest OK: {len(waves)} waves ({n_arch} archived, {len(waves) - n_arch} runnable), "
             f"{n_sessions} sessions, {len(m.get('runtime_targets') or {})} runtime targets, "
-            f"{continuation_passes(m)} continuation pass(es) per wave")
+            f"{continuation_passes(m)} continuation pass(es) per wave, {job_task_count(m)} job tasks")
 
 
 # --- Validation ----------------------------------------------------------------
@@ -212,9 +245,17 @@ def validate_manifest(m: dict) -> tuple[list[str], list[str]]:
     _validate_targets(m, targets, errors, warnings)
 
     cp = m.get("continuation_passes")
-    if cp is not None and (isinstance(cp, bool) or not isinstance(cp, int)
-                           or not 0 <= cp <= MAX_CONTINUATION_PASSES):
+    if cp is not None and not _valid_passes(cp):
         errors.append(f"continuation_passes must be an integer from 0 to {MAX_CONTINUATION_PASSES} (got {cp!r})")
+    for wv in m.get("waves") or []:
+        wcp = wv.get("continuation_passes")
+        if wcp is not None and not _valid_passes(wcp):
+            errors.append(f"wave {wv.get('wave_id')}: continuation_passes must be an integer from 0 to "
+                          f"{MAX_CONTINUATION_PASSES} (got {wcp!r})")
+    n_tasks = job_task_count(m)
+    if n_tasks > MAX_JOB_TASKS:
+        errors.append(f"the build job would have {n_tasks} tasks; Lakeflow Jobs allows {MAX_JOB_TASKS}. "
+                      f"Archive finished waves or lower continuation_passes")
 
     waves = m.get("waves") or []
     if not waves:
@@ -445,7 +486,6 @@ def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: st
     incomplete, every continue task is Excluded and the integrator still runs.
     """
     retries = genie_task_retries(m) if retries is None else retries
-    passes = continuation_passes(m)
     find_path = find_incomplete_path or find_incomplete_notebook_path(gate_notebook_path)
     tasks = []
     prev_gate_key = None
@@ -454,6 +494,7 @@ def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: st
         wid = wave_cfg["wave_id"]
         prefix = f"w{wid}"
         sessions = wave_cfg["sessions"]
+        passes = continuation_passes(m, wave_cfg)
         deploying = any(s.get("mode") == "converge" or s.get("allow_deploy") for s in sessions)
         # Rule 7: deploys are single-writer (validate_manifest already enforces one session)
         concurrency = 1 if deploying else wave_cfg.get("concurrency", len(sessions))
@@ -472,7 +513,8 @@ def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: st
             {"session_id": s["session_id"], "title": s.get("title", s["session_id"])}
             for s in sessions
         ])
-        session_params = {**common, "wave": wid, "session_id": "{{input.session_id}}"}
+        # continuation "0" on the first run: every RUNNER_PARAMS placeholder must get a value.
+        session_params = {**common, "wave": wid, "session_id": "{{input.session_id}}", "continuation": "0"}
 
         inner_task = make_genie_task(
             task_key=f"{prefix}_session",

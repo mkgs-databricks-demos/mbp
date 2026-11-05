@@ -42,7 +42,7 @@ The manifest supports three workflow modes that control how sessions operate and
 | `context_files` | string[] | No | Extra files (relative to `build_root`) for sessions to read before working. Project memory, coding standards, architecture docs, data dictionaries, model cards. |
 | `skills` | object | No | Overrides for skill locations. See Skills section. |
 | `task_retries` | object | No | Automatic retries for Genie Code tasks (sessions and integrators), for transient agent start-up errors such as `INTERNAL_ERROR: start_agent_run`. Keys: `max_retries` (default `2`; `0` disables), `min_retry_interval_seconds` (default `60`). Timeouts are never retried. Gate notebooks are not retried. |
-| `continuation_passes` | integer | No | How many times the job re-runs, in the same build run, sessions that stopped without a final status (status file missing, unreadable or still `in_progress`, usually the Genie Code step limit). `0`-`3`, default `1`; `0` turns continuation off. See Continuation Passes. |
+| `continuation_passes` | integer | No | How many times the job re-runs, in the same build run, sessions that stopped without a final status (status file missing, unreadable, or a status other than `pass`, `fail`, `blocked`, `error`; usually the Genie Code step limit). `0`-`3`, default `1`; `0` turns continuation off. A wave can override it. Each pass adds 3 tasks per wave; setup fails if the job would exceed the Lakeflow Jobs limit of 1,000 tasks. See Continuation Passes. |
 | `runtime_targets` | map<string, RuntimeTarget> | No | Deployable things (apps, jobs, pipelines, dashboards, Genie spaces) that `converge` sessions deploy and `runtime_gate` checks. Keyed by a short target name. See RuntimeTarget. |
 | `probe_auth` | ProbeAuth | No | Default service principal for app `probes` (a target's own `probe_auth` overrides it). See Probe Object. |
 | `waves` | Wave[] | Yes | Ordered list of waves. Executed sequentially; sessions within a wave run in parallel. |
@@ -53,7 +53,7 @@ A Genie Code session that runs out of steps still ends its `for_each` iteration 
 
 | Task | Type | Does |
 |---|---|---|
-| `w<wave_id>_find_incomplete[k]` | notebook (`find_incomplete_sessions`), run_if ALL_DONE | Lists sessions whose status file is missing, unreadable or `in_progress`; sets task values `incomplete` and `has_incomplete` |
+| `w<wave_id>_find_incomplete[k]` | notebook (`find_incomplete_sessions`), run_if ALL_DONE | Lists sessions whose status file is missing, unreadable (bad JSON or not an object) or has no final status; sets task values `incomplete` and `has_incomplete` |
 | `w<wave_id>_has_incomplete[k]` | If/else | `has_incomplete == "true"` |
 | `w<wave_id>_continue[k]` | for_each over `incomplete` | Runs the session runner again with `continuation=k`; it resumes from `progress.next` in its status file |
 
@@ -68,6 +68,7 @@ The integrator depends on the last pass (run_if ALL_DONE), so it still runs when
 | `archived` | boolean | No | `true` = an earlier build's wave, kept as history. Validated (ids, duplicate session ids, modes, runtime target references) but gets **no** job tasks, skips the single-writer rule, and its sessions count as done for `depends_on`. Default `false`. See Archived waves. |
 | `build` | string | No | Informational build label (e.g. `"4"`; an integer is accepted too). Not used by the runtime. |
 | `concurrency` | integer | No | Max parallel sessions. Defaults to the number of sessions. |
+| `continuation_passes` | integer | No | Overrides the top-level `continuation_passes` for this wave (`0`-`3`). |
 | `manual_prereqs` | ManualPrereq[] | No | Sessions that must be done outside Genie Code before this wave runs. |
 | `gate` | string[] | Yes | List of checks the integrator runs after all sessions finish. Plain text descriptions; the integrator interprets them. |
 | `runtime_gate` | string[] | No | Names of `runtime_targets` the **gate notebook** checks deterministically after the integrator commits (deployment succeeded in this run, running, soak-stable, clean logs). Required on any wave with a `converge` session. A failing runtime gate fails the wave regardless of what the Genie Code tasks reported. |

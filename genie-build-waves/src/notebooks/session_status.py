@@ -18,9 +18,12 @@ Session outcome. A Genie Code session that stops at the step limit still ends it
 iteration SUCCESS. session_outcome combines the iteration's agent response (jobs/runs/get-output)
 with the status file, so the gate can name the session, its conversation and the next step.
 
-Continuation passes. incomplete_sessions lists the sessions of a wave whose status file is
-missing, unreadable or still in_progress. The build job re-runs them (runner continuation=k)
-before the integrator; blocked / fail / error are final and never re-run.
+Continuation passes. incomplete_sessions lists the sessions of a wave with no final status
+(FINAL_STATUSES): status file missing, unreadable (bad JSON or not an object) or any other
+status. The build job re-runs them (runner continuation=k) before the integrator. The gate
+uses the same session_outcome, so the find task and the gate cannot disagree. map_iterations
+matches a for_each task's iterations to sessions and drops iterations kept from an earlier
+attempt (repair), whose index no longer matches the current input list.
 
 Plain Python (no Spark / dbutils imports), so the tests can import it directly.
 """
@@ -156,17 +159,23 @@ def is_step_limit(response) -> bool:
     return STEP_LIMIT_TEXT in str(response or "").lower()
 
 
-def session_outcome(response, status) -> dict:
-    """{"outcome": complete | step_limit | in_progress | missing, "warning": str | None}.
+FINAL_STATUSES = frozenset({"pass", "fail", "blocked", "error"})
+
+
+def session_outcome(response, status, unreadable: bool = False) -> dict:
+    """{"outcome": complete | step_limit | in_progress | unreadable | missing, "warning": str | None}.
 
     response: the iteration's agent response text (None when unknown).
-    status: the parsed status file, or None when it does not exist.
-    A final status (anything but in_progress) is complete: the final status write is the
-    session's last step, so a step limit after it gets a warning but changes nothing.
+    status: the parsed status file, or None when it does not exist or cannot be read.
+    unreadable: True when the file exists but is not valid JSON (read_status_file).
+    Only FINAL_STATUSES are complete; any other value (in_progress, null, a typo) is not.
+    The final status write is the session's last step, so a step limit after it gets a
+    warning but changes nothing.
     """
     hit = is_step_limit(response)
-    st = (status or {}).get("status") if status is not None else None
-    if status is not None and st != "in_progress":
+    if unreadable or (status is not None and not isinstance(status, dict)):
+        return {"outcome": "unreadable", "warning": None}
+    if status is not None and status.get("status") in FINAL_STATUSES:
         warn = "hit the step limit after writing its final status" if hit else None
         return {"outcome": "complete", "warning": warn}
     if hit:
@@ -189,17 +198,17 @@ def read_status_file(path):
 def incomplete_sessions(wave_cfg: dict, status_dir: str) -> list[dict]:
     """Sessions with no final status in status_dir, in manifest order.
 
-    Returns [{"session_id", "title", "reason"}], reason = missing | unreadable | in_progress.
-    Same rule as session_outcome without an agent response: any status other than
-    in_progress is final (pass, blocked, fail, error are not re-run).
+    Returns [{"session_id", "title", "reason"}], reason = missing | unreadable | in_progress
+    (in_progress = any status outside FINAL_STATUSES). This is session_outcome without an
+    agent response, so it matches the gate. pass / fail / blocked / error are not re-run.
     """
     out = []
     for s in wave_cfg.get("sessions") or []:
         sid = s.get("session_id")
         st, problem = read_status_file(os.path.join(status_dir, f"{sid}.json"))
-        reason = problem or ("in_progress" if session_outcome(None, st)["outcome"] == "in_progress" else None)
-        if reason:
-            out.append({"session_id": sid, "title": s.get("title", sid), "reason": reason})
+        oc = session_outcome(None, st, unreadable=problem == "unreadable")["outcome"]
+        if oc != "complete":
+            out.append({"session_id": sid, "title": s.get("title", sid), "reason": oc})
     return out
 
 
@@ -211,8 +220,9 @@ def session_problem(session_id, outcome: str, conversation_id, wave, progress=No
     conv = f"conversation {conversation_id}" if conversation_id else "conversation unknown"
     what = {
         "step_limit": "hit the Genie Code step limit",
-        "in_progress": "stopped before finishing (status file still in_progress)",
+        "in_progress": "stopped before finishing (status file has no final status)",
         "missing": "wrote no status file",
+        "unreadable": "wrote a status file that is not a readable JSON object",
     }.get(outcome, outcome)
     if continued:
         what += f" after continuation pass {continued}"
@@ -245,3 +255,66 @@ def latest_by_index(entries) -> dict:
         if i not in best or int(e.get("attempt_number") or 0) >= int(best[i].get("attempt_number") or 0):
             best[i] = e
     return best
+
+
+SKIPPED_RESULTS = frozenset({"EXCLUDED", "SKIPPED"})
+
+
+def latest_task_attempt(run_tasks, key):
+    """The latest attempt of task key in a runs/get task list that actually ran (None if none did).
+
+    A repair can leave a later Excluded attempt; reading it would drop the earlier iterations.
+    """
+    ran = [t for t in run_tasks or [] if t.get("task_key") == key
+           and ((t.get("state") or {}).get("result_state") not in SKIPPED_RESULTS)]
+    if not ran:
+        return None
+    return max(ran, key=lambda t: (int(t.get("attempt_number") or 0), int(t.get("start_time") or 0)))
+
+
+def parse_inputs(raw):
+    """A for_each task's inputs as a list, or None (e.g. an unresolved {{tasks...}} reference)."""
+    if isinstance(raw, list):
+        return raw
+    if not isinstance(raw, str):
+        return None
+    try:
+        v = json.loads(raw)
+    except ValueError:
+        return None
+    return v if isinstance(v, list) else None
+
+
+def map_iterations(inputs, entries, not_before=None):
+    """({session_id: entry}, [warning]) for a for_each task's iterations.
+
+    inputs: the input list the iterations ran on (iteration #i ran inputs[i]).
+    entries: dicts with index, attempt_number, start_time (ms) and anything else.
+    not_before: ms timestamp the input list was computed at (the find task's start). An iteration
+    that started earlier was kept from an earlier attempt of the for_each (a repair keeps
+    SUCCESS iterations), so its index may point at a different session: it is dropped.
+    """
+    warnings = []
+    inputs = inputs if isinstance(inputs, list) else []
+    fresh, stale = [], 0
+    for e in entries or []:
+        st = e.get("start_time")
+        if not_before and st and int(st) < int(not_before):
+            stale += 1
+            continue
+        fresh.append(e)
+    if stale:
+        warnings.append(f"{stale} iteration(s) started before their input list was computed "
+                        f"(kept from an earlier attempt); not matched to a session")
+    if fresh and not inputs:
+        warnings.append(f"{len(fresh)} iteration(s) ran but their input list could not be read; "
+                        f"not matched to a session")
+        return {}, warnings
+    out = {}
+    for i, e in sorted(latest_by_index(fresh).items()):
+        item = inputs[i] if 0 <= i < len(inputs) else None
+        if isinstance(item, dict) and item.get("session_id") is not None:
+            out[str(item["session_id"])] = e
+        else:
+            warnings.append(f"iteration #{i} has no matching input; not matched to a session")
+    return out, warnings
