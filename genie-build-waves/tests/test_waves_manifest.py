@@ -117,7 +117,7 @@ def test_first_and_last_runnable_wave():
 def test_summary_line():
     assert wm.manifest_summary(_manifest()) == (
         "Manifest OK: 2 waves (1 archived, 1 runnable), 4 sessions, 1 runtime targets, "
-        "1 continuation pass(es) per wave, 8 job tasks")
+        "continuation passes: 1 per wave, 8 job tasks")
 
 
 def test_archived_wave_keeps_id_and_target_checks():
@@ -294,7 +294,7 @@ def test_more_than_100_tasks_from_runnable_waves():
     assert len(tasks[-1]["depends_on"]) == 30
     assert "depends_on" not in tasks[0]
     assert wm.manifest_summary(m) == ("Manifest OK: 52 waves (22 archived, 30 runnable), 52 sessions, "
-                                      "0 runtime targets, 1 continuation pass(es) per wave, 211 job tasks")
+                                      "0 runtime targets, continuation passes: 1 per wave, 211 job tasks")
 
 
 # --- continuation passes -----------------------------------------------------------
@@ -341,7 +341,7 @@ def test_continuation_passes_zero_is_the_previous_graph():
     tasks = wm.generate_wave_tasks(m, CFG, GATE)
     assert [t["task_key"] for t in tasks] == BASE_KEYS
     assert _deps(_by_key(tasks)["w2-0_integrate"]) == ["w2-0_sessions"]
-    assert wm.manifest_summary(m).endswith("0 continuation pass(es) per wave, 5 job tasks")
+    assert wm.manifest_summary(m).endswith("continuation passes: 0 per wave, 5 job tasks")
 
 
 def test_three_passes_chain_through_find_tasks():
@@ -441,6 +441,8 @@ def test_wave_level_continuation_passes_override():
     assert wm.passes_in_run("w2-2", keys) == 3
     assert _deps(_by_key(tasks)["w2-1_integrate"]) == ["w2-1_sessions"]
     assert len(tasks) == wm.job_task_count(m) == (4 + 6) + 4 + (4 + 9) + 1
+    assert wm.manifest_summary(m).endswith(
+        "continuation passes: default 2 (wave 2-1: 0, wave 2-2: 3), 28 job tasks")
 
 
 @pytest.mark.parametrize("value", [4, -1, True, "1"])

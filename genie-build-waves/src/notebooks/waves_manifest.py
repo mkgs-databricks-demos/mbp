@@ -139,7 +139,15 @@ def manifest_summary(m: dict) -> str:
     n_sessions = sum(len(wv.get("sessions") or []) for wv in waves)
     return (f"Manifest OK: {len(waves)} waves ({n_arch} archived, {len(waves) - n_arch} runnable), "
             f"{n_sessions} sessions, {len(m.get('runtime_targets') or {})} runtime targets, "
-            f"{continuation_passes(m)} continuation pass(es) per wave, {job_task_count(m)} job tasks")
+            f"continuation passes: {_passes_label(m)}, {job_task_count(m)} job tasks")
+
+
+def _passes_label(m: dict) -> str:
+    """'1 per wave', or 'default 2 (wave 3: 0)' when waves override the top-level value."""
+    default = continuation_passes(m)
+    overrides = [f"wave {wv.get('wave_id')}: {continuation_passes(m, wv)}" for wv in runnable_waves(m)
+                 if continuation_passes(m, wv) != default]
+    return f"default {default} ({', '.join(overrides)})" if overrides else f"{default} per wave"
 
 
 # --- Validation ----------------------------------------------------------------

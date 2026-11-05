@@ -241,6 +241,16 @@ def test_incomplete_sessions_unknown_status_is_continued(tmp_path):
     assert [(g["session_id"], g["reason"]) for g in got] == [("a", "in_progress"), ("b", "in_progress")]
 
 
+def test_incomplete_sessions_unreadable_files(tmp_path):
+    d = tmp_path / "1"
+    d.mkdir()
+    (d / "a.json").write_text("[]")
+    (d / "b.json").write_text("{not json")
+    (d / "c.json").write_text('"pass"')
+    got = ss.incomplete_sessions({"sessions": [{"session_id": x} for x in "abc"]}, str(d))
+    assert [(g["session_id"], g["reason"]) for g in got] == [("a", "unreadable"), ("b", "unreadable"), ("c", "unreadable")]
+
+
 def test_read_status_file(tmp_path):
     assert ss.read_status_file(str(tmp_path / "none.json")) == (None, "missing")
     (tmp_path / "bad.json").write_text("{")
