@@ -30,13 +30,20 @@ Never grant `CAN_MANAGE` or `IS_OWNER`: setup (`jobs/reset`), deploys and permis
 * Authenticate with **OAuth machine-to-machine** (client ID + OAuth secret): [Authorize service principal access with OAuth](https://docs.databricks.com/aws/en/dev-tools/auth/oauth-m2m/). The CLI and SDKs pick it up from `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID` and `DATABRICKS_CLIENT_SECRET` ([unified authentication](https://docs.databricks.com/aws/en/dev-tools/auth/index/)) and exchange it for short-lived tokens.
 * Do not use personal access tokens. If Devin later documents an OIDC token issuer for its sessions, prefer workload identity federation (no stored secret) over the OAuth secret.
 * Set an expiry on the OAuth secret and record the rotation date with the instance's other secrets.
+* **Scope the OAuth secret** to `jobs` and `workspace` only ([Scoped OAuth secrets](https://docs.databricks.com/aws/en/dev-tools/auth/oauth-m2m/), [API scopes](https://docs.databricks.com/api/workspace/scopes)). A secret created without scopes gets `all-apis`. Scopes are fixed when the secret is generated; to change them, generate a new secret.
+  * `jobs`: `jobs get`, `list-runs`, `get-run`, `get-run-output` and, at level 2, `repair-run` / `run-now`.
+  * `workspace`: `workspace export` of the files under `build_root`.
+  * `databricks current-user me` (acceptance check 1) works with any scoped token.
+  * Do not add `authentication` (a secret with it can mint tokens with any scope), `sql` or `unity-catalog` (the gate notebook does the UC reads).
+  * Level 1 and level 2 use the same scopes; only the job permission changes.
+* Scopes are coarse: `jobs` also covers create, update, delete and cancel, and `workspace` covers import and delete. The object grants below are what keep the monitor read-only (level 1) or limited to runs (level 2); keep both layers.
 
 ### Grants
 
 | Object | Grant | Why |
 |---|---|---|
-| Build job | `CAN_VIEW` (level 1) or `CAN_MANAGE_RUN` (level 2) | `jobs get`, `get-run`, `get-run-output`; repairs |
-| `build_root` folder | `CAN_READ` | `<status_dir>/<run_id>/*.json` (gate, gate result, runtime, session status files), `docs/sessions/` summaries, the manifest |
+| Build job | `CAN_VIEW` (level 1) or `CAN_MANAGE_RUN` (level 2); secret scope `jobs` | `jobs get`, `get-run`, `get-run-output`; repairs |
+| `build_root` folder | `CAN_READ`; secret scope `workspace` | `<status_dir>/<run_id>/*.json` (gate, gate result, runtime, session status files), `docs/sessions/` summaries, the manifest |
 | Setup and smoke jobs | none (optionally `CAN_VIEW`) | Devin never runs setup |
 | Unity Catalog | none | The gate notebook does the UC reads; Devin only reads its results |
 
@@ -115,8 +122,9 @@ Limit level 2 to one automatic repair per wave per run; after that, escalate.
 1. From a Devin session: `databricks current-user me` returns the monitor principal.
 2. `jobs get <build_job_id>` succeeds; `jobs get` on a job not shared with the principal (or its groups) is denied.
 3. Exporting a status file under `build_root` succeeds; exporting a folder not shared with the principal is denied.
-4. Level 2 only: a repair of a finished smoke run succeeds and runs as the job's `run_as`.
-5. A test notification (or one scheduled tick) produces one report and no duplicate sessions.
+4. A call outside the secret's scopes (for example `databricks catalogs list`) is rejected, which shows the secret is scoped and not `all-apis`.
+5. Level 2 only: a repair of a finished smoke run succeeds and runs as the job's `run_as`.
+6. A test notification (or one scheduled tick) produces one report and no duplicate sessions.
 
 ## Open questions
 
