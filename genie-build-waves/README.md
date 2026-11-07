@@ -234,7 +234,7 @@ Or choose **Run now** on the build job in the Jobs UI. `branch` defaults to `bui
 4. Fix the cause (plan, manifest, or code), then repair the run (below).
 5. `requests` in the gate file list changes a session needed outside its owned paths. Apply them before repairing.
 
-Note: downstream waves show as **Excluded** (not failed). This is the correct cascade behavior — they never ran and consumed no compute. `build_verdict` still runs (Excluded dependencies count as done) and fails the run.
+Note: downstream waves show as **Excluded** (not failed). This is the correct cascade behavior — they never ran and consumed no compute. `build_verdict` still runs (Excluded dependencies count as done) and fails the run. Waves whose tasks are disabled in the job (for example waves finished in an earlier run) end **Disabled**; `build_verdict` ignores them like Excluded waves and lists them as skipped in its message.
 
 **Fixes outside every session's paths.** If you (or a planner session) fix something outside every session's `owned_paths` before repairing (manifest, shared config, a plan file), commit it to the build branch yourself first; otherwise the integrator correctly reports it as a stray and fails the wave again.
 

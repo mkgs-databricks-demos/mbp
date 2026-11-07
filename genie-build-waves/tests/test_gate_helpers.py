@@ -67,6 +67,25 @@ def test_verdict_only_subset_and_api_fallback():
     assert [e["result"] for e in v["waves"]] == ["fail", "no_result"]
 
 
+def test_verdict_ignores_disabled_waves():
+    # Waves done in an earlier run are disabled in the job: their gate task ends DISABLED.
+    # A stale result file from an older attempt must not count either.
+    states = {"w1_gate": "DISABLED", "w2_gate": "DISABLED", "w3_gate": "SUCCESS", "w4_gate": "EXCLUDED"}
+    results = {"1": {"status": "fail", "problems": ["old"]}, "3": {"status": "pass"}}
+    v = gh.build_verdict(["1", "2", "3", "4"], states, results)
+    assert v["passed"] and v["failed"] == [] and v["checked"] == 1
+    assert [e["result"] for e in v["waves"]] == ["disabled", "disabled", "pass", "excluded"]
+    assert v["disabled"] == ["1", "2"]
+    assert gh.verdict_message(v) == "BUILD_PASSED: 1 wave gate(s) passed (2 disabled wave(s) skipped: 1, 2)"
+    # A real failure after disabled waves still fails the run, and names only that wave.
+    v = gh.build_verdict(["1", "2"], {"w1_gate": "DISABLED", "w2_gate": "SUCCESS"},
+                         {"2": {"status": "fail", "problems": ["p"]}})
+    assert not v["passed"] and v["failed"] == ["2"]
+    msg = gh.verdict_message(v)
+    assert msg.startswith("BUILD_FAILED: 1 wave gate(s) failed: 2 (1 disabled wave(s) skipped: 1)")
+    assert "repair from w2_integrate" in msg
+
+
 # --- required checks -----------------------------------------------------------------------
 
 def test_required_checks():

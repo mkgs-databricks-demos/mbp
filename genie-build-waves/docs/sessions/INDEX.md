@@ -1,5 +1,11 @@
 # Session Summaries — genie-build-waves
 
+## 2026-11-07
+
+| Session | Summary |
+|---|---|
+| [verdict-skips-disabled-waves](2026-11-07_verdict-skips-disabled-waves.md) | `build_verdict` ignores gate tasks that end `DISABLED` (waves disabled in the job after an earlier run) like `EXCLUDED`, and lists them as skipped in the message. AgenticTrading run C went from 9 failed gates (5-0..5-7 disabled + 5-10) to 1 (5-10). New test; 137 pass. No redeploy needed. |
+
 ## 2026-10-26
 
 | Session | Summary |

@@ -42,6 +42,11 @@ def gate_failure_message(wave, problems, limit: int = 20) -> str:
 
 VERDICT_TASK_KEY = "build_verdict"
 
+# Gate task result states that mean "this wave did not run in this run", not "its gate failed":
+# EXCLUDED (an earlier gate_check was false) and DISABLED (the task is disabled in the job, e.g.
+# waves already done in an earlier run). Both are ignored by the verdict.
+SKIPPED_GATE_STATES = {"EXCLUDED": "excluded", "DISABLED": "disabled"}
+
 
 def latest_task_states(run_tasks) -> dict:
     """{task_key: result_state} from jobs/runs/get `tasks`, keeping the latest attempt of each task.
@@ -68,8 +73,10 @@ def build_verdict(wave_ids, task_states, results) -> dict:
     results: {wave_id: gate result dict (wave_<w>_gate_result.json) or None}.
 
     Per wave: gate task not in this run (`only` subset) -> not_in_run; EXCLUDED (an earlier wave
-    failed) -> excluded; SUCCESS -> the result file decides (missing file = fail); any other
-    state (FAILED, TIMEDOUT, UPSTREAM_FAILED, CANCELED, ...) -> fail.
+    failed) -> excluded; DISABLED (task disabled in the job) -> disabled; SUCCESS -> the result
+    file decides (missing file = fail); any other state (FAILED, TIMEDOUT, UPSTREAM_FAILED,
+    CANCELED, ...) -> fail. Excluded and disabled waves are ignored, even if an older result file
+    exists, because their gate did not run in this run.
     """
     waves, failed = [], []
     for wid in wave_ids:
@@ -82,8 +89,8 @@ def build_verdict(wave_ids, task_states, results) -> dict:
             entry["task_state"] = state
             if state is None:
                 entry["result"] = "not_in_run"
-            elif state == "EXCLUDED":
-                entry["result"] = "excluded"
+            elif state in SKIPPED_GATE_STATES:
+                entry["result"] = SKIPPED_GATE_STATES[state]
             elif state != "SUCCESS":
                 entry.update(result="fail", problems=[f"gate task ended {state} (the gate notebook did not finish)"])
             elif res is None:
@@ -101,14 +108,17 @@ def build_verdict(wave_ids, task_states, results) -> dict:
         waves.append(entry)
     checked = [e for e in waves if e["result"] in ("pass", "fail")]
     return {"passed": not failed, "waves": waves, "failed": [e["wave"] for e in failed],
-            "checked": len(checked), "api_used": task_states is not None}
+            "checked": len(checked), "api_used": task_states is not None,
+            "disabled": [e["wave"] for e in waves if e["result"] == "disabled"]}
 
 
 def verdict_message(verdict: dict, per_wave: int = 5) -> str:
     """BUILD_FAILED / BUILD_PASSED summary with the first problems of each failed wave and the repair step."""
+    disabled = verdict.get("disabled") or []
+    skipped = f" ({len(disabled)} disabled wave(s) skipped: {', '.join(disabled)})" if disabled else ""
     if verdict["passed"]:
-        return f"BUILD_PASSED: {verdict['checked']} wave gate(s) passed"
-    lines = [f"BUILD_FAILED: {len(verdict['failed'])} wave gate(s) failed: {', '.join(verdict['failed'])}"]
+        return f"BUILD_PASSED: {verdict['checked']} wave gate(s) passed{skipped}"
+    lines = [f"BUILD_FAILED: {len(verdict['failed'])} wave gate(s) failed: {', '.join(verdict['failed'])}{skipped}"]
     for e in verdict["waves"]:
         if e["result"] != "fail":
             continue
