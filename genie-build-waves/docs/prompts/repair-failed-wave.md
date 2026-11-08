@@ -25,6 +25,8 @@ Before repairing, understand what went wrong:
 
 Note: downstream waves show as **Excluded** (not failed). This is correct cascade behavior — they never ran and consumed no compute. The wave gate itself ends SUCCESS with `gate_passed=false`; the run is FAILED because `build_verdict` failed.
 
+Waves whose tasks are disabled in the job end **Disabled**; `build_verdict` ignores them and lists them as skipped. If the verdict is `BUILD_WARNING: no wave gate was checked in this run`, nothing failed but nothing was built either (every wave disabled, excluded or not in the run): enable the waves you meant to run, or mark finished waves `"archived": true` and rerun setup (see `follow-up-build.md`), then start a new run.
+
 ### Step 2: Repair the run
 
 Once the cause is fixed, repair from the failed wave's tasks onward. The key rule: **always include `rerun_dependent_tasks=True`** so that `wN_gate_check` and every later wave re-evaluates.

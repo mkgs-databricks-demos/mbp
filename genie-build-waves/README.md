@@ -36,7 +36,7 @@ Each wave follows a four-phase pattern:
 3. **Gate notebook** (`run_if: ALL_DONE`) — Reads the integrator's gate JSON and every session's status file independently. Sets a `gate_passed` task value (`true`/`false`).
 4. **Gate check** (If/else condition task) — Checks `gate_passed == "true"`. If false, all downstream wave tasks are **Excluded** — zero compute on cascade failure.
 
-After the last wave, **`build_verdict`** (notebook, `run_if: ALL_DONE`, depends on every wave's gate) reads each gate's task state and `wave_<N>_gate_result.json` and raises `BUILD_FAILED` when any gate failed, so the run ends **FAILED** and notifications fire. The gate itself never raises on a failed wave: a FAILED gate would make the next wave `UPSTREAM_FAILED`, and that wave's `run_if: ALL_DONE` integrator and gate would still run (Jobs treats Upstream failed as failed, and ALL_DONE runs regardless of status).
+After the last wave, **`build_verdict`** (notebook, `run_if: ALL_DONE`, depends on every wave's gate) reads each gate's task state and `wave_<N>_gate_result.json` and raises `BUILD_FAILED` when any gate failed, so the run ends **FAILED** and notifications fire. If no gate was checked at all (every wave disabled, excluded or not in the run), it succeeds with `BUILD_WARNING: no wave gate was checked in this run (...)` instead of a pass. The gate itself never raises on a failed wave: a FAILED gate would make the next wave `UPSTREAM_FAILED`, and that wave's `run_if: ALL_DONE` integrator and gate would still run (Jobs treats Upstream failed as failed, and ALL_DONE runs regardless of status).
 
 ## Initial builds and follow-up builds
 
@@ -234,7 +234,7 @@ Or choose **Run now** on the build job in the Jobs UI. `branch` defaults to `bui
 4. Fix the cause (plan, manifest, or code), then repair the run (below).
 5. `requests` in the gate file list changes a session needed outside its owned paths. Apply them before repairing.
 
-Note: downstream waves show as **Excluded** (not failed). This is the correct cascade behavior — they never ran and consumed no compute. `build_verdict` still runs (Excluded dependencies count as done) and fails the run. Waves whose tasks are disabled in the job (for example waves finished in an earlier run) end **Disabled**; `build_verdict` ignores them like Excluded waves and lists them as skipped in its message.
+Note: downstream waves show as **Excluded** (not failed). This is the correct cascade behavior — they never ran and consumed no compute. `build_verdict` still runs (Excluded dependencies count as done) and fails the run. Waves whose tasks are disabled in the job (for example waves finished in an earlier run) end **Disabled**; `build_verdict` ignores them like Excluded waves and lists them as skipped in its message. If every wave is disabled, the verdict is `BUILD_WARNING` (the run succeeds, but nothing was built or checked).
 
 **Fixes outside every session's paths.** If you (or a planner session) fix something outside every session's `owned_paths` before repairing (manifest, shared config, a plan file), commit it to the build branch yourself first; otherwise the integrator correctly reports it as a stray and fails the wave again.
 

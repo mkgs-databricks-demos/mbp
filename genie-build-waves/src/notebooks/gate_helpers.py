@@ -107,15 +107,28 @@ def build_verdict(wave_ids, task_states, results) -> dict:
             failed.append(entry)
         waves.append(entry)
     checked = [e for e in waves if e["result"] in ("pass", "fail")]
+    # Nothing checked (every wave disabled, excluded or not in the run) is not a real pass:
+    # the run still succeeds, but the verdict is a warning so it is not mistaken for a build.
     return {"passed": not failed, "waves": waves, "failed": [e["wave"] for e in failed],
             "checked": len(checked), "api_used": task_states is not None,
-            "disabled": [e["wave"] for e in waves if e["result"] == "disabled"]}
+            "disabled": [e["wave"] for e in waves if e["result"] == "disabled"],
+            "warning": not failed and not checked}
 
 
 def verdict_message(verdict: dict, per_wave: int = 5) -> str:
-    """BUILD_FAILED / BUILD_PASSED summary with the first problems of each failed wave and the repair step."""
+    """BUILD_FAILED / BUILD_WARNING / BUILD_PASSED summary with the first problems of each failed wave
+    and the repair step. BUILD_WARNING: no wave gate was checked (nothing failed, nothing passed)."""
     disabled = verdict.get("disabled") or []
     skipped = f" ({len(disabled)} disabled wave(s) skipped: {', '.join(disabled)})" if disabled else ""
+    if verdict.get("warning"):
+        counts = {}
+        for e in verdict["waves"]:
+            if e["result"] != "disabled":
+                counts[e["result"]] = counts.get(e["result"], 0) + 1
+        parts = ([f"{len(disabled)} disabled: {', '.join(disabled)}"] if disabled else []) + \
+            [f"{n} {r.replace('_', ' ')}" for r, n in counts.items()]
+        detail = f" ({'; '.join(parts)})" if parts else ""
+        return f"BUILD_WARNING: no wave gate was checked in this run{detail}"
     if verdict["passed"]:
         return f"BUILD_PASSED: {verdict['checked']} wave gate(s) passed{skipped}"
     lines = [f"BUILD_FAILED: {len(verdict['failed'])} wave gate(s) failed: {', '.join(verdict['failed'])}{skipped}"]
@@ -183,7 +196,7 @@ def normalise_genie_space(space: dict) -> dict:
     1. data_sources.metric_views is merged into data_sources.tables (the server lists both together).
     2. Lists of strings are joined (the server splits text into line arrays).
     3. Lists of objects are sorted by id / identifier / column_name / name.
-    Confirmed on the Semantic Ground Truth space against ground_truth_ops.geniespace.json.
+    Confirmed on a real deployed Genie space against its bundle source (*.geniespace.json).
     """
     s = copy.deepcopy(space or {})
     ds = s.get("data_sources")

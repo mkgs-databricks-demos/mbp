@@ -21,9 +21,9 @@ variables:
 
   # One deployment per project: appended to the bundle root path so each project gets its
   # own deployment state and its own build/setup/smoke jobs. Empty keeps the original path
-  # (.bundle/genie-build-waves/<target>). Example: "-agentic-trading".
+  # (.bundle/genie-build-waves/<target>). Example: "-my-project".
   instance_suffix:
-    description: "Per-project deployment suffix (e.g. '-agentic-trading'); empty = default instance"
+    description: "Per-project deployment suffix (e.g. '-my-project'); empty = default instance"
     default: ""
 
   # Absolute workspace path to the Git folder being built.

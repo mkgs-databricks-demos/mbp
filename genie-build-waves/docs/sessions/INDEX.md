@@ -1,5 +1,11 @@
 # Session Summaries — genie-build-waves
 
+## 2026-11-08
+
+| Session | Summary |
+|---|---|
+| [verdict-warning-generic-docs](2026-11-08_verdict-warning-generic-docs.md) | `build_verdict` ends `BUILD_WARNING` (run succeeds) when no gate was checked, e.g. every wave disabled. Project names and real IDs removed from plans, design doc, skills, tests and comments (session summaries keep them). Planner skill and follow-up/repair prompts now cover `continuation_passes`, disabled waves and the warning. 138 pass. |
+
 ## 2026-11-07
 
 | Session | Summary |

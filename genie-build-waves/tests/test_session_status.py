@@ -125,7 +125,7 @@ def test_edit_mode_session_not_checked():
 
 # --- session outcome -------------------------------------------------------------------
 
-# Verbatim genie_task_output.agent_output.response of iteration 861320051785964 (run 110489694161084).
+# Verbatim genie_task_output.agent_output.response of a real session iteration that hit the step limit.
 STEP_LIMIT = "I've reached the maximum number of steps for this turn. Would you like me to continue?"
 NORMAL = "session_id 33, mode edit, status pass, 4 files changed, no failed checks."
 
@@ -146,8 +146,8 @@ def test_session_outcome_cases():
 
 
 def test_session_problem_names_session_conversation_and_repair():
-    msg = ss.session_problem("33", "step_limit", "3614498846438467", "4-1")
-    assert msg == ("session 33 hit the Genie Code step limit (conversation 3614498846438467): "
+    msg = ss.session_problem("33", "step_limit", "1234567890123456", "4-1")
+    assert msg == ("session 33 hit the Genie Code step limit (conversation 1234567890123456): "
                    "resume that conversation, then repair from w4-1_integrate")
     msg = ss.session_problem("35", "in_progress", None, "4-3", {"next": "attempt 2: fix TS2345"})
     assert "conversation unknown; next step: attempt 2: fix TS2345" in msg

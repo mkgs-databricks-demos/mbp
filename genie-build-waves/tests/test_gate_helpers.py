@@ -32,7 +32,7 @@ def test_latest_task_states_keeps_latest_attempt():
 def test_verdict_passes_when_every_run_gate_passed():
     states = {"w1_gate": "SUCCESS", "w2_gate": "SUCCESS"}
     v = gh.build_verdict(["1", "2"], states, {"1": {"status": "pass"}, "2": {"status": "pass"}})
-    assert v["passed"] and v["checked"] == 2
+    assert v["passed"] and v["checked"] == 2 and not v["warning"]
     assert gh.verdict_message(v) == "BUILD_PASSED: 2 wave gate(s) passed"
 
 
@@ -86,6 +86,25 @@ def test_verdict_ignores_disabled_waves():
     assert "repair from w2_integrate" in msg
 
 
+def test_verdict_warns_when_no_gate_was_checked():
+    # Every wave disabled (even with stale result files): the run succeeds, but as a warning.
+    v = gh.build_verdict(["1", "2"], {"w1_gate": "DISABLED", "w2_gate": "DISABLED"},
+                         {"1": {"status": "pass"}, "2": {"status": "fail", "problems": ["old"]}})
+    assert v["passed"] and v["warning"] and v["checked"] == 0
+    assert gh.verdict_message(v) == "BUILD_WARNING: no wave gate was checked in this run (2 disabled: 1, 2)"
+    # Disabled plus `only`-subset waves: the other results are counted.
+    v = gh.build_verdict(["1", "2", "3"], {"w1_gate": "DISABLED"}, {})
+    assert v["warning"]
+    assert gh.verdict_message(v) == \
+        "BUILD_WARNING: no wave gate was checked in this run (1 disabled: 1; 2 not in run)"
+    # One checked gate is a normal pass, not a warning; a failure is never a warning.
+    v = gh.build_verdict(["1", "2"], {"w1_gate": "DISABLED", "w2_gate": "SUCCESS"}, {"2": {"status": "pass"}})
+    assert v["passed"] and not v["warning"]
+    assert gh.verdict_message(v).startswith("BUILD_PASSED: 1 wave gate(s) passed")
+    v = gh.build_verdict(["1"], {"w1_gate": "FAILED"}, {})
+    assert not v["passed"] and not v["warning"]
+
+
 # --- required checks -----------------------------------------------------------------------
 
 def test_required_checks():
@@ -105,7 +124,7 @@ def test_required_checks():
 
 # --- Genie space content matching ------------------------------------------------------------
 
-# Anonymised shape of the Semantic Ground Truth space compared on 2026-10-26.
+# Anonymised shape of a real Genie space compared on 2026-10-26.
 SOURCE = {
     "version": 2,
     "config": {"sample_questions": [{"id": "b", "question": ["How many reviews?"]},
@@ -181,7 +200,7 @@ def _bundle(tmp_path):
     (root / "src").mkdir()
     (root / "databricks.yml").write_text("bundle:\n  name: agent\ninclude:\n  - resources/**/*.yml\n")
     (root / "resources" / "genie" / "trade.genie.yml").write_text(
-        "resources:\n  genie_spaces:\n    trade_analysis:\n      title: Trade\n"
+        "resources:\n  genie_spaces:\n    sales_analysis:\n      title: Trade\n"
         "      warehouse_id: ${var.warehouse_id}\n      file_path: ../../src/trade.geniespace.json\n")
     (root / "resources" / "other.job.yml").write_text("resources:\n  jobs:\n    j: {name: j}\n")
     (root / "src" / "trade.geniespace.json").write_text(json.dumps(SOURCE))
@@ -190,9 +209,9 @@ def _bundle(tmp_path):
 
 def test_find_bundle_source_follows_includes(tmp_path):
     root = _bundle(tmp_path)
-    path, basis = gh.find_bundle_source(str(root), "genie_spaces", "trade_analysis")
+    path, basis = gh.find_bundle_source(str(root), "genie_spaces", "sales_analysis")
     assert path == str(root / "src" / "trade.geniespace.json")
-    assert basis == "resources/genie/trade.genie.yml: resources.genie_spaces.trade_analysis.file_path"
+    assert basis == "resources/genie/trade.genie.yml: resources.genie_spaces.sales_analysis.file_path"
     path, basis = gh.find_bundle_source(str(root), "genie_spaces", "nope")
     assert path is None and "not found" in basis
     assert gh.find_bundle_source(str(tmp_path), "genie_spaces", "x")[0] is None  # no databricks.yml
@@ -202,7 +221,7 @@ def test_locate_genie_source(tmp_path):
     root = _bundle(tmp_path)
     build_root = str(tmp_path)
     # resource_key lookup, bundle_root relative to build_root
-    p, _ = gh.locate_genie_source({"resource_key": "trade_analysis", "bundle_root": "agent"}, build_root)
+    p, _ = gh.locate_genie_source({"resource_key": "sales_analysis", "bundle_root": "agent"}, build_root)
     assert p == str(root / "src" / "trade.geniespace.json")
     # source_file wins over resource_key
     p, basis = gh.locate_genie_source({"source_file": "src/trade.geniespace.json", "resource_key": "nope",

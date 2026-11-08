@@ -191,6 +191,7 @@ Key decisions:
 - Set `context_files` to include any project memory, coding standards, or architecture docs
 - Set `concurrency` per wave (defaults to number of sessions; lower it if sessions compete for shared resources)
 - Write `gate` checks that the integrator can actually verify
+- Leave `continuation_passes` unset (default 1): a session that stops without a final status (for example at the Genie Code step limit) is re-run once in the same build run and resumes from its `progress.next`. Raise it (max 3, top level or per wave) only for waves whose sessions are likely to need more than two turns; set `0` on a wave to turn it off. Each pass adds three tasks per wave, and setup validation fails if the job would exceed 1000 tasks. Continuation is a safety net, not a substitute for small session scopes
 - For follow-ups: define `runtime_targets`, add `runtime_gate` to every converge wave, and make sure the bundle being converged does **not** also define the build-waves job (a deploy would reset the running build)
 
 ## Step 7: Deploy the bundle with `--var` flags
@@ -207,7 +208,7 @@ databricks bundle deploy --target dev \
   --var="skills_schema=<UC schema for publishing skills>"
 ```
 
-**One deployment per project.** Pass `--var="instance_suffix=-<project-slug>"` (e.g. `-agentic-trading`) so each project gets its own deployment state, build job and setup job. Without it, deploying for a second project overwrites the first project's jobs. Use the same suffix on every deploy and validate for that project.
+**One deployment per project.** Pass `--var="instance_suffix=-<project-slug>"` (e.g. `-my-project`) so each project gets its own deployment state, build job and setup job. Without it, deploying for a second project overwrites the first project's jobs. Use the same suffix on every deploy and validate for that project.
 
 This approach:
 - Keeps the bundle's `databricks.yml` clean with generic placeholders

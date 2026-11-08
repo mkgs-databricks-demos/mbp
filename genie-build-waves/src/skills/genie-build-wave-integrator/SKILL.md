@@ -133,7 +133,7 @@ Path: `build_root/<status_dir>/<run_id>/wave_<wave>_gate.json`:
   "checks": [{"name": "bundle validate --strict", "result": "pass", "detail": ""}],
   "bundle_validations": [{"root": "my-app", "target": "dev", "result": "pass | fail", "detail": "first error line when fail"}],
   "stray_files": [],
-  "carryover_files": [{"path": "docs/sessions/2026-10-20_w3-09-routes.md", "kind": "summary | prior_run_code | owned_by_later_wave | inherited", "source": "run 376065156883918 / session 09", "claimed_by": "09 (inherited only)", "staged": true}],
+  "carryover_files": [{"path": "docs/sessions/2026-10-20_w3-09-routes.md", "kind": "summary | prior_run_code | owned_by_later_wave | inherited", "source": "run <run_id> / session 09", "claimed_by": "09 (inherited only)", "staged": true}],
   "requests": [{"from": "07", "path": "package.json", "change": "..."}],
   "suppressions": [{"from": "14", "path": "tsconfig.server.json", "kind": "compile-exclude", "why": "..."}],
   "commit_sha": "abc1234 or empty",

@@ -2,18 +2,18 @@
 
 Status: **implemented 2026-10-26 on branch `mg-genie-build-waves-visible-failures-plan`, as one PR (A, B and C together, at the user's request).** Changes 1 (as redesigned below: verdict task, not a raising gate), 2, 3, 4 and 5 and the Genie space half of 6 are in; the dashboard half of 6 is still open. Because change 1 adds a task, the whole PR needs a setup rerun per instance after merge (see Rollout); merge only when no build is running from the live `mbp` folder, and finish or abandon runs that still need a repair first.
 
-Original status: planned, on hold. Do not start while other projects (AgenticTrading, Semantic Ground Truth) are running builds from the live `mbp` folder. The build jobs read the gate notebook and the workspace skill fallback from that folder, so any edit takes effect immediately.
+Original status: planned, on hold. Do not start while other projects are running builds from the live `mbp` folder. The build jobs read the gate notebook and the workspace skill fallback from that folder, so any edit takes effect immediately.
 
 Implementation notes (2026-10-26):
 
 * Change 1 does **not** raise in the gate. A FAILED gate makes the next wave's tasks `UPSTREAM_FAILED`, and `run_if: ALL_DONE` tasks (the next integrator and gate) run anyway. Instead the gate prints `GATE_FAILED: wave <w>: ...` and the result JSON, writes `wave_<w>_gate_result.json`, keeps setting `gate_passed` (the If/else Exclusion cascade is unchanged), and a new final notebook task `build_verdict` (`run_if: ALL_DONE`, depends on every `w<w>_gate`) reads the gate task states and result files and raises `BUILD_FAILED: ...`. Excluded gates are ignored; a gate task that did not end SUCCESS fails the verdict. `only` runs must include `build_verdict`.
 * Change 4 went in (required checks are a wave-level `required_checks: string[]`, not a per-check flag, because `gate` is free text).
-* Change 6 (Genie half): `source_file` or `resource_key` locates the source; setup warns for a `genie_space` target with neither. The AgenticTrading `genie_trade_analysis` target has neither; add `resource_key: trade_analysis` there to get content matching.
+* Change 6 (Genie half): `source_file` or `resource_key` locates the source; setup warns for a `genie_space` target with neither. A consumer project's `genie_space` target that has neither needs `resource_key: <bundle resource key>` to get content matching.
 * Code: `src/notebooks/gate_helpers.py` (new), `session_status.py` (session outcome helpers), `wave_gate_check.ipynb`, `build_verdict.ipynb` (new), `waves_manifest.py`, setup notebook comment; tests in `tests/test_gate_helpers.py` (new), `test_session_status.py`, `test_waves_manifest.py`.
 
 Reviewed 2026-10-26: implement, split into three PRs (see Rollout), with change 3 cut back and change 4 optional. Changes 1 and 6 are notebook / helper-module only, so they go live when merged into the `mbp` folder's checked-out branch without a setup rerun, and older runs stay repairable. Only changes 3 and 4 (skills, manifest schema) need setup. The on-hold rule applies at merge time, not only at setup.
 
-Source: Semantic Ground Truth requests, 2026-10-26 (build job 1079028753739581, run 110489694161084, waves 4-0..4-9; and "runtime freshness check fails when a converge session's deploy is a no-op"), and the reviews that followed.
+Source: requests from a consumer project's build, 2026-10-26 (waves 4-0..4-9; and "runtime freshness check fails when a converge session's deploy is a no-op"), and the reviews that followed. Job and run IDs are in `docs/sessions/2026-10-26_visible-failures.md`.
 
 ## Goals
 
@@ -25,7 +25,7 @@ Source: Semantic Ground Truth requests, 2026-10-26 (build job 1079028753739581, 
 
 ## Prerequisites
 
-1. ~~Merge the inherited-files PR~~ Done: PR #6 merged to `main` as cb8b1c5 (2026-10-26), after the AgenticTrading w13a repair passed with it.
+1. ~~Merge the inherited-files PR~~ Done: PR #6 merged to `main` as cb8b1c5 (2026-10-26), after a consumer project's wave repair passed with it.
 2. Start this work on a **new** branch from `main` (for example `mg-genie-build-waves-visible-failures`).
 3. Do the edits in a separate Git worktree, or while no build is running, so live builds are not affected mid-run.
 4. Before PR C only: finish or abandon any run you still need to repair. The setup rerun for PR C changes the job structure, and Jobs then refuses to repair older runs. PRs A and B need no setup.
@@ -49,8 +49,8 @@ Scope note: the gate already fails a wave when a session status file is `in_prog
   * `step_limit`: the genie_task response matches the step-limit text ("I've reached the maximum number of steps for this turn").
   * `in_progress` / `missing`: the status file is still `in_progress` or does not exist.
   * Step-limit response with a final `pass` status: `complete`, plus a warning. The final status write is the session's last step, so a step limit after it does not affect the result; the other status checks still apply.
-* The gate notebook reads each session iteration's output from the Jobs API (`runs/get` on this run's `w<wave>_sessions` task for the iterations, then `runs/get-output` for `genie_task_output.conversation_id` and `agent_output.response`). Confirmed available on iteration 861320051785964.
-* For any session that is not `complete`, the gate problem names the session, the conversation id and the next step: "session 33 hit the step limit (conversation 3614498846438467): resume that conversation, then repair from w4-1_integrate".
+* The gate notebook reads each session iteration's output from the Jobs API (`runs/get` on this run's `w<wave>_sessions` task for the iterations, then `runs/get-output` for `genie_task_output.conversation_id` and `agent_output.response`). Confirmed available on a real session iteration.
+* For any session that is not `complete`, the gate problem names the session, the conversation id and the next step: "session 33 hit the step limit (conversation <conversation_id>): resume that conversation, then repair from w4-1_integrate".
 * Jobs API failures are a warning, not a gate failure; the existing status-file checks still apply.
 
 ### 3. Runner records progress as it goes (Bug 1, item 3)
@@ -91,7 +91,7 @@ Not adopted: "deploy evidence" from the session's status file (it trusts the ses
 Changes:
 
 * New pure-Python helpers (in a gate helper module next to `session_status.py`): `normalise_genie_space`, `normalise_dashboard`, `content_diff(source, deployed, limit)`.
-  * Genie space normalisation, confirmed on the Semantic Ground Truth space `01f1ceb0506f1c5d9f2024bfc5f95943` against `ground_truth_ops.geniespace.json` (identical after these three steps): join string arrays (the server splits text into line arrays); merge `data_sources.metric_views` into `data_sources.tables`; sort lists of objects by `id`, `identifier`, `column_name` or `name`.
+  * Genie space normalisation, confirmed on a real deployed Genie space against its `*.geniespace.json` bundle source (identical after these three steps): join string arrays (the server splits text into line arrays); merge `data_sources.metric_views` into `data_sources.tables`; sort lists of objects by `id`, `identifier`, `column_name` or `name`.
   * Dashboard normalisation: **not yet tested** against a real dashboard (the Operations dashboard name lookup found nothing). Compare the draft `serialized_dashboard` with the `.lvdash.json` source; work out server-added fields from a real deployed dashboard before implementing. Ship the dashboard half separately if needed.
 * Locating the source: new optional runtime target field `source_file` (path relative to `bundle_root`). If absent, read `file_path` for `resource_key` under `resources.genie_spaces` / `resources.dashboards` in the bundle's resource YAML (relative to that YAML file). Dashboard targets need `source_file` or `resource_key` to get content matching. Document in `docs/manifest-schema.md`; validate in `waves_manifest.py`.
 * Freshness is its own entry in the target's runtime result: `{"result": "pass|fail", "basis": "fresh: updated after run start | current: content matches source | stale: content differs (<n> paths) | timestamp only: <why no source>"}`, plus `differences` when stale. The problem string references it.
@@ -113,7 +113,7 @@ Three PRs, each on its own branch from `main`; `pytest tests` passes before each
 
 1. **PR A: change 1 + change 5 docs.** Notebook and docs only; no setup. Live as soon as merged. Check: the next failing wave ends the run FAILED with a `GATE_FAILED:` message.
 2. **PR B: change 6, Genie space half.** Gate notebook + helper module (+ optional `source_file` validation in `waves_manifest.py`, which the gate tolerates without setup). No setup. Check: a no-op converge deploy passes with `current: content matches source`, and probes run. Dashboard half follows as a separate PR once tested.
-3. **PR C: changes 2 and 3 (cut back), and 4 if still wanted.** Skills change, so after merge: repair or abandon pending runs, then rerun setup for each instance (setup job 818046072228128 and the other dev instances) to republish skills and regenerate the build jobs. Check: the next step-limited session is named with its conversation id in the gate output.
+3. **PR C: changes 2 and 3 (cut back), and 4 if still wanted.** Skills change, so after merge: repair or abandon pending runs, then rerun setup for each instance (each instance's setup job) to republish skills and regenerate the build jobs. Check: the next step-limited session is named with its conversation id in the gate output.
 
 After each merge, keep `mbp` on `main`.
 
@@ -135,7 +135,8 @@ After each merge, keep `mbp` on `main`.
 
 ## Support case details (Bug 2)
 
-* Job 1079028753739581, run 110489694161084, session 35 (wave 4-3).
-* Original iteration 341867750922089 failed after 31.9 min: "Scheduled Genie Code action failed: Something went wrong" (threadId 2544428900279823, sessionId 8fc94fc1b47e444295175a4f799fea9b, actionId cbb42384-91d4-4350-b50e-8d284fc6ebf5).
-* Retries 920020760324326 (started 2 s later) and 803713897526006 (about 60 s after that) failed in 0–1 s: "Unexpected error starting Scheduled Genie Code: INVALID_ARGUMENT: INVALID_PARAMETER_VALUE: PrincipalContext must contain an account ID for login RPC auth".
-* A manual repair later started normally (iteration 549584662064751).
+Job, run, iteration and action IDs are in `docs/sessions/2026-10-26_visible-failures.md`.
+
+* One session (wave 4-3) failed after 31.9 min: "Scheduled Genie Code action failed: Something went wrong".
+* Its two retries (started 2 s later, and about 60 s after that) failed in 0–1 s: "Unexpected error starting Scheduled Genie Code: INVALID_ARGUMENT: INVALID_PARAMETER_VALUE: PrincipalContext must contain an account ID for login RPC auth".
+* A manual repair later started normally.
