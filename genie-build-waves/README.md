@@ -71,7 +71,7 @@ A manifest can span several bundles. List them in a wave's `validate_bundles` (`
 |---|---|---|
 | Session Runner skill | `src/skills/genie-build-session-runner/SKILL.md` | Prompt for one session: load manifest, read plan, implement within owned paths, validate, write status JSON |
 | Wave Integrator skill | `src/skills/genie-build-wave-integrator/SKILL.md` | Prompt for per-wave integration: collect status, check strays, commit+push, write gate JSON |
-| Build Monitor skill | `src/skills/genie-build-monitor/SKILL.md` | Optional external monitor (any agent with the Databricks CLI and Git): reports waves, repairs per a decision table, optional level 3 fix-and-repair via `wN_sync`, code review after the build. Not published to UC; see `docs/plans/2026-11-03_devin-monitor-requirements.md` |
+| Build Monitor skill | `src/skills/genie-build-monitor/SKILL.md` | Optional external monitor (any agent with the Databricks CLI and Git): reports waves, repairs per a decision table, optional level 3 fix-and-repair via `wN_sync`, code review after the build. Setup publishes it to UC as `<skills_catalog>.<skills_schema>.genie_build_monitor` for agents that read UC Skills; no automation uses it. See `docs/plans/2026-11-03_devin-monitor-requirements.md` |
 | Build Planner skill | `src/skills/genie-build-planner/SKILL.md` | Planning guide you give Genie Code in your project folder: decompose into waves/sessions, write plans and `waves.json`. Not published to UC |
 | Branch sync notebook | `src/notebooks/sync_branch.ipynb` | First task of each wave in `git` / `hybrid` workflows: pulls the build branch into the Git folder (helpers in `branch_sync.py`), writes `wave_<N>_sync.json`, sets `synced` for `wN_synced` |
 | Find incomplete notebook | `src/notebooks/find_incomplete_sessions.ipynb` | Continuation pass: lists the wave's sessions with no final status (helper `incomplete_sessions` in `session_status.py`) and sets the `incomplete` / `has_incomplete` task values for `wN_continue` |
@@ -193,7 +193,7 @@ databricks bundle deploy --target dev \
   --var="skills_schema=my_schema"
 ```
 
-Optional variables (with defaults): `project_name` (`"Genie Build Waves"`, used in job names), `instance_suffix` (`""`), `create_skills_schema` (`"true"`), `runner_skill_id`, `integrator_skill_id`.
+Optional variables (with defaults): `project_name` (`"Genie Build Waves"`, used in job names), `instance_suffix` (`""`), `create_skills_schema` (`"true"`), `runner_skill_id`, `integrator_skill_id`, `monitor_skill_id` (`"genie_build_monitor"`; empty skips publishing the monitor skill).
 
 **One deployment per project.** `instance_suffix` is appended to the bundle root path (`.bundle/genie-build-waves<suffix>/<target>`), so each project gets its own **remote** deployment state and its own build, setup and smoke jobs. Use the same suffix every time you deploy or validate for a project. Without it, deploying for a second project replaces the first project's jobs.
 

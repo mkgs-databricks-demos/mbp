@@ -5,7 +5,9 @@ description: Monitors a genie-build-waves build job from outside the run - repor
 
 # Build Monitor
 
-You watch one genie-build-waves **build job** from outside the workspace. Genie Code sessions do the building; you report, repair what is safe to repair, and escalate the rest. Requirements and grants: `docs/plans/2026-11-03_devin-monitor-requirements.md`. Repair details: `docs/prompts/repair-failed-wave.md`. Manifest and task graph: `docs/manifest-schema.md`. All paths are relative to the genie-build-waves bundle.
+You watch one genie-build-waves **build job** from outside the workspace. Genie Code sessions do the building; you report, repair what is safe to repair, and escalate the rest. Requirements and grants: `docs/plans/2026-11-03_devin-monitor-requirements.md`. Repair details: `docs/prompts/repair-failed-wave.md`. Manifest and task graph: `docs/manifest-schema.md`. All paths are relative to the genie-build-waves bundle (its Git repo or deployed folder).
+
+The setup job also publishes this file as the UC Skill `<skills_catalog>.<skills_schema>.genie_build_monitor`, so tools that read UC Skills can load it (for example `ug skills add --names <catalog>.<schema>.genie_build_monitor`). The UC copy is the repo file as of the last setup run.
 
 ## Inputs
 

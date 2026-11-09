@@ -58,6 +58,9 @@ variables:
   integrator_skill_id:
     description: "UC Skill id for the wave integrator"
     default: "genie_build_wave_integrator"
+  monitor_skill_id:
+    description: "UC Skill id for the external build monitor (no automation uses it; empty skips publishing)"
+    default: "genie_build_monitor"
 
 targets:
   # Pass project-specific values at deploy time with --var flags.

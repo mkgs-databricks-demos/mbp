@@ -254,6 +254,7 @@ Overrides the default skill locations. If omitted, the setup notebook uses its o
 | `schema` | string | UC schema for publishing skills. |
 | `runner` | `{skill_id, folder}` | Runner skill: UC skill id and workspace folder containing `SKILL.md`. |
 | `integrator` | `{skill_id, folder}` | Integrator skill: UC skill id and workspace folder containing `SKILL.md`. |
+| `monitor` | `{folder}` | External monitor skill folder (published for agents that read UC Skills; no automation uses it). Its UC id comes from the `monitor_skill_id` bundle variable. |
 
 ## Design Rules
 
