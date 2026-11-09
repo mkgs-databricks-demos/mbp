@@ -60,11 +60,16 @@ In the UI: choose **Repair run** and select the failed wave's tasks **and** ever
 
 | What failed | `rerun_tasks` |
 |---|---|
+| The branch sync (`branch sync failed` in the verdict), or a fix was pushed to the build branch from outside the `build_root` Git folder | `w[wave_number]_sync` (its dependents re-run the whole wave) |
 | A session (code, plan, or manifest fixed) | `w[wave_number]_sessions`, `w[wave_number]_integrate`, `w[wave_number]_gate` |
 | Only the integrator (sessions passed) | `w[wave_number]_integrate`, `w[wave_number]_gate` |
 | Only the gate verdict (e.g. stray files, runtime soak) | `w[wave_number]_gate` |
 
-Keep `rerun_dependent_tasks=True` in every case. Without it, nothing after the named tasks runs. With continuation passes, rerunning `w[wave_number]_sessions` also reruns the wave's `_find_incomplete` / `_has_incomplete` / `_continue` tasks, because they depend on it.
+Keep `rerun_dependent_tasks=True` in every case. Without it, nothing after the named tasks runs.
+
+In `git` / `hybrid` workflows each wave starts with `w[wave_number]_sync`, which pulls the build branch into the Git folder before the sessions (see Branch Sync in `docs/manifest-schema.md`). The integrator never pulls, so a fix committed from another clone is only picked up when the repair starts at `w[wave_number]_sync`; otherwise the integrator's push is rejected. Push such fixes only while no run is active. A sync that fails on conflicting files means the fix touched a file that a session left uncommitted in the folder: commit or discard that file in the Git folder first, or move the fix out of the session's `owned_paths`.
+
+With continuation passes, rerunning `w[wave_number]_sessions` also reruns the wave's `_find_incomplete` / `_has_incomplete` / `_continue` tasks, because they depend on it.
 
 Do not count on a repair to continue a session that a continuation pass already ran: Jobs keeps `for_each` iterations that ended SUCCESS, including continuation iterations. For a session that stopped again after its last continuation pass, resume its conversation by hand, then repair from `w[wave_number]_integrate`.
 
@@ -94,6 +99,7 @@ w = WorkspaceClient()
 
 # List all task keys from the failed wave onward
 only_tasks = [
+    "w[wave_number]_sync", "w[wave_number]_synced",  # git / hybrid workflows (branch sync)
     "w[wave_number]_sessions",
     # continuation pass tasks, one set per pass (pass 2+ add the number: _find_incomplete2, ...)
     "w[wave_number]_find_incomplete", "w[wave_number]_has_incomplete", "w[wave_number]_continue",

@@ -25,11 +25,14 @@ Wave 1:  [02] [03] [04] -> integrate -> gate -> gate_check
                                                     |
 Wave N:  [...] ----------> integrate -> gate -> gate_check -> done
 
-build_verdict (run_if ALL_DONE, depends on every gate): fails the run if any gate failed
+build_verdict (run_if ALL_DONE, depends on every gate and sync): fails the run if any gate or sync failed
+
+git / hybrid workflows: each wave starts with sync -> synced (If/else), which pulls the build branch
 ```
 
-Each wave follows a four-phase pattern:
+Each wave follows a four-phase pattern, after a branch sync in `git` / `hybrid` workflows:
 
+0. **Branch sync** (`git` / `hybrid` workflows, `workflow.sync_branch`, default on) — `wN_sync` (notebook) pulls the build branch into the `build_root` Git folder, then `wN_synced` (If/else) lets the sessions start. The integrator never pulls, so this is how a fix pushed to the branch from elsewhere reaches a repaired run: repair from `wN_sync`. A failed sync (folder on another branch, or an incoming commit changes a file left uncommitted in the folder) excludes the wave, and `build_verdict` fails the run. See [Branch Sync](docs/manifest-schema.md#branch-sync).
 1. **Sessions** (`for_each` at full wave concurrency) — Genie Code tasks that each complete one plan file. `edit` sessions write files within `owned_paths`; `execute` sessions run notebooks/SQL; `configure` sessions set up resources; `converge` sessions (follow-up builds) deploy, read telemetry, fix and redeploy.
    * **Continuation passes** (manifest or wave `continuation_passes`, default 1, `0` = off) — a session that hits the Genie Code step limit still ends its iteration SUCCESS, and a repair cannot re-run it. `wN_find_incomplete` (notebook, `run_if: ALL_DONE`) lists sessions whose status file is missing, unreadable or not final (anything but `pass`, `fail`, `blocked`, `error`); `wN_has_incomplete` (If/else) and `wN_continue` (`for_each`) re-run only those, with `continuation=k`, so each resumes from `progress.next`. When nothing is incomplete the continue task is Excluded and the integrator runs as before. See [Continuation Passes](docs/manifest-schema.md#continuation-passes).
 2. **Integrator** (single Genie Code task, `run_if: ALL_DONE`) — Collects session status files, runs gate checks. In `git`/`hybrid` mode: checks for stray files and commits by explicit path (the *only* committer). In `workspace` mode: status collection and gates only.
@@ -69,6 +72,7 @@ A manifest can span several bundles. List them in a wave's `validate_bundles` (`
 | Session Runner skill | `src/skills/genie-build-session-runner/SKILL.md` | Prompt for one session: load manifest, read plan, implement within owned paths, validate, write status JSON |
 | Wave Integrator skill | `src/skills/genie-build-wave-integrator/SKILL.md` | Prompt for per-wave integration: collect status, check strays, commit+push, write gate JSON |
 | Build Planner skill | `src/skills/genie-build-planner/SKILL.md` | Planning guide you give Genie Code in your project folder: decompose into waves/sessions, write plans and `waves.json`. Not published to UC |
+| Branch sync notebook | `src/notebooks/sync_branch.ipynb` | First task of each wave in `git` / `hybrid` workflows: pulls the build branch into the Git folder (helpers in `branch_sync.py`), writes `wave_<N>_sync.json`, sets `synced` for `wN_synced` |
 | Find incomplete notebook | `src/notebooks/find_incomplete_sessions.ipynb` | Continuation pass: lists the wave's sessions with no final status (helper `incomplete_sessions` in `session_status.py`) and sets the `incomplete` / `has_incomplete` task values for `wN_continue` |
 | Gate check notebook | `src/notebooks/wave_gate_check.ipynb` | Deterministic stop: reads gate + status files; for `runtime_gate` waves also checks app/job/pipeline/dashboard/Genie space state, soak stability, OTel error lines, app probes and traces, dashboard datasets, Genie space tables, example SQL and probe questions, pipeline expectation budgets, and `table` row counts, columns and freshness itself; checks `validate_bundles` results |
 | App probe module | `src/notebooks/app_probes.py` | HTTP / MCP `initialize` probes against an app's own URL as the `probe_auth` service principal, plus MLflow 3 trace counts; shared by the gate and the smoke job |
@@ -224,7 +228,7 @@ Pass = both iterations SUCCESS, each echoing its `session_id` and the nonce. Bef
 databricks bundle run build_waves --target dev
 ```
 
-Or choose **Run now** on the build job in the Jobs UI. `branch` defaults to `build_branch`; override it with `--params branch=<branch>`. Each wave runs `wN_sessions` → (`wN_find_incomplete` → `wN_has_incomplete` → `wN_continue`, per continuation pass) → `wN_integrate` → `wN_gate` → `wN_gate_check`, and the next wave starts only when `wN_gate_check` is true. Watch each `wN_gate` task. The run's result comes from `build_verdict`: FAILED when any wave gate failed.
+Or choose **Run now** on the build job in the Jobs UI. `branch` defaults to `build_branch`; override it with `--params branch=<branch>`. Each wave runs (`wN_sync` → `wN_synced`, in `git` / `hybrid` workflows) → `wN_sessions` → (`wN_find_incomplete` → `wN_has_incomplete` → `wN_continue`, per continuation pass) → `wN_integrate` → `wN_gate` → `wN_gate_check`, and the next wave starts only when `wN_gate_check` is true. Watch each `wN_gate` task. The run's result comes from `build_verdict`: FAILED when any wave gate or branch sync failed.
 
 ## When a wave fails
 
@@ -236,7 +240,7 @@ Or choose **Run now** on the build job in the Jobs UI. `branch` defaults to `bui
 
 Note: downstream waves show as **Excluded** (not failed). This is the correct cascade behavior — they never ran and consumed no compute. `build_verdict` still runs (Excluded dependencies count as done) and fails the run. Waves whose tasks are disabled in the job (for example waves finished in an earlier run) end **Disabled**; `build_verdict` ignores them like Excluded waves and lists them as skipped in its message. If every wave is disabled, the verdict is `BUILD_WARNING` (the run succeeds, but nothing was built or checked).
 
-**Fixes outside every session's paths.** If you (or a planner session) fix something outside every session's `owned_paths` before repairing (manifest, shared config, a plan file), commit it to the build branch yourself first; otherwise the integrator correctly reports it as a stray and fails the wave again.
+**Fixes outside every session's paths.** If you (or a planner session) fix something outside every session's `owned_paths` before repairing (manifest, shared config, a plan file), commit it to the build branch yourself first; otherwise the integrator correctly reports it as a stray and fails the wave again. If you commit it from another clone (or an external monitor pushes it), repair from `wN_sync` so the Git folder pulls it before the integrator pushes. Push only while no build run is active.
 
 ### Repairing a failed wave
 
@@ -259,6 +263,7 @@ Which tasks to name in `rerun_tasks`:
 
 | What failed | `rerun_tasks` |
 |---|---|
+| The branch sync, or a fix was pushed to the build branch from outside the `build_root` Git folder | `wN_sync` |
 | A session (code, plan or manifest fixed) | `wN_sessions`, `wN_integrate`, `wN_gate` |
 | Only the integrator (sessions passed) | `wN_integrate`, `wN_gate` |
 | Only the gate verdict (e.g. stray files committed by hand, runtime soak) | `wN_gate` |

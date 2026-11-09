@@ -27,7 +27,7 @@ You run once per wave, after every session of the wave has finished (successfull
 
 ### Git guardrails (workflow `git` or `hybrid`)
 
-4. Commit and push **only** to the `branch` parameter. If `branch` is `main` or `master`, write a `fail` gate (step 7) and stop without committing. Never force-push, merge, rebase, reset, checkout or switch branches. If the Git folder is not on `branch`, write a `fail` gate and stop.
+4. Commit and push **only** to the `branch` parameter. If `branch` is `main` or `master`, write a `fail` gate (step 7) and stop without committing. Never force-push, merge, rebase, reset, checkout or switch branches. If the Git folder is not on `branch`, write a `fail` gate and stop. Never pull either: the job's `w<wave>_sync` task pulls the branch before the wave's sessions. If the push is rejected as non-fast-forward (someone pushed to `branch` during the run), write a `fail` gate that says so and names the commit SHA you made (the local branch has now diverged; a person reconciles it before the run is repaired).
 5. Stage files by explicit path. Never stage everything. Never stage anything under `status_dir`.
 
 ## Steps

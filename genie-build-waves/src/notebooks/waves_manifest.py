@@ -14,6 +14,12 @@ and a repair cannot re-run a SUCCESS iteration. After the sessions, each pass k 
 w<w>_find_incomplete[k] (notebook: sessions with no final status) -> w<w>_has_incomplete[k]
 (If/else) -> w<w>_continue[k] (for_each over the incomplete sessions, runner with
 continuation=k). See docs/plans/2026-11-03_continuation-pass.md.
+
+Branch sync (git and hybrid workflows, `workflow.sync_branch`, default true). Each wave starts
+with w<w>_sync (notebook: pull the build branch into the Git folder, fast-forward, as the job's
+run_as) -> w<w>_synced (If/else on its `synced` value) -> w<w>_sessions. A fix pushed to the
+branch between runs (by a person or an external monitor) reaches the sessions when the run is
+repaired from w<w>_sync. A failed sync excludes the wave; build_verdict fails the run.
 """
 
 import json
@@ -28,6 +34,8 @@ DEFAULT_TIMEOUT_MIN = {"edit": 60, "execute": 60, "configure": 60, "converge": 1
 DEFAULT_CONTINUATION_PASSES = 1
 MAX_CONTINUATION_PASSES = 3
 FIND_INCOMPLETE_TIMEOUT_MIN = 10
+SYNC_TIMEOUT_MIN = 10
+SYNC_WORKFLOW_MODES = {"git", "hybrid"}
 MAX_JOB_TASKS = 1000  # Lakeflow Jobs limit per job
 
 # genie_task.parameters of the runner / integrator automations. The setup notebook puts a
@@ -112,10 +120,23 @@ def passes_in_run(prefix: str, task_keys) -> int:
     return k
 
 
+def sync_enabled(m: dict) -> bool:
+    """Branch sync tasks run in git and hybrid workflows unless workflow.sync_branch is false."""
+    wf = m.get("workflow") or {}
+    return wf.get("mode", "git") in SYNC_WORKFLOW_MODES and wf.get("sync_branch", True) is not False
+
+
+def sync_keys(prefix: str) -> dict:
+    """Task keys of the branch sync for wave prefix w<wave_id>: the notebook and its If/else."""
+    return {"sync": f"{prefix}_sync", "synced": f"{prefix}_synced"}
+
+
 def job_task_count(m: dict) -> int:
-    """Tasks generate_wave_tasks makes: 4 + 3 per continuation pass per runnable wave, + build_verdict."""
+    """Tasks generate_wave_tasks makes per runnable wave: 4, + 2 with branch sync, + 3 per
+    continuation pass; + build_verdict."""
     waves = runnable_waves(m)
-    return sum(4 + 3 * continuation_passes(m, wv) for wv in waves) + (1 if waves else 0)
+    per_sync = 2 if sync_enabled(m) else 0
+    return sum(4 + per_sync + 3 * continuation_passes(m, wv) for wv in waves) + (1 if waves else 0)
 
 
 def continuation_keys(prefix: str, k: int) -> dict:
@@ -260,10 +281,15 @@ def validate_manifest(m: dict) -> tuple[list[str], list[str]]:
         if wcp is not None and not _valid_passes(wcp):
             errors.append(f"wave {wv.get('wave_id')}: continuation_passes must be an integer from 0 to "
                           f"{MAX_CONTINUATION_PASSES} (got {wcp!r})")
+    wf = m.get("workflow") or {}
+    if "sync_branch" in wf and not isinstance(wf["sync_branch"], bool):
+        errors.append(f"workflow.sync_branch must be true or false (got {wf['sync_branch']!r})")
+    elif wf.get("sync_branch") is True and wf_mode not in SYNC_WORKFLOW_MODES:
+        warnings.append(f"workflow.sync_branch is ignored in {wf_mode!r} mode (no Git branch to sync)")
     n_tasks = job_task_count(m)
     if n_tasks > MAX_JOB_TASKS:
         errors.append(f"the build job would have {n_tasks} tasks; Lakeflow Jobs allows {MAX_JOB_TASKS}. "
-                      f"Archive finished waves or lower continuation_passes")
+                      f"Archive finished waves, lower continuation_passes or set workflow.sync_branch to false")
 
     waves = m.get("waves") or []
     if not waves:
@@ -456,12 +482,20 @@ def find_incomplete_notebook_path(gate_notebook_path: str) -> str:
     return os.path.join(os.path.dirname(gate_notebook_path), f"find_incomplete_sessions{ext}")
 
 
+def sync_notebook_path(gate_notebook_path: str) -> str:
+    """sync_branch sits next to the gate notebook, with the same extension."""
+    ext = os.path.splitext(gate_notebook_path)[1]
+    return os.path.join(os.path.dirname(gate_notebook_path), f"sync_branch{ext}")
+
+
 def make_verdict_task(gate_keys: list[str], notebook_path: str) -> dict:
-    """Final task: fails the run when any wave gate failed.
+    """Final task: fails the run when any wave gate (or branch sync) failed.
 
     A failed gate does not raise (the next wave's ALL_DONE integrator and gate would run on
-    UPSTREAM_FAILED). This task depends on every gate with run_if ALL_DONE; Excluded gates
-    count as done, so it runs after the cascade stops.
+    UPSTREAM_FAILED). This task depends on every gate, and on every w<w>_sync task when branch
+    sync is on, with run_if ALL_DONE; Excluded tasks count as done, so it runs after the
+    cascade stops. A failed sync excludes its own wave's gate, so without the sync dependency
+    a sync failure in the first wave would leave this task Excluded too.
     """
     return make_notebook_task(
         task_key=VERDICT_TASK_KEY,
@@ -479,7 +513,7 @@ def make_verdict_task(gate_keys: list[str], notebook_path: str) -> dict:
 
 def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: str,
                         retries: dict | None = None, verdict_path: str | None = None,
-                        find_incomplete_path: str | None = None) -> list[dict]:
+                        find_incomplete_path: str | None = None, sync_path: str | None = None) -> list[dict]:
     """Generate the build job's task graph from the manifest's runnable waves.
 
     Archived waves generate nothing, so the first runnable wave has no upstream
@@ -492,10 +526,17 @@ def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: st
     pass k's find task (never Excluded) as well as its continue task, and the integrator
     depends on the last pass's find and continue tasks (run_if ALL_DONE). When nothing is
     incomplete, every continue task is Excluded and the integrator still runs.
+    
+    With branch sync (sync_enabled), each wave starts with w<w>_sync (notebook, never raises,
+    sets `synced`) -> w<w>_synced (If/else) -> w<w>_sessions (outcome true). The sync task
+    takes the previous wave's gate_check dependency.
     """
     retries = genie_task_retries(m) if retries is None else retries
     find_path = find_incomplete_path or find_incomplete_notebook_path(gate_notebook_path)
+    sync_nb = sync_path or sync_notebook_path(gate_notebook_path)
+    sync = sync_enabled(m)
     tasks = []
+    sync_task_keys = []
     prev_gate_key = None
 
     for wave_cfg in runnable_waves(m):
@@ -514,6 +555,34 @@ def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: st
             "build_root": "{{job.parameters.build_root}}",
             "manifest_path": "{{job.parameters.manifest_path}}",
         }
+
+        # Dependency on a condition_task (If/else) requires an outcome.
+        # "true" = only run when the previous gate passed (or this wave's sync succeeded).
+        upstream = [{"task_key": prev_gate_key, "outcome": "true"}] if prev_gate_key else None
+
+        # --- Branch sync (notebook + If/else) ---
+        if sync:
+            skeys = sync_keys(prefix)
+            sync_task = make_notebook_task(
+                task_key=skeys["sync"],
+                notebook_path=sync_nb,
+                params={"wave": wid, **common},
+                timeout_minutes=SYNC_TIMEOUT_MIN,
+            )
+            if upstream:
+                sync_task["depends_on"] = upstream
+            tasks.append(sync_task)
+            tasks.append({
+                "task_key": skeys["synced"],
+                "condition_task": {
+                    "op": "EQUAL_TO",
+                    "left": "{{" + f"tasks.{ref_ident(skeys['sync'])}.values.synced" + "}}",
+                    "right": "true",
+                },
+                "depends_on": [{"task_key": skeys["sync"]}],
+            })
+            sync_task_keys.append(skeys["sync"])
+            upstream = [{"task_key": skeys["synced"], "outcome": "true"}]
 
         # --- Sessions (for_each) ---
         # Include title in inputs so iterations are identifiable in the UI.
@@ -542,10 +611,8 @@ def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: st
                 "task": inner_task,
             },
         }
-        if prev_gate_key:
-            # Dependency on a condition_task (If/else) requires an outcome.
-            # "true" = only run when the gate passed.
-            sessions_task["depends_on"] = [{"task_key": prev_gate_key, "outcome": "true"}]
+        if upstream:
+            sessions_task["depends_on"] = upstream
         tasks.append(sessions_task)
 
         # --- Continuation passes (sessions that stopped before a final status) ---
@@ -645,5 +712,6 @@ def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: st
 
     gate_keys = [t["task_key"] for t in tasks if t["task_key"].endswith("_gate") and "notebook_task" in t]
     if gate_keys:
-        tasks.append(make_verdict_task(gate_keys, verdict_path or verdict_notebook_path(gate_notebook_path)))
+        tasks.append(make_verdict_task(gate_keys + sync_task_keys,
+                                       verdict_path or verdict_notebook_path(gate_notebook_path)))
     return tasks

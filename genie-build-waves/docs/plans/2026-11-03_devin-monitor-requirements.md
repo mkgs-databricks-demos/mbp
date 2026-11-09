@@ -10,7 +10,7 @@ Devin (Cognition) watches a build job from outside the workspace and does what o
 * repair runs whose cause is transient or already fixed;
 * escalate what needs a person.
 
-It does **not** run sessions, edit project code, change the manifest, deploy the bundle, or resume Genie Code conversations. Genie Code job-task conversations can only be continued interactively after the task ends ([Genie Code task for jobs](https://docs.databricks.com/aws/en/jobs/tasks/genie-code/)); there is no API to post into them.
+It does **not** run sessions, edit project code (except at the optional level 3, through Git only), change the manifest, deploy the bundle, or resume Genie Code conversations. Genie Code job-task conversations can only be continued interactively after the task ends ([Genie Code task for jobs](https://docs.databricks.com/aws/en/jobs/tasks/genie-code/)); there is no API to post into them.
 
 ### Levels
 
@@ -18,8 +18,16 @@ It does **not** run sessions, edit project code, change the manifest, deploy the
 |---|---|---|
 | 1. Report (start here) | Read run state, task outputs, gate and status files; send a summary | `CAN_VIEW` |
 | 2. Repair | Level 1, plus `repair-run` / `run-now --only` for the cases in the decision table | `CAN_MANAGE_RUN` |
+| 3. Fix and repair (optional) | Level 2, plus push a fix to the build branch, then repair from `w<w>_sync` | `CAN_MANAGE_RUN`, and Git write access to the build branch |
 
 Never grant `CAN_MANAGE` or `IS_OWNER`: setup (`jobs/reset`), deploys and permission changes stay with the instance owner.
+
+Level 3 relies on the branch sync task (`git` / `hybrid` workflows, `workflow.sync_branch` on, see Branch Sync in `docs/manifest-schema.md`): the integrator commits from the `build_root` Git folder and never pulls, so a pushed fix only reaches the run when the repair starts at `w<w>_sync`, which pulls the branch into the folder first. Rules for a level 3 monitor:
+
+* **One writer at a time.** Push only when no build run is active (the build job runs one run at a time; a repair can only start on a finished run). Never push while a run is in progress: the integrator's push would be rejected.
+* Push to the build branch only, never `main`. Keep the fix out of the `owned_paths` of sessions that will re-run, or the pull can conflict with their uncommitted files (the sync then fails and lists them).
+* After pushing, repair from `w<w>_sync` with `rerun_dependent_tasks: true`, and check `wave_<w>_sync.json` lists the fix commit.
+* The monitor still never edits files in the Databricks workspace (`build_root` stays `CAN_READ`); its changes arrive only through Git.
 
 ## Databricks side: identity and authentication
 
@@ -97,7 +105,7 @@ A tool-agnostic `genie-build-monitor` skill in this bundle (to be written), buil
 | Find the instance's runs | `jobs list-runs --job-id <id>` |
 | Run and task state, repair history | `jobs get-run <run_id> --include-history` |
 | Gate and verdict messages | `jobs get-run-output <task_run_id>` for `w<w>_gate` and `build_verdict` |
-| Gate details | `workspace export <build_root>/<status_dir>/<run_id>/wave_<w>_gate.json` (and `_gate_result.json`, `_runtime.json`) |
+| Gate details | `workspace export <build_root>/<status_dir>/<run_id>/wave_<w>_gate.json` (and `_gate_result.json`, `_runtime.json`, `_sync.json`) |
 | Session details | `workspace export .../<run_id>/<session_id>.json`, `docs/sessions/*-<session_id>-*.md` |
 | Repair (level 2) | `jobs repair-run <run_id>` with `rerun_tasks`, `rerun_dependent_tasks: true`, `latest_repair_id`, and the run's original `job_parameters` (`branch`, `build_root`, `manifest_path`) |
 
@@ -109,6 +117,8 @@ A tool-agnostic `genie-build-monitor` skill in this bundle (to be written), buil
 | Genie Code task failed after its retries (`INTERNAL_ERROR: start_agent_run`) | Report | Repair from `w<w>_sessions` |
 | Session still incomplete after the continuation pass | Report session, conversation and `progress.next` | Same; do not repair (a person resumes it) |
 | Integrator failed, sessions passed | Report | Repair from `w<w>_integrate` |
+| Branch sync failed (`branch sync failed` in the verdict) | Report the error and conflicting files from `wave_<w>_sync.json` | Report; repair from `w<w>_sync` only if the cause is gone (for example the folder is back on the build branch). Level 3: fix your own conflicting push, then repair from `w<w>_sync` |
+| Code fix needed in a file no re-running session owns | Report the fix | Report. Level 3: push the fix, then repair from `w<w>_sync` |
 | Runtime gate failed on soak or probes only | Report | Report; repair from `w<w>_gate` only if the cause was external and is gone |
 | Session `blocked`, or gate lists `requests` | Report and escalate | Same |
 | Repair refused ("job structure has changed") | Report; the owner decides on a fresh `--only` run | Same |
@@ -124,7 +134,8 @@ Limit level 2 to one automatic repair per wave per run; after that, escalate.
 3. Exporting a status file under `build_root` succeeds; exporting a folder not shared with the principal is denied.
 4. A call outside the secret's scopes (for example `databricks catalogs list`) is rejected, which shows the secret is scoped and not `all-apis`.
 5. Level 2 only: a repair of a finished smoke run succeeds and runs as the job's `run_as`.
-6. A test notification (or one scheduled tick) produces one report and no duplicate sessions.
+6. Level 3 only: after a push to the build branch, a repair from `w<w>_sync` reports `SYNC_PULLED` with the pushed commit, and the integrator's next push succeeds.
+7. A test notification (or one scheduled tick) produces one report and no duplicate sessions.
 
 ## Open questions
 

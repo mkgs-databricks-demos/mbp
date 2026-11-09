@@ -105,6 +105,60 @@ def test_verdict_warns_when_no_gate_was_checked():
     assert not v["passed"] and not v["warning"]
 
 
+# --- branch sync in the verdict -----------------------------------------------------------
+
+def test_verdict_fails_on_failed_sync_even_though_the_gate_was_excluded():
+    # Wave 1's sync failed: synced=false Excludes w1_sessions ... w1_gate, and every later wave.
+    states = {"w1_sync": "SUCCESS", "w1_gate": "EXCLUDED", "w2_sync": "EXCLUDED", "w2_gate": "EXCLUDED"}
+    syncs = {"1": {"ok": False, "error": "pull conflicts with uncommitted files in the Git folder: a.py"}}
+    v = gh.build_verdict(["1", "2"], states, {}, syncs)
+    assert not v["passed"] and v["failed"] == ["1"]
+    assert [e["result"] for e in v["waves"]] == ["fail", "excluded"]
+    assert v["waves"][0]["sync_failed"] and v["waves"][0]["sync_task_state"] == "SUCCESS"
+    msg = gh.verdict_message(v)
+    assert "  - branch sync failed: pull conflicts with uncommitted files in the Git folder: a.py" in msg
+    assert "repair from w1_sync" in msg and "wave_1_sync.json" in msg
+
+
+def test_verdict_fails_on_crashed_or_silent_sync():
+    v = gh.build_verdict(["1"], {"w1_sync": "FAILED", "w1_gate": "UPSTREAM_FAILED"}, {})
+    assert v["failed"] == ["1"] and "w1_sync ended FAILED" in v["waves"][0]["problems"][0]
+    v = gh.build_verdict(["1"], {"w1_sync": "TIMEDOUT", "w1_gate": "SUCCESS"}, {"1": {"status": "pass"}})
+    assert not v["passed"]  # the sync state wins over a gate result
+    # Sync task succeeded but wrote nothing, and the wave did not run.
+    v = gh.build_verdict(["1"], {"w1_sync": "SUCCESS", "w1_gate": "EXCLUDED"}, {}, {})
+    assert not v["passed"] and "wrote no wave_1_sync.json" in v["waves"][0]["problems"][0]
+
+
+def test_verdict_with_passing_sync_uses_the_gate():
+    states = {"w1_sync": "SUCCESS", "w1_gate": "SUCCESS", "w2_sync": "SUCCESS", "w2_gate": "SUCCESS"}
+    syncs = {"1": {"ok": True}, "2": {"ok": True}}
+    v = gh.build_verdict(["1", "2"], states, {"1": {"status": "pass"}, "2": {"status": "pass"}}, syncs)
+    assert v["passed"] and v["checked"] == 2
+    assert gh.verdict_message(v) == "BUILD_PASSED: 2 wave gate(s) passed"
+    # A gate failure after a good sync suggests the sync as one repair start.
+    v = gh.build_verdict(["1"], {"w1_sync": "SUCCESS", "w1_gate": "SUCCESS"},
+                         {"1": {"status": "fail", "problems": ["p"]}}, {"1": {"ok": True}})
+    msg = gh.verdict_message(v)
+    assert "repair from w1_integrate" in msg and "w1_sync if a fix was pushed to the branch" in msg
+    # Missing sync file is fine when the gate ran: the gate decides.
+    v = gh.build_verdict(["1"], {"w1_sync": "SUCCESS", "w1_gate": "SUCCESS"}, {"1": {"status": "pass"}}, {})
+    assert v["passed"]
+
+
+def test_verdict_ignores_skipped_or_absent_sync():
+    # Disabled / Excluded sync, or a run without sync tasks (workspace mode, sync_branch false).
+    for sync_state in ("DISABLED", "EXCLUDED", None):
+        states = {"w1_gate": "SUCCESS"}
+        if sync_state:
+            states["w1_sync"] = sync_state
+        v = gh.build_verdict(["1"], states, {"1": {"status": "pass"}}, {"1": {"ok": False, "error": "stale"}})
+        assert v["passed"], sync_state
+    # Jobs API unavailable: a failed sync file still fails the wave.
+    v = gh.build_verdict(["1"], None, {}, {"1": {"ok": False, "error": "boom"}})
+    assert not v["passed"] and v["waves"][0]["problems"] == ["branch sync failed: boom"]
+
+
 # --- required checks -----------------------------------------------------------------------
 
 def test_required_checks():

@@ -1,5 +1,11 @@
 # Session Summaries — genie-build-waves
 
+## 2026-11-09
+
+| Session | Summary |
+|---|---|
+| [branch-sync-task](2026-11-09_branch-sync-task.md) | New `w<wave>_sync` -> `w<wave>_synced` tasks at the start of each git/hybrid wave pull the build branch into the Git folder (Repos API, never raises, `workflow.sync_branch` to opt out), so a fix pushed from another clone reaches a repair from `w<wave>_sync`. `build_verdict` fails on a failed sync. Monitor requirements gain an optional level 3. 167 pass. |
+
 ## 2026-11-08
 
 | Session | Summary |
