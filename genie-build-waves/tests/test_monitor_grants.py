@@ -12,6 +12,7 @@ from monitor_grants import (  # noqa: E402
     held_privileges,
     missing_grants,
     monitor_grant_plan,
+    monitor_var_problems,
     principal_problem,
 )
 
@@ -54,11 +55,23 @@ def test_missing_grants_skips_held_and_all_privileges():
 def test_principal_problem():
     assert principal_problem("00000000-0000-4000-8000-000000000000") == ""
     assert principal_problem("monitor-agents") == ""
-    assert principal_problem("someone@example.com") == ""
+    assert principal_problem("someone@example.com") == ""  # UC grants accept users; the job grant does not
     assert "empty" in principal_problem("")
     assert "whitespace" in principal_problem(" abc")
     assert "placeholder" in principal_problem("<application id>")
     assert "placeholder" in principal_problem("${var.monitor_principal}")
+
+
+def test_monitor_var_problems():
+    spn = "00000000-0000-4000-8000-000000000000"
+    assert monitor_var_problems({}) == []
+    assert monitor_var_problems({"monitor_principal": ""}) == []
+    assert monitor_var_problems({"monitor_principal": spn}) == []
+    assert monitor_var_problems({"monitor_principal": spn, "monitor_job_level": "CAN_MANAGE_RUN"}) == []
+    assert any("monitor_job_level" in p for p in monitor_var_problems({"monitor_job_level": "CAN_MANAGE"}))
+    assert any("monitor_job_level" in p for p in monitor_var_problems({"monitor_job_level": "IS_OWNER"}))
+    assert any("service principal" in p for p in monitor_var_problems({"monitor_principal": "someone@example.com"}))
+    assert any("placeholder" in p for p in monitor_var_problems({"monitor_principal": "<application id>"}))
 
 
 def test_grant_command_is_valid_cli_json():

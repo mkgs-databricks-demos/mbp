@@ -63,12 +63,17 @@ variables:
     default: "genie_build_monitor"
 
   # Optional external monitoring agent (any agent that reads job runs and the monitor skill).
-  # Application (client) ID of its service principal; a user name or group also works.
-  # Set: setup grants it USE CATALOG, USE SCHEMA and READ VOLUME on the monitor skill only.
-  # Empty (default): no grants. Job and folder grants stay manual (README: "External monitor").
+  # Application (client) ID of its service principal. Set:
+  # * deploy grants it monitor_job_level on the build job (bundle-managed job ACL), and
+  # * setup grants it USE CATALOG, USE SCHEMA and READ VOLUME on the monitor skill only.
+  # Empty (default): no grants. The build_root folder grant stays manual (README: "External monitor").
   monitor_principal:
-    description: "Principal of an external monitoring agent (SPN application ID); empty = no grants"
+    description: "Service principal application ID of an external monitoring agent; empty = no grants"
     default: ""
+  # CAN_VIEW: report only (level 1). CAN_MANAGE_RUN: repair runs (levels 2-3). Never CAN_MANAGE.
+  monitor_job_level:
+    description: "Build job permission for monitor_principal: CAN_VIEW or CAN_MANAGE_RUN"
+    default: "CAN_VIEW"
 
 targets:
   # Pass project-specific values at deploy time with --var flags.
@@ -95,8 +100,9 @@ targets:
       manifest_path: /Workspace/Users/you@example.com/my-project/docs/plans/waves.json
       skills_catalog: hls_fde_dev
       skills_schema: dev_build_waves
-      # Uncomment to let an external monitor read the monitor skill (or pass --var):
+      # Uncomment to grant an external monitor the build job and the monitor skill (or pass --var):
       # monitor_principal: 00000000-0000-0000-0000-000000000000  # monitor SPN application ID
+      # monitor_job_level: CAN_MANAGE_RUN  # default CAN_VIEW (report only)
 
   prod:
     mode: production

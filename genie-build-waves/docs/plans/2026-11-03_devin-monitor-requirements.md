@@ -50,7 +50,7 @@ Level 3 relies on the branch sync task (`git` / `hybrid` workflows, `workflow.sy
 
 | Object | Grant | Why |
 |---|---|---|
-| Build job | `CAN_VIEW` (level 1) or `CAN_MANAGE_RUN` (level 2); secret scope `jobs` | `jobs get`, `get-run`, `get-run-output`; repairs |
+| Build job | `CAN_VIEW` (level 1) or `CAN_MANAGE_RUN` (levels 2-3); secret scope `jobs`. Declared in the bundle: bundle variables `monitor_principal` and `monitor_job_level` (the deploy sets the job ACL; clearing the principal revokes it) | `jobs get`, `get-run`, `get-run-output`; repairs |
 | `build_root` folder | `CAN_READ`; secret scope `workspace` | `<status_dir>/<run_id>/*.json` (gate, gate result, runtime, session status files), `docs/sessions/` summaries, the manifest |
 | Setup and smoke jobs | none (optionally `CAN_VIEW`) | Devin never runs setup |
 | Unity Catalog data | none | The gate notebook does the UC reads; Devin only reads its results |

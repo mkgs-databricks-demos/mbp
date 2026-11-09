@@ -10,6 +10,9 @@ UC Skills use the volume privileges (docs: AI Gateway > Govern skills). Reading 
 READ VOLUME is granted on the skill, never on the schema: a schema grant would also cover
 every other skill and volume in it. The runner and integrator skills are not shared: the
 monitor reads the build's files and job runs, not the session prompts.
+
+The build job grant is not here: `build_waves.job.yml` declares it (`monitor_principal` at
+`monitor_job_level`), and `monitor_var_problems` checks those variables before a deploy.
 """
 
 import json
@@ -19,6 +22,10 @@ USE_CATALOG = "USE_CATALOG"
 USE_SCHEMA = "USE_SCHEMA"
 READ_VOLUME = "READ_VOLUME"
 ALL_PRIVILEGES = "ALL_PRIVILEGES"
+
+# Build job levels a monitor may get: report (level 1) or repair (levels 2-3). Never CAN_MANAGE
+# or IS_OWNER: setup, deploys and permission changes stay with the instance owner.
+MONITOR_JOB_LEVELS = ("CAN_VIEW", "CAN_MANAGE_RUN")
 
 
 def monitor_grant_plan(catalog: str, schema: str, skill_id: str) -> list[tuple[str, str, str]]:
@@ -70,6 +77,21 @@ def principal_problem(principal: str) -> str:
     if any(ch in p for ch in "{}<>`'\""):
         return f"monitor_principal {p!r} looks like a placeholder or contains quotes"
     return ""
+
+
+def monitor_var_problems(variables: dict) -> list[str]:
+    """Problems with the monitor bundle variables in a vars file (deploy_instance.py)."""
+    variables = variables or {}
+    problems = []
+    principal = variables.get("monitor_principal") or ""
+    level = variables.get("monitor_job_level", "CAN_VIEW")
+    if principal and principal_problem(principal):
+        problems.append(principal_problem(principal))
+    if "@" in principal:
+        problems.append("monitor_principal must be a service principal application ID, not a user name")
+    if level not in MONITOR_JOB_LEVELS:
+        problems.append(f"monitor_job_level {level!r} must be one of {', '.join(MONITOR_JOB_LEVELS)}")
+    return problems
 
 
 def grant_command(securable_type: str, full_name: str, privilege: str, principal: str) -> str:
