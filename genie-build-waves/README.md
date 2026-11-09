@@ -74,6 +74,7 @@ A manifest can span several bundles. List them in a wave's `validate_bundles` (`
 | Build Monitor skill | `src/skills/genie-build-monitor/SKILL.md` | Optional external monitor (any agent with the Databricks CLI and Git): reports waves, repairs per a decision table, optional level 3 fix-and-repair via `wN_sync`, code review after the build. Setup publishes it to UC as `<skills_catalog>.<skills_schema>.genie_build_monitor` for agents that read UC Skills; no automation uses it. See `docs/plans/2026-11-03_devin-monitor-requirements.md` |
 | Build Planner skill | `src/skills/genie-build-planner/SKILL.md` | Planning guide you give Genie Code in your project folder: decompose into waves/sessions, write plans and `waves.json`. Not published to UC |
 | Branch sync notebook | `src/notebooks/sync_branch.ipynb` | First task of each wave in `git` / `hybrid` workflows: pulls the build branch into the Git folder (helpers in `branch_sync.py`), writes `wave_<N>_sync.json`, sets `synced` for `wN_synced` |
+| Monitor grants helpers | `src/notebooks/monitor_grants.py` | Least-privilege UC grants setup gives `monitor_principal`: USE CATALOG, USE SCHEMA, READ VOLUME on the monitor skill only |
 | Find incomplete notebook | `src/notebooks/find_incomplete_sessions.ipynb` | Continuation pass: lists the wave's sessions with no final status (helper `incomplete_sessions` in `session_status.py`) and sets the `incomplete` / `has_incomplete` task values for `wN_continue` |
 | Gate check notebook | `src/notebooks/wave_gate_check.ipynb` | Deterministic stop: reads gate + status files; for `runtime_gate` waves also checks app/job/pipeline/dashboard/Genie space state, soak stability, OTel error lines, app probes and traces, dashboard datasets, Genie space tables, example SQL and probe questions, pipeline expectation budgets, and `table` row counts, columns and freshness itself; checks `validate_bundles` results |
 | App probe module | `src/notebooks/app_probes.py` | HTTP / MCP `initialize` probes against an app's own URL as the `probe_auth` service principal, plus MLflow 3 trace counts; shared by the gate and the smoke job |
@@ -193,7 +194,7 @@ databricks bundle deploy --target dev \
   --var="skills_schema=my_schema"
 ```
 
-Optional variables (with defaults): `project_name` (`"Genie Build Waves"`, used in job names), `instance_suffix` (`""`), `create_skills_schema` (`"true"`), `runner_skill_id`, `integrator_skill_id`, `monitor_skill_id` (`"genie_build_monitor"`; empty skips publishing the monitor skill).
+Optional variables (with defaults): `project_name` (`"Genie Build Waves"`, used in job names), `instance_suffix` (`""`), `create_skills_schema` (`"true"`), `runner_skill_id`, `integrator_skill_id`, `monitor_skill_id` (`"genie_build_monitor"`; empty skips publishing the monitor skill), `monitor_principal` (`""`; see "External monitor (optional)").
 
 **One deployment per project.** `instance_suffix` is appended to the bundle root path (`.bundle/genie-build-waves<suffix>/<target>`), so each project gets its own **remote** deployment state and its own build, setup and smoke jobs. Use the same suffix every time you deploy or validate for a project. Without it, deploying for a second project replaces the first project's jobs.
 
@@ -286,6 +287,23 @@ A convergence wave can commit (its session passed) and still fail on `runtime_ga
 ### Retarget after merge
 
 After a feature branch is merged to main and deleted on the remote, the build job's `branch` parameter still points at the deleted branch. The integrator will fail with `branch not found on remote`. To retarget: create a new feature branch, update `branch` in `waves.json`, re-deploy with `--var build_branch=<new>`, re-run setup, and start a new run.
+
+## External monitor (optional)
+
+An agent outside the workspace (a coding agent, an operations agent) can watch build runs, report each wave, repair, and review the result, following `src/skills/genie-build-monitor/SKILL.md`. Setup publishes that skill to UC as `<skills_catalog>.<skills_schema>.genie_build_monitor`. Full requirements: `docs/plans/2026-11-03_devin-monitor-requirements.md`.
+
+**Manual setup (once per monitor):**
+
+1. Create a dedicated service principal for the monitor (not the deploy or `run_as` principal) with the **Workspace access** entitlement only.
+2. Generate an OAuth secret for it with an expiry, scoped as the requirements doc describes, and give the agent `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID` and `DATABRICKS_CLIENT_SECRET`. To load the skill from UC instead of the repo, the secret likely also needs the `ai-gateway` and `files` scopes (not yet verified). The Unity Gateway skills preview must be on.
+3. Grant it on the build job `CAN_VIEW` (report) or `CAN_MANAGE_RUN` (repair), and `CAN_READ` on `build_root`. Never `CAN_MANAGE`. These grants stay manual: deploy and setup do not change job or folder permissions.
+4. Set the bundle variable `monitor_principal` to its application (client) ID, in your vars file (`"monitor_principal": "<application id>"`) or with `--var`. Then deploy and run setup.
+
+**What setup grants** when `monitor_principal` is set (`monitor_grants.py`): `USE CATALOG` on `skills_catalog`, `USE SCHEMA` on `skills_schema`, and `READ VOLUME` on the monitor skill only. That is the minimum to read one skill: UC Skills use the volume privileges, and `READ VOLUME` is granted on the skill, not the schema, so the other skills (and any volumes) in the schema stay private. Grants the principal already holds, directly or through a group, are skipped. Setup grants as its job's `run_as` identity, which needs `MANAGE` (or ownership) on the catalog, schema and skill; when a grant fails, setup prints the `databricks grants update ...` command for an owner and carries on. Grants are additive: after changing or clearing `monitor_principal`, revoke the old principal's grants by hand. Leave `monitor_principal` empty (the default) for no grants.
+
+Genie Code prompt to wire it up:
+
+> Read `[/Workspace/Users/you@example.com/genie-build-waves]/README.md`, section "External monitor (optional)", and `docs/plans/2026-11-03_devin-monitor-requirements.md`. The monitor's service principal application ID is `[application id]` (or: I have not created it yet; list the manual steps for me and stop). Add `monitor_principal` to my vars file `[vars file path]`, redeploy this instance with `scripts/deploy_instance.py`, run the setup job, and show me `monitor_grants` from the setup output. Then grant the principal `[CAN_VIEW | CAN_MANAGE_RUN]` on the build job and `CAN_READ` on `build_root` after I confirm. Do not edit `databricks.yml`.
 
 ## Changing a build
 

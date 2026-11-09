@@ -62,6 +62,14 @@ variables:
     description: "UC Skill id for the external build monitor (no automation uses it; empty skips publishing)"
     default: "genie_build_monitor"
 
+  # Optional external monitoring agent (any agent that reads job runs and the monitor skill).
+  # Application (client) ID of its service principal; a user name or group also works.
+  # Set: setup grants it USE CATALOG, USE SCHEMA and READ VOLUME on the monitor skill only.
+  # Empty (default): no grants. Job and folder grants stay manual (README: "External monitor").
+  monitor_principal:
+    description: "Principal of an external monitoring agent (SPN application ID); empty = no grants"
+    default: ""
+
 targets:
   # Pass project-specific values at deploy time with --var flags.
   # Example:
@@ -87,6 +95,8 @@ targets:
       manifest_path: /Workspace/Users/you@example.com/my-project/docs/plans/waves.json
       skills_catalog: hls_fde_dev
       skills_schema: dev_build_waves
+      # Uncomment to let an external monitor read the monitor skill (or pass --var):
+      # monitor_principal: 00000000-0000-0000-0000-000000000000  # monitor SPN application ID
 
   prod:
     mode: production

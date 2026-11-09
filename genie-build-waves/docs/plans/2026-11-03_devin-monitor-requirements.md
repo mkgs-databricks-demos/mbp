@@ -53,7 +53,8 @@ Level 3 relies on the branch sync task (`git` / `hybrid` workflows, `workflow.sy
 | Build job | `CAN_VIEW` (level 1) or `CAN_MANAGE_RUN` (level 2); secret scope `jobs` | `jobs get`, `get-run`, `get-run-output`; repairs |
 | `build_root` folder | `CAN_READ`; secret scope `workspace` | `<status_dir>/<run_id>/*.json` (gate, gate result, runtime, session status files), `docs/sessions/` summaries, the manifest |
 | Setup and smoke jobs | none (optionally `CAN_VIEW`) | Devin never runs setup |
-| Unity Catalog | none | The gate notebook does the UC reads; Devin only reads its results |
+| Unity Catalog data | none | The gate notebook does the UC reads; Devin only reads its results |
+| Monitor UC Skill (optional) | `USE CATALOG` on `skills_catalog`, `USE SCHEMA` on `skills_schema`, `READ VOLUME` on `genie_build_monitor` only. Granted by setup when the bundle variable `monitor_principal` is set | Lets the monitor load the skill from UC instead of its repo clone. Never `READ VOLUME` on the schema (it would cover the other skills). The OAuth secret likely also needs the `ai-gateway` and `files` scopes for this; not yet verified |
 
 Repairs and new runs execute as the job's own `run_as` identity, not as the service principal; the principal only needs permission to manage runs. Verify this once with a no-op repair before relying on level 2.
 
