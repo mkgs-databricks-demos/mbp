@@ -4,7 +4,7 @@
 
 | Session | Summary |
 |---|---|
-| [monitor-principal-grants](2026-11-09_monitor-principal-grants.md) | New `monitor_principal` variable: setup grants it least privilege to read the UC monitor skill (USE CATALOG, USE SCHEMA, READ VOLUME on the skill only, skipping held grants, never raising). README "External monitor (optional)" with manual steps and a Genie Code prompt. 172 pass. |
+| [monitor-principal-grants](2026-11-09_monitor-principal-grants.md) | New `monitor_principal` variable: setup grants it least privilege to read the UC monitor skill (USE CATALOG, USE SCHEMA, READ VOLUME on the skill only, skipping held grants, never raising). Build job grant declared in the bundle (`monitor_job_level`, default `CAN_VIEW`; the bundle owns the job ACL, clearing revokes). 173 pass. |
 | [build-monitor-skill](2026-11-09_build-monitor-skill.md) | New generic `genie-build-monitor` skill (CLI + Git only): report, repair per a level 1-3 decision table, fix and repair via `w<wave>_sync`, code review after `BUILD_PASSED`. Setup publishes it to UC as `genie_build_monitor` (`monitor_skill_id` variable). Field names and CLI flags checked against the code and CLI v1.23.0. |
 | [branch-sync-task](2026-11-09_branch-sync-task.md) | New `w<wave>_sync` -> `w<wave>_synced` tasks at the start of each git/hybrid wave pull the build branch into the Git folder (Repos API, never raises, `workflow.sync_branch` to opt out), so a fix pushed from another clone reaches a repair from `w<wave>_sync`. `build_verdict` fails on a failed sync. Monitor requirements gain an optional level 3. 167 pass. |
 
