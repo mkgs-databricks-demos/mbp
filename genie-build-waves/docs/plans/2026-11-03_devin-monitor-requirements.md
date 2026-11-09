@@ -96,7 +96,7 @@ Open: Databricks webhook notification destinations send a fixed payload with opt
 
 ### Instructions
 
-A tool-agnostic `genie-build-monitor` skill in this bundle (to be written), built from `docs/prompts/repair-failed-wave.md` and the README. Devin reads it from its clone of the repo; Genie Code users can use the same file. A Devin playbook can point at it instead of copying it.
+The tool-agnostic `genie-build-monitor` skill in this bundle (`src/skills/genie-build-monitor/SKILL.md`, written 2026-11-09), built from `docs/prompts/repair-failed-wave.md` and the README. It covers report, repair, fix and repair (level 3) and the code review after the build. Devin reads it from its clone of the repo; Genie Code users can use the same file. A Devin playbook can point at it instead of copying it.
 
 ## What the monitor reads and calls
 
