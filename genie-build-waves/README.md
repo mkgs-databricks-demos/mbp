@@ -295,10 +295,10 @@ An agent outside the workspace (a coding agent, an operations agent) can watch b
 **Manual setup (once per monitor):**
 
 1. Create a dedicated service principal for the monitor (not the deploy or `run_as` principal) with the **Workspace access** entitlement only.
-2. Generate an OAuth secret for it with an expiry, scoped as the requirements doc describes, and give the agent `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID` and `DATABRICKS_CLIENT_SECRET`. To load the skill from UC instead of the repo, the secret likely also needs the `ai-gateway` and `files` scopes (not yet verified). The Unity Gateway skills preview must be on.
+2. Generate an OAuth secret for it with an expiry, scoped as the requirements doc describes, and give the agent `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID` and `DATABRICKS_CLIENT_SECRET`. To read the skill from UC instead of the repo, the secret also needs the `files` scope: the agent reads `/Skills/<skills_catalog>/<skills_schema>/genie_build_monitor/SKILL.md` (not `/Volumes/...`). The Unity Gateway skills preview must be on.
 3. Grant it `CAN_READ` on `build_root` (the project Git folder; the bundle does not manage it). Never more. Do not grant it the shared `/Workspace/.bundle` folder: a grant there covers every bundle deployed under it.
    * If the workspace uses IP access lists, allow the agent's egress address first (a `/32` when you know it); changes take a few minutes to apply.
-   * Give the agent a Databricks CLI profile with `scopes = jobs,workspace`: the CLI requests `all-apis` by default and a scoped secret is refused.
+   * Give the agent a Databricks CLI profile with `scopes = jobs,workspace` (plus `files` to read the UC skill): the CLI requests `all-apis` by default and a scoped secret is refused.
    * Levels 3-4: a fine-grained Git token on the project repo with **Contents: Read and write** (add Pull requests write only to post its review), ideally for the agent's own Git identity so its commits are not attributed to you. Check with `git push --dry-run` before the first run.
 4. Set the bundle variables in your vars file (or with `--var`): `monitor_principal` = its application (client) ID, and `monitor_job_level` = `CAN_VIEW` (report, the default) or `CAN_MANAGE_RUN` (repair). `scripts/deploy_instance.py` refuses any other level or a user name. Then deploy and run setup.
 

@@ -46,7 +46,7 @@ Levels 3 and 4 rely on the branch sync task (`git` / `hybrid` workflows, `workfl
   * Do not add `authentication` (a secret with it can mint tokens with any scope), `sql` or `unity-catalog` (the gate notebook does the UC reads).
   * Levels 1-4 use the same scopes; only the job permission and Git access change.
   * Bundle `validate` with a warehouse `lookup` needs `sql`. Leave it out: the monitor reports that validate error and the owner (or the job's sessions) validate instead.
-* **Set the scopes in the CLI profile too.** The Databricks CLI (v1.23) requests `all-apis` by default, so a scoped secret is refused. Give the monitor a profile with `scopes = jobs,workspace` (no secret in the file; the secret stays in the environment).
+* **Set the scopes in the CLI profile too.** The Databricks CLI (v1.23) requests `all-apis` by default, so a scoped secret is refused. Give the monitor a profile with `scopes = jobs,workspace` (no secret in the file; the secret stays in the environment). Add `files` only to read the published monitor skill from UC (below).
 * Scopes are coarse: `jobs` also covers create, update, delete and cancel, and `workspace` covers import and delete. The object grants below are what keep the monitor read-only (level 1) or limited to runs (level 2); keep both layers.
 
 ### Grants
@@ -58,7 +58,7 @@ Levels 3 and 4 rely on the branch sync task (`git` / `hybrid` workflows, `workfl
 | The project's dev deploy folders (optional) | Only those folders, never the shared `/Workspace/.bundle` (a grant there covers every bundle deployed under it). Plain-folder `CAN_READ` may not allow `workspace export`; test one export before relying on it | Helps diagnose a failed deploy |
 | Setup and smoke jobs | none (optionally `CAN_VIEW`) | Devin never runs setup |
 | Unity Catalog data | none | The gate notebook does the UC reads; Devin only reads its results |
-| Monitor UC Skill (optional) | `USE CATALOG` on `skills_catalog`, `USE SCHEMA` on `skills_schema`, `READ VOLUME` on `genie_build_monitor` only. Granted by setup when the bundle variable `monitor_principal` is set | Lets the monitor load the skill from UC instead of its repo clone. Never `READ VOLUME` on the schema (it would cover the other skills). The OAuth secret likely also needs the `ai-gateway` and `files` scopes for this; not yet verified |
+| Monitor UC Skill (optional) | `USE CATALOG` on `skills_catalog`, `USE SCHEMA` on `skills_schema`, `READ VOLUME` on `genie_build_monitor` only. Granted by setup when the bundle variable `monitor_principal` is set | Lets the monitor load the skill from UC instead of its repo clone. Never `READ VOLUME` on the schema (it would cover the other skills). Reading it also needs the `files` OAuth scope (`scopes = jobs,workspace,files`; without it: `Invalid scope, required scopes: files`). The file is at `/Skills/<skills_catalog>/<skills_schema>/genie_build_monitor/SKILL.md` (Files API or `databricks fs cat`), not under `/Volumes`. Checked 2026-11-12 |
 
 Repairs and new runs execute as the job's own `run_as` identity, not as the service principal; the principal only needs permission to manage runs. Verify this once with a no-op repair before relying on level 2. A run the monitor starts may still list the job owner as its creator: confirm the caller in the workspace audit log (`system.access.audit`, service `jobs`, action `runNow` / `repairRun`) before relying on the creator field.
 
@@ -152,6 +152,5 @@ Limit level 2 to one automatic repair per wave per run; after that, escalate.
 ## Open questions
 
 * Devin egress range for workspaces with IP access lists (one session's address was observed; the range is not published).
-* Which OAuth scopes a scoped secret needs to read a UC Skill (probably `ai-gateway` and `files`).
 * Whether automation sessions run as creator, and child sessions, receive personal secrets (test with a dummy personal secret; report only whether it is set).
 * Webhook payload compatibility (see Automation).

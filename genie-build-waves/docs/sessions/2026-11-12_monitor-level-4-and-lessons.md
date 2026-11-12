@@ -35,6 +35,10 @@ The first end-to-end test of an external monitor (a coding agent watching a buil
 
 The project's setup run after `a6b6c35` ended SUCCESS but did not publish the monitor skill: `SKILL.md frontmatter is invalid: Invalid YAML: mapping values are not allowed here ... (level 4: starts the build ...`. The new `description` had an unquoted `: `. Setup uploads the files before the publish step, so the stored file already had the new text, and it skipped the monitor grants ("monitor skill not published"). Fix: `level 4 - starts ...`. New `tests/test_skill_frontmatter.py` parses every `SKILL.md` frontmatter with `yaml.safe_load` (the `a6b6c35` file fails with the same error). 179 pass.
 
+## Follow-up: reading the UC skill needs `files`
+
+After the fix, the monitor could not read the published skill with `jobs,workspace`: `Invalid scope, required scopes: files`. With the owner's approval it used `scopes = jobs,workspace,files` and read `/Skills/<catalog>/<schema>/genie_build_monitor/SKILL.md` (the path setup uploads to; `/Volumes/...` returned "no such directory"). `ai-gateway` was not needed. The requirements doc (scopes, grants row; open question removed), README step 2 and the monitor skill now say so.
+
 ## Files
 
 `src/skills/genie-build-monitor/SKILL.md`, `src/skills/genie-build-planner/SKILL.md`, `docs/plans/2026-11-03_devin-monitor-requirements.md`, `docs/prompts/repair-failed-wave.md`, `README.md`, `tests/test_skill_frontmatter.py`, `docs/sessions/INDEX.md`.
