@@ -290,13 +290,16 @@ After a feature branch is merged to main and deleted on the remote, the build jo
 
 ## External monitor (optional)
 
-An agent outside the workspace (a coding agent, an operations agent) can watch build runs, report each wave, repair, and review the result, following `src/skills/genie-build-monitor/SKILL.md`. Setup publishes that skill to UC as `<skills_catalog>.<skills_schema>.genie_build_monitor`. Full requirements: `docs/plans/2026-11-03_devin-monitor-requirements.md`.
+An agent outside the workspace (a coding agent, an operations agent) can watch build runs, report each wave, repair, and review the result, following `src/skills/genie-build-monitor/SKILL.md`. It works at a level you give it: 1 report, 2 repair, 3 fix and repair, 4 act for you (start the build, push small fixes and repair from `w<wave>_sync` without asking, within `max_repairs` and the skill's stop conditions). Setup publishes that skill to UC as `<skills_catalog>.<skills_schema>.genie_build_monitor`. Full requirements: `docs/plans/2026-11-03_devin-monitor-requirements.md`.
 
 **Manual setup (once per monitor):**
 
 1. Create a dedicated service principal for the monitor (not the deploy or `run_as` principal) with the **Workspace access** entitlement only.
 2. Generate an OAuth secret for it with an expiry, scoped as the requirements doc describes, and give the agent `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID` and `DATABRICKS_CLIENT_SECRET`. To load the skill from UC instead of the repo, the secret likely also needs the `ai-gateway` and `files` scopes (not yet verified). The Unity Gateway skills preview must be on.
-3. Grant it `CAN_READ` on `build_root` (the project Git folder; the bundle does not manage it). Never more.
+3. Grant it `CAN_READ` on `build_root` (the project Git folder; the bundle does not manage it). Never more. Do not grant it the shared `/Workspace/.bundle` folder: a grant there covers every bundle deployed under it.
+   * If the workspace uses IP access lists, allow the agent's egress address first (a `/32` when you know it); changes take a few minutes to apply.
+   * Give the agent a Databricks CLI profile with `scopes = jobs,workspace`: the CLI requests `all-apis` by default and a scoped secret is refused.
+   * Levels 3-4: a fine-grained Git token on the project repo with **Contents: Read and write** (add Pull requests write only to post its review), ideally for the agent's own Git identity so its commits are not attributed to you. Check with `git push --dry-run` before the first run.
 4. Set the bundle variables in your vars file (or with `--var`): `monitor_principal` = its application (client) ID, and `monitor_job_level` = `CAN_VIEW` (report, the default) or `CAN_MANAGE_RUN` (repair). `scripts/deploy_instance.py` refuses any other level or a user name. Then deploy and run setup.
 
 **What deploy grants:** `build_waves.job.yml` declares the build job's permissions: `monitor_principal` at `monitor_job_level`, plus the deployer as `IS_OWNER` (added by the CLI). The CLI drops the monitor entry when `monitor_principal` is empty. This makes the bundle the owner of the build job's ACL: every deploy sets it to exactly these entries, so clearing `monitor_principal` revokes the grant on the next deploy, and grants added in the UI are expected to be removed (not yet verified). Put any other build job grants in the bundle (top-level `permissions` or a target override), not in the UI. `jobs/reset` in setup does not touch permissions. The setup and smoke jobs get no monitor grant.
@@ -306,6 +309,8 @@ An agent outside the workspace (a coding agent, an operations agent) can watch b
 Genie Code prompt to wire it up:
 
 > Read `[/Workspace/Users/you@example.com/genie-build-waves]/README.md`, section "External monitor (optional)", and `docs/plans/2026-11-03_devin-monitor-requirements.md`. The monitor's service principal application ID is `[application id]` (or: I have not created it yet; list the manual steps for me and stop). Add `monitor_principal` to my vars file `[vars file path]`, redeploy this instance with `scripts/deploy_instance.py`, run the setup job, and show me `monitor_grants` from the setup output. Also set `monitor_job_level` to `[CAN_VIEW | CAN_MANAGE_RUN]`, show me the build job's permissions after the deploy, then grant the principal `CAN_READ` on `build_root` after I confirm. Do not edit `databricks.yml`.
+
+**Between builds.** The same agent can make small owner-requested changes on the build branch while no run is active: Genie Code drafts the prompt (scope, files allowed, checks, expected branch HEAD), you review it, the agent pulls, checks the HEAD, commits and pushes fast-forward only, and Genie Code pulls, reviews the diff, validates with your credentials and deploys. Keep one writer at a time on the branch.
 
 ## Changing a build
 

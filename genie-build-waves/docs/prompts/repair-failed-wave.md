@@ -124,6 +124,10 @@ Earlier waves show as SKIPPED. Files left in the working tree by the earlier run
 
 A convergence wave can commit (its session passed) and still fail on `runtime_gate` (e.g. the app crashed during the soak). The commit is kept as progress; repair re-runs the converge session, which starts from the committed code.
 
+### External monitor
+
+An external monitor following `src/skills/genie-build-monitor/SKILL.md` applies these same steps. Up to level 3 it repairs only the cases its decision table allows and escalates the rest to you. At level 4 (act for the owner) it does Steps 1-3 itself: it may push a small fix (even in the failed session's `owned_paths` when it can quote the cause) and repair from `w[wave_number]_sync`, and start one fresh run after a refused repair, within `max_repairs` (default 3) and 2 attempts at the same failure. It escalates on its stop conditions: fixes outside bundle source, the manifest or plans, permissions, grants, IP lists or job settings, a repeated failure, infrastructure failures, anything that destroys or recreates a resource or touches prod, and sessions that need a person. It never runs setup or deploys. See `docs/plans/2026-11-03_devin-monitor-requirements.md`.
+
 ---
 
 _This prompt is generic. Adapt the placeholders for your run ID, job ID, and wave number._

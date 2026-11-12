@@ -1,5 +1,11 @@
 # Session Summaries — genie-build-waves
 
+## 2026-11-12
+
+| Session | Summary |
+|---|---|
+| [monitor-level-4-and-lessons](2026-11-12_monitor-level-4-and-lessons.md) | Monitor skill level 4 "act for the owner" (`max_repairs` 3, 2 attempts per failure, stop conditions, first run and one fresh run allowed). Lessons from the first external-monitor test folded into the monitor requirements, repair prompt, planner skill and README. 173 pass. |
+
 ## 2026-11-09
 
 | Session | Summary |

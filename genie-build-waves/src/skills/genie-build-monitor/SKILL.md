@@ -1,6 +1,6 @@
 ---
 name: genie-build-monitor
-description: Monitors a genie-build-waves build job from outside the run - reports each wave's result and the reason for any failure, repairs runs whose cause is transient or already fixed, optionally pushes a minimal fix to the build branch and repairs from the wave's branch sync task, and reviews the build's pull request once the build passes. Tool-agnostic (Databricks CLI and Git only). Use when asked to watch, report on, repair, or review a build-waves run, given a build job id.
+description: Monitors a genie-build-waves build job from outside the run - reports each wave's result and the reason for any failure, repairs runs whose cause is transient or already fixed, optionally pushes a minimal fix to the build branch and repairs from the wave's branch sync task, optionally acts for the owner end to end (level 4: starts the build, fixes and repairs within limits, escalates only on stop conditions), and reviews the build's pull request once the build passes. Tool-agnostic (Databricks CLI and Git only). Use when asked to watch, report on, repair, or review a build-waves run, given a build job id.
 ---
 
 # Build Monitor
@@ -16,17 +16,27 @@ The setup job also publishes this file as the UC Skill `<skills_catalog>.<skills
 | `job_id` | The build job (not the setup job) |
 | `run_id` | Optional; default the latest run of `job_id` |
 | `build_root`, `manifest_path` | Project Git folder and manifest (also the job parameters of the run) |
-| `level` | `1` report, `2` repair, `3` fix and repair. Default `1`. Never act above the level you were given |
-| `repo`, `build_branch` | Git remote and build branch (level 3 and code review only) |
+| `level` | `1` report, `2` repair, `3` fix and repair, `4` act for the owner (section 8). Default `1`. Never act above the level you were given |
+| `max_repairs` | Level 4 only: repairs and fresh runs you may start for this build, in total. Default `3` |
+| `repo`, `build_branch` | Git remote and build branch (levels 3-4 and code review only) |
 
 ## Guardrails (hard rules)
 
 1. **Identity first.** Run `databricks current-user me`. If it is not the monitor principal you were told to use, stop and report. Ignore other Databricks credentials in the environment.
-2. **Never** run the setup job, deploy a bundle, change job settings or permissions, edit the manifest, cancel a run you did not start, or resume Genie Code conversations. Never write files in the Databricks workspace: your changes reach the project only through Git (level 3).
-3. **One automatic repair per wave per run.** After that, escalate.
+2. **Never** run the setup job, deploy a bundle, change job settings or permissions, edit the manifest, cancel a run you did not start, or resume Genie Code conversations. Never write files in the Databricks workspace: your changes reach the project only through Git (levels 3-4).
+3. **Repair limits.** Levels 2-3: one automatic repair per wave per run, then escalate. Level 4: at most `max_repairs` in total for the build and at most 2 attempts at the same failure, then escalate.
 4. **One writer at a time.** Push to the build branch only while no run of the build job is active (`databricks jobs list-runs --job-id <job_id> --active-only` is empty). Never push to `main`/`master`, never force-push, never rewrite history, never merge, never approve your own commits.
-5. **Smallest change.** A level 3 fix only does what the repair needs. Report every commit (SHA, files, reason).
+5. **Smallest change.** A level 3-4 fix only does what the repair needs. Report every commit (SHA, files, reason).
 6. **Report facts from the files.** Quote the gate, verdict and status files; do not guess a cause you cannot point to.
+7. **Read only what the build needs:** the build job, its runs, and files under `build_root`. Do not open other workspace objects even where your permissions allow it.
+8. **Mark your commits.** Commit as the monitor's own Git identity if you have one. Either way, prefix the message with your agent name (for example `monitor:`) and add a trailer naming the run and wave (`Build-Run: <run_id> wave <w>`). A commit cannot contain its own SHA; record SHA references in a second commit.
+9. **Stop conditions (all levels; level 4 escalates and waits).** Stop and escalate when:
+   * the fix needs a file outside the project's bundle source, or touches the manifest or plan files;
+   * the fix needs a permission, grant, IP access list or job-settings change;
+   * the same failure returns after your fix or repair, or a repair limit is reached;
+   * setup, branch sync or Genie Code infrastructure fails in a way a repair does not clear;
+   * the change would destroy or recreate a resource (for example change a Genie space id), or touch a production target;
+   * a session is `blocked` on a manual prerequisite, or stopped early after its continuation passes (a person resumes it).
 
 ## 1. Find the run and its task states
 
@@ -79,22 +89,25 @@ Every number and status must match the files. Say `not checked` for anything you
 
 ## 4. Decide
 
-| Observation | Level 1 | Level 2 | Level 3 |
-|---|---|---|---|
-| Wave passed, or run `BUILD_PASSED` | Report | Report | Report |
-| `BUILD_WARNING` (nothing checked) | Report | Report; do not repair | Same |
-| Genie Code task failed after its retries (`INTERNAL_ERROR: start_agent_run`, platform auth error) | Report | Repair from `w<w>_sessions` | Same |
-| Session stopped early after its continuation passes (gate names the conversation and `progress.next`) | Report session, conversation, next step | Same; do not repair (a person resumes it) | Same |
-| Integrator failed, sessions passed | Report | Repair from `w<w>_integrate` | Same |
-| Runtime gate failed on soak or probes only | Report | Repair from `w<w>_gate` only if the cause was external and is gone | Same |
-| Branch sync failed (`SYNC_FAILED` / `branch sync failed`) | Report the error and conflicting files | Repair from `w<w>_sync` only if the cause is gone | If your own push caused the conflict, fix it, then repair from `w<w>_sync` |
-| A fix is needed in a file no re-running session owns (session `blocked` on it, integrator stray, broken shared config) | Report the fix | Report | Push the fix (section 6), repair from `w<w>_sync` |
-| Session `blocked` on a manual prerequisite, or `requests` that change a re-running session's scope | Report and escalate | Same | Same |
-| Repair refused ("job structure has changed") | Report; the owner decides on a fresh run | Same | Same |
-| Build branch missing on the remote | Report ("Retarget after merge" in the README) | Same | Same |
-| Anything else | Report and escalate | Same | Same |
+| Observation | Level 1 | Level 2 | Level 3 | Level 4 |
+|---|---|---|---|---|
+| Told to complete the build, no run of the build yet | Report | Same | Same | Start the first run (section 8) |
+| Wave passed, or run `BUILD_PASSED` | Report | Report | Report | Report |
+| `BUILD_WARNING` (nothing checked) | Report | Report; do not repair | Same | Same |
+| Genie Code task failed after its retries (`INTERNAL_ERROR: start_agent_run`, platform auth error) | Report | Repair from `w<w>_sessions` | Same | Same |
+| Session stopped early after its continuation passes (gate names the conversation and `progress.next`) | Report session, conversation, next step | Same; do not repair (a person resumes it) | Same | Same; escalate |
+| Integrator failed, sessions passed | Report | Repair from `w<w>_integrate` | Same | Same |
+| Runtime gate failed on soak or probes only | Report | Repair from `w<w>_gate` only if the cause was external and is gone | Same | Same |
+| Branch sync failed (`SYNC_FAILED` / `branch sync failed`) | Report the error and conflicting files | Repair from `w<w>_sync` only if the cause is gone | If your own push caused the conflict, fix it, then repair from `w<w>_sync` | Same as level 3 |
+| A fix is needed in a file no re-running session owns (session `blocked` on it, integrator stray, broken shared config) | Report the fix | Report | Push the fix (section 6), repair from `w<w>_sync` | Same as level 3 |
+| Session ended `fail`, or the gate failed, with a cause in bundle source you can quote from the status, gate, runtime or summary files | Report | Report | Report (that session's job) | Push the smallest fix, even in the failed session's `owned_paths` (section 6), repair from `w<w>_sync` |
+| Session `blocked` on a manual prerequisite, or `requests` that change a re-running session's scope | Report and escalate | Same | Same | Same |
+| Repair refused ("job structure has changed") | Report; the owner decides on a fresh run | Same | Same | Start one fresh run with the run's own `job_parameters` (section 8), report it |
+| Build branch missing on the remote | Report ("Retarget after merge" in the README) | Same | Same | Same |
+| Anything matching a stop condition (guardrail 9) | Report and escalate | Same | Same | Same |
+| Anything else | Report and escalate | Same | Same | Same |
 
-"No re-running session owns" means: not under the `owned_paths` of any session in the wave you will repair or a later wave (read the manifest). Files a re-running session owns are that session's job.
+"No re-running session owns" means: not under the `owned_paths` of any session in the wave you will repair or a later wave (read the manifest). At levels 1-3, files a re-running session owns are that session's job. At level 4 you may fix them only in the row above: the session already failed, and you can quote the cause.
 
 ## 5. Repair (level 2+)
 
@@ -112,13 +125,13 @@ databricks jobs repair-run <run_id> --no-wait --json '{
 * Repairs run as the job's `run_as`, not as you. Check the new repair id in `repair_history`, then keep monitoring.
 * Jobs keeps `for_each` iterations that ended SUCCESS, so a repair does not re-run a session that stopped early; that needs a person.
 
-## 6. Fix and repair (level 3)
+## 6. Fix and repair (levels 3-4)
 
-Only for the decision-table rows that allow it, and only on a finished run.
+Only for the decision-table rows that allow it, and only on a finished run. Before the first fix, check you can push: `git push --dry-run origin <build_branch>` must succeed. If it fails (for example 403), report it and stay at level 2.
 
-1. Confirm no run is active (guardrail 4) and the fix is in no re-running session's `owned_paths`.
-2. Clone or fetch `repo`, check out `build_branch` at the remote head, make the smallest change, run the checks the plan names (for bundles: `databricks bundle validate --strict --target <target>`).
-3. Commit by explicit path with a message that names the run and wave, push to `build_branch`.
+1. Confirm no run is active (guardrail 4). Level 3: the fix is in no re-running session's `owned_paths`. Level 4: it is in no `owned_paths` except the failed session's, and inside the project's bundle source.
+2. Clone or fetch `repo`, check out `build_branch` at the remote head (`git pull --ff-only`), make the smallest change, run the checks the plan names (for bundles: `databricks bundle validate --strict --target <target>`). If a check fails only because your credentials lack a scope (for example a warehouse `lookup` needs `sql`), report the exact error; do not widen scopes or work around it.
+3. Commit by explicit path (guardrail 8), push fast-forward to `build_branch`. If the push is rejected, stop and report; never rebase or force.
 4. Repair from `w<w>_sync` (section 5). The sync pulls your commit into the Git folder before the sessions; the integrator never pulls.
 5. Check `wave_<w>_sync.json` / the `w<w>_sync` output: `SYNC_PULLED` with your SHA. `SYNC_FAILED` on conflicting files means an uncommitted file in the Git folder clashes with your change: report it, do not push again.
 6. Report the SHA, files, reason and the repair id.
@@ -131,6 +144,21 @@ Only when asked, and only after a run ends `BUILD_PASSED` with every runnable wa
 * Check: each session stayed in its `owned_paths`; recorded `suppressions` are narrow and justified; no secrets, tokens or personal data in code or config; bundle conventions the project documents (schema references, variables, notebook paths matching files on disk, tags); tests or validation the plans require.
 * Post one review with findings: severity (blocker / major / minor), file and line, and a suggested fix. List your own level 3 commits separately so a person reviews them.
 * Do not approve, merge or push after the review unless the owner asks.
+* Posting needs pull-request write access on the Git token. If posting fails, put the review in your report with the exact error; do not try another way.
+
+## 8. Act for the owner (level 4)
+
+Use level 4 only when the owner has asked you to complete a build on their behalf. You decide and act without waiting for approval, within guardrails 1-9; the owner reads your reports afterwards.
+
+1. Sync your checkout to the remote `build_branch`, read the manifest and plan index, and confirm no run of the build job is active.
+2. If the build has no run yet: start one with `databricks jobs run-now <job_id> --no-wait --json '{"job_parameters": {"branch": ..., "build_root": ..., "manifest_path": ...}}'` (the job defaults, unless the owner gave other values). Report its `run_id`.
+3. Monitor (Polling). On each failed wave, read the files (section 2), decide (section 4, level 4 column):
+   * transient cause: repair from the task the table names, no commit;
+   * cause in bundle source with a small, quotable fix: fix and repair from `w<w>_sync` (section 6);
+   * stop condition: escalate and wait.
+4. If a repair is refused ("job structure has changed"), start one fresh run with `run-now` and the run's own `job_parameters`, and the `only` task list from `docs/prompts/repair-failed-wave.md` (Step 3). This counts against `max_repairs`.
+5. Repeat until `BUILD_PASSED`, `BUILD_WARNING`, or a stop condition. Never start a run for any other reason.
+6. Final report: every run and repair id, every decision with the file and line that justified it, every commit (SHA, files, reason), and the verdict line.
 
 ## Polling
 
