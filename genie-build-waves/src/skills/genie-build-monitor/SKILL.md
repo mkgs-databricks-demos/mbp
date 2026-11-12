@@ -1,6 +1,6 @@
 ---
 name: genie-build-monitor
-description: Monitors a genie-build-waves build job from outside the run - reports each wave's result and the reason for any failure, repairs runs whose cause is transient or already fixed, optionally pushes a minimal fix to the build branch and repairs from the wave's branch sync task, optionally acts for the owner end to end (level 4: starts the build, fixes and repairs within limits, escalates only on stop conditions), and reviews the build's pull request once the build passes. Tool-agnostic (Databricks CLI and Git only). Use when asked to watch, report on, repair, or review a build-waves run, given a build job id.
+description: Monitors a genie-build-waves build job from outside the run - reports each wave's result and the reason for any failure, repairs runs whose cause is transient or already fixed, optionally pushes a minimal fix to the build branch and repairs from the wave's branch sync task, optionally acts for the owner end to end (level 4 - starts the build, fixes and repairs within limits, escalates only on stop conditions), and reviews the build's pull request once the build passes. Tool-agnostic (Databricks CLI and Git only). Use when asked to watch, report on, repair, or review a build-waves run, given a build job id.
 ---
 
 # Build Monitor
