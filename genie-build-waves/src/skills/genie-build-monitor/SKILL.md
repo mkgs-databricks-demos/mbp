@@ -37,6 +37,12 @@ The setup job also publishes this file as the UC Skill `<skills_catalog>.<skills
    * setup, branch sync or Genie Code infrastructure fails in a way a repair does not clear;
    * the change would destroy or recreate a resource (for example change a Genie space id), or touch a production target;
    * a session is `blocked` on a manual prerequisite, or stopped early after its continuation passes (a person resumes it).
+10. **Escalate so the owner sees it.** An escalation nobody sees stalls the build. When you escalate:
+   * Post one escalation report that starts with `ESCALATION:`, then the run id, wave, the stop condition hit, the evidence (file and line), what you already did (repairs used, commits), and the decision you need as numbered options with your recommendation.
+   * Send it to every channel the owner gave you (for example a Slack or Teams thread, or a GitHub issue or PR comment that mentions them, if your token allows). If you were given none, say so in the report.
+   * Then end your turn waiting for the owner, in the state your platform shows as needing attention (for example blocked or waiting for user). Do not keep polling, start other work, or act on the decision yourself.
+   * If your platform suspends idle sessions, say in the report that you will not poll while suspended and that a message resumes you.
+   * When the owner answers, re-read the run state and the build branch head before acting (they may have changed), then act only on the option they chose.
 
 ## 1. Find the run and its task states
 
@@ -82,7 +88,7 @@ Run <run_id> (attempt/repair <n>), wave <w>: PASS | FAIL | EXCLUDED | DISABLED
 Sessions: <id> pass | <id> fail (<one-line reason>) ...
 Commit: <commit_sha>   Sync: <SYNC_... line>
 Problems: <first 3 gate problems, quoted>
-Action: none | repaired from <task> | pushed <sha> and repaired from w<w>_sync | escalated: <why>
+Action: none | repaired from <task> | pushed <sha> and repaired from w<w>_sync | escalated: <why> (guardrail 10)
 ```
 
 Every number and status must match the files. Say `not checked` for anything you could not read.
@@ -148,18 +154,18 @@ Only when asked, and only after a run ends `BUILD_PASSED` with every runnable wa
 
 ## 8. Act for the owner (level 4)
 
-Use level 4 only when the owner has asked you to complete a build on their behalf. You decide and act without waiting for approval, within guardrails 1-9; the owner reads your reports afterwards.
+Use level 4 only when the owner has asked you to complete a build on their behalf. You decide and act without waiting for approval, within guardrails 1-10; the owner reads your reports afterwards.
 
 1. Sync your checkout to the remote `build_branch`, read the manifest and plan index, and confirm no run of the build job is active.
 2. If the build has no run yet: start one with `databricks jobs run-now <job_id> --no-wait --json '{"job_parameters": {"branch": ..., "build_root": ..., "manifest_path": ...}}'` (the job defaults, unless the owner gave other values). Report its `run_id`.
 3. Monitor (Polling). On each failed wave, read the files (section 2), decide (section 4, level 4 column):
    * transient cause: repair from the task the table names, no commit;
    * cause in bundle source with a small, quotable fix: fix and repair from `w<w>_sync` (section 6);
-   * stop condition: escalate and wait.
+   * stop condition: escalate and wait (guardrail 10).
 4. If a repair is refused ("job structure has changed"), start one fresh run with `run-now` and the run's own `job_parameters`, and the `only` task list from `docs/prompts/repair-failed-wave.md` (Step 3). This counts against `max_repairs`.
 5. Repeat until `BUILD_PASSED`, `BUILD_WARNING`, or a stop condition. Never start a run for any other reason.
 6. Final report: every run and repair id, every decision with the file and line that justified it, every commit (SHA, files, reason), and the verdict line.
 
 ## Polling
 
-Waves take 10-60 minutes. Poll every 10 minutes while a run is active; report only on change. Stop when `build_verdict` has ended and the report is sent, or when you escalate.
+Waves take 10-60 minutes. Poll every 10 minutes while a run is active; report only on change. Stop when `build_verdict` has ended and the report is sent, or when you escalate (guardrail 10). The build job's own failure notifications (email or a notification destination on the job) are the owner's backstop if your session is suspended or unreachable; they do not replace your escalation report.

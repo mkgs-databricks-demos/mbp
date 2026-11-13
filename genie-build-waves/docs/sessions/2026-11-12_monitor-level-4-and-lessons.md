@@ -39,6 +39,10 @@ The project's setup run after `a6b6c35` ended SUCCESS but did not publish the mo
 
 After the fix, the monitor could not read the published skill with `jobs,workspace`: `Invalid scope, required scopes: files`. With the owner's approval it used `scopes = jobs,workspace,files` and read `/Skills/<catalog>/<schema>/genie_build_monitor/SKILL.md` (the path setup uploads to; `/Volumes/...` returned "no such directory"). `ai-gateway` was not needed. The requirements doc (scopes, grants row; open question removed), README step 2 and the monitor skill now say so.
 
+## Follow-up: escalation guardrail
+
+In the project's level 4 test the monitor escalated correctly (same failure after its fix) but the owner did not see it for about 11 hours, and the agent's session was later suspended for inactivity. New monitor guardrail 10: post one `ESCALATION:` report (run, wave, stop condition, evidence, actions taken, numbered options with a recommendation), send it to every channel the owner gave, end the turn in the platform's needs-attention state without polling or acting, say if idle sessions are suspended, and re-read run state and branch head before acting on the answer. Polling notes that the build job's own failure notifications are the backstop. Notification options researched (job email or notification destinations, the agent's own notifications, Slack/Teams sync, GitHub issue or PR mention, Slack webhook); the job-notification variables are not added yet.
+
 ## Files
 
 `src/skills/genie-build-monitor/SKILL.md`, `src/skills/genie-build-planner/SKILL.md`, `docs/plans/2026-11-03_devin-monitor-requirements.md`, `docs/prompts/repair-failed-wave.md`, `README.md`, `tests/test_skill_frontmatter.py`, `docs/sessions/INDEX.md`.
