@@ -1,6 +1,6 @@
 # Request: document what the probe helpers return in the session runner skill
 
-**Status:** done 2026-10-26 on branch `mg-genie-probe-helpers-skill-doc` (commit `2a3317b`; UC skill republish pending the next setup run) · **From:** Semantic Ground Truth build 4, session 36 (raised in runs `110489694161084` and `655172288447819`) · **Date:** 2026-10-26 · **Size:** small doc fix (one bullet in `SKILL.md`), no code change
+**Status:** done 2026-10-26 on branch `mg-genie-probe-helpers-skill-doc` (commit `2a3317b`; UC skill republish pending the next setup run) · **From:** a consumer project's build 4, session 36 (raised in two runs) · **Date:** 2026-10-26 · **Size:** small doc fix (one bullet in `SKILL.md`), no code change
 
 ## Problem
 
@@ -37,8 +37,8 @@ with
 
 ## Rollout
 
-* When it takes effect: automations that point at the workspace `SKILL.md` pick it up as soon as the change is on the branch checked out in `mbp/genie-build-waves`. The Semantic Ground Truth default instance does this today, because its 2026-10-26 setup reported `skills_published: false` (a finalize timeout, although the skills did finalize). Automations that load the UC skill need setup to republish `genie_build_session_runner`, and setup must not run while a build is in progress (it resets the build job).
-* Sessions read `SKILL.md` when they start, so a change merged during a build applies to later waves only. Semantic Ground Truth build 4 (run `655172288447819`) is running; waves 4-5 to 4-9 have not all started. A doc-only change is safe for it.
+* When it takes effect: automations that point at the workspace `SKILL.md` pick it up as soon as the change is on the branch checked out in `mbp/genie-build-waves`. One consumer project's instance did this at the time, because its 2026-10-26 setup reported `skills_published: false` (a finalize timeout, although the skills did finalize). Automations that load the UC skill need setup to republish `genie_build_session_runner`, and setup must not run while a build is in progress (it resets the build job).
+* Sessions read `SKILL.md` when they start, so a change merged during a build applies to later waves only. At the time a build 4 run was in progress with waves 4-5 to 4-9 not all started; a doc-only change was safe for it.
 
 ## Not in scope
 

@@ -11,7 +11,7 @@ import instance_guard as ig
 U = "/Workspace/Users/me@example.com"
 DEFAULT_ROOT = f"{U}/.bundle/genie-build-waves/dev"
 SMOKE_ROOT = f"{U}/.bundle/genie-build-waves-smoke/dev"
-SGT_MANIFEST = f"{U}/semanticGroundTruth/docs/plans/waves.json"
+PROJ_A_MANIFEST = f"{U}/projectA/docs/plans/waves.json"
 SMOKE_MANIFEST = f"{U}/mbp/genie-build-waves/.scratch/smoke-waves.json"
 IDS = {"build_waves": "1079", "build_waves_smoke": "557", "setup_build_waves": "818"}
 
@@ -42,13 +42,13 @@ def run(rid, manifest, value=True):
     return {"run_id": rid, "job_parameters": [p]}
 
 
-# sGt default instance as it is after a normal setup run: build/smoke lost `deployment`.
-SGT_JOBS = {
-    "build_waves": job("[dev me] Semantic Ground Truth: Build Waves", manifest=SGT_MANIFEST),
-    "build_waves_smoke": job("[dev me] Semantic Ground Truth: Build Waves Smoke Test"),
-    "setup_build_waves": job("[dev me] Semantic Ground Truth: Build Waves Setup", meta_root=DEFAULT_ROOT),
+# Project A default instance as it is after a normal setup run: build/smoke lost `deployment`.
+PROJ_A_JOBS = {
+    "build_waves": job("[dev me] Project A: Build Waves", manifest=PROJ_A_MANIFEST),
+    "build_waves_smoke": job("[dev me] Project A: Build Waves Smoke Test"),
+    "setup_build_waves": job("[dev me] Project A: Build Waves Setup", meta_root=DEFAULT_ROOT),
 }
-SGT_RUNS = [run(110, SGT_MANIFEST)]
+PROJ_A_RUNS = [run(110, PROJ_A_MANIFEST)]
 
 
 # --- paths ---------------------------------------------------------------------------
@@ -74,23 +74,23 @@ def test_summary_and_state_ids():
 
 def test_first_deploy_with_foreign_cache_is_refused():
     """-smoke had no remote state, but the cache carried the default instance's IDs."""
-    p = ig.deploy_problems(summary(SMOKE_ROOT), None, SGT_JOBS, SGT_RUNS, SMOKE_MANIFEST)
+    p = ig.deploy_problems(summary(SMOKE_ROOT), None, PROJ_A_JOBS, PROJ_A_RUNS, SMOKE_MANIFEST)
     text = "\n".join(p)
     assert "no remote state" in text
     assert "was deployed from" in text            # setup job belongs to the default root
-    assert "manifest_path default" in text         # build job is sGt's
+    assert "manifest_path default" in text         # build job is Project A's
     assert "latest run 110" in text
 
 
 def test_redeploy_of_smoke_state_still_refused():
     """After the bad deploy, -smoke's remote state claims the same IDs; ownership still fails."""
-    p = ig.deploy_problems(summary(SMOKE_ROOT), state(), SGT_JOBS, SGT_RUNS, SMOKE_MANIFEST)
+    p = ig.deploy_problems(summary(SMOKE_ROOT), state(), PROJ_A_JOBS, PROJ_A_RUNS, SMOKE_MANIFEST)
     assert not [x for x in p if "remote state" in x]  # state matches the summary
     assert any("setup_build_waves" in x and "was deployed from" in x for x in p)
 
 
 def test_owner_redeploy_passes():
-    assert ig.deploy_problems(summary(DEFAULT_ROOT), state(), SGT_JOBS, SGT_RUNS, SGT_MANIFEST) == []
+    assert ig.deploy_problems(summary(DEFAULT_ROOT), state(), PROJ_A_JOBS, PROJ_A_RUNS, PROJ_A_MANIFEST) == []
 
 
 def test_clean_first_deploy_passes():
@@ -106,25 +106,25 @@ def test_summary_ids_must_match_remote_state():
 
 
 def test_deleted_job_is_not_an_ownership_problem():
-    assert ig.job_problems("build_waves", "1", None, DEFAULT_ROOT, SGT_MANIFEST) == []
+    assert ig.job_problems("build_waves", "1", None, DEFAULT_ROOT, PROJ_A_MANIFEST) == []
 
 
 def test_jobs_without_deployment_or_manifest_are_not_flagged():
-    assert ig.job_problems("build_waves_smoke", "557", SGT_JOBS["build_waves_smoke"], SMOKE_ROOT, SMOKE_MANIFEST) == []
+    assert ig.job_problems("build_waves_smoke", "557", PROJ_A_JOBS["build_waves_smoke"], SMOKE_ROOT, SMOKE_MANIFEST) == []
 
 
 # --- history ----------------------------------------------------------------------------
 
 def test_history_uses_latest_run_only():
-    old_manifest = f"{U}/semanticGroundTruth/ground-truth-app/docs/plans/waves.json"
-    runs = [run(3, SGT_MANIFEST), run(2, old_manifest)]  # project moved its manifest earlier
-    assert ig.history_problems("1079", runs, SGT_MANIFEST) == []
+    old_manifest = f"{U}/projectA/project-a-app/docs/plans/waves.json"
+    runs = [run(3, PROJ_A_MANIFEST), run(2, old_manifest)]  # project moved its manifest earlier
+    assert ig.history_problems("1079", runs, PROJ_A_MANIFEST) == []
     assert "latest run 3" in ig.history_problems("1079", runs, SMOKE_MANIFEST)[0]
 
 
 def test_history_falls_back_to_default_and_skips_runs_without_it():
-    runs = [{"run_id": 4, "job_parameters": []}, run(3, SGT_MANIFEST, value=False)]
-    assert ig.history_problems("1079", runs, SGT_MANIFEST) == []
+    runs = [{"run_id": 4, "job_parameters": []}, run(3, PROJ_A_MANIFEST, value=False)]
+    assert ig.history_problems("1079", runs, PROJ_A_MANIFEST) == []
     assert ig.history_problems("1079", runs, SMOKE_MANIFEST)
     assert ig.history_problems("1079", [], SMOKE_MANIFEST) == []
     assert ig.history_problems("1079", runs, None) == []
@@ -132,7 +132,7 @@ def test_history_falls_back_to_default_and_skips_runs_without_it():
 
 # --- setup guard --------------------------------------------------------------------------
 
-def _setup_jobs(jobs=SGT_JOBS):
+def _setup_jobs(jobs=PROJ_A_JOBS):
     return {k: (IDS[k], jobs[k]) for k in IDS}
 
 
@@ -143,21 +143,21 @@ def test_setup_guard_after_bad_deploy():
         "build_waves_smoke": job("[dev me] Build Waves Smoke: Build Waves Smoke Test", meta_root=SMOKE_ROOT),
         "setup_build_waves": job("[dev me] Build Waves Smoke: Build Waves Setup", meta_root=SMOKE_ROOT),
     }
-    p = ig.setup_problems(_setup_jobs(after), SGT_RUNS, SMOKE_MANIFEST, SMOKE_ROOT, "Build Waves Smoke")
-    assert p == [f"build job 1079: latest run 110 used manifest {SGT_MANIFEST}, this instance uses {SMOKE_MANIFEST}"]
+    p = ig.setup_problems(_setup_jobs(after), PROJ_A_RUNS, SMOKE_MANIFEST, SMOKE_ROOT, "Build Waves Smoke")
+    assert p == [f"build job 1079: latest run 110 used manifest {PROJ_A_MANIFEST}, this instance uses {SMOKE_MANIFEST}"]
 
 
 def test_setup_guard_owner_passes_and_optional_inputs():
-    assert ig.setup_problems(_setup_jobs(), SGT_RUNS, SGT_MANIFEST, DEFAULT_ROOT, "Semantic Ground Truth") == []
+    assert ig.setup_problems(_setup_jobs(), PROJ_A_RUNS, PROJ_A_MANIFEST, DEFAULT_ROOT, "Project A") == []
     # setup jobs deployed before root_path/project_name were passed
-    assert ig.setup_problems(_setup_jobs(), SGT_RUNS, SGT_MANIFEST) == []
+    assert ig.setup_problems(_setup_jobs(), PROJ_A_RUNS, PROJ_A_MANIFEST) == []
 
 
 def test_setup_guard_wrong_root_name_and_missing_job():
-    p = ig.setup_problems(_setup_jobs(), SGT_RUNS, SGT_MANIFEST, SMOKE_ROOT, "Agentic Trading")
+    p = ig.setup_problems(_setup_jobs(), PROJ_A_RUNS, PROJ_A_MANIFEST, SMOKE_ROOT, "Project B")
     assert sum("expected the project name" in x for x in p) == 3
     assert any("setup_build_waves" in x and "was deployed from" in x for x in p)
-    p = ig.setup_problems({"build_waves": ("1", None), "build_waves_smoke": ("", None)}, [], SGT_MANIFEST)
+    p = ig.setup_problems({"build_waves": ("1", None), "build_waves_smoke": ("", None)}, [], PROJ_A_MANIFEST)
     assert p == ["build_waves: job 1 not found"]
 
 

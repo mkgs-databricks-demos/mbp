@@ -41,7 +41,7 @@ Verified behavior that shaped the design: `EXPLAIN` on a query with an analysis 
 Findings that changed the plan:
 
 * Spans carry no deployment id (resource attributes: `app.id`, `app.name`, `service.name`, `workspace.id`, process/host only). Traces are scoped by `service_name` + time since the probes.
-* An idle app still emits `SPAN_KIND_CLIENT` spans every 5 minutes (its own telemetry export): 26 in 2 hours on `lakeloom-ai-dev` with no traffic and zero SERVER spans. Counting every kind would pass an app that served nothing, so `trace_span_kinds` defaults to `["SPAN_KIND_SERVER"]`.
+* An idle app still emits `SPAN_KIND_CLIENT` spans every 5 minutes (its own telemetry export): 26 in 2 hours on a dev Databricks App with no traffic and zero SERVER spans. Counting every kind would pass an app that served nothing, so `trace_span_kinds` defaults to `["SPAN_KIND_SERVER"]`.
 * Ad hoc HTTP to app URLs from an interactive assistant session is blocked by policy, and interactive success would not prove the job identity anyway. The smoke task is the proof.
 
 **Revision (owner decision, same day).** Probes authenticate as an explicit service principal, not the job's run-as identity: `probe_auth: {secret_scope, client_id_key, client_secret_key}` (target or top-level) holds its OAuth M2M credentials, and the probe client is `WorkspaceClient(client_id, client_secret, auth_type="oauth-m2m")`. Setup checks that the scope and keys exist (names only). Bad credentials fail at `config.authenticate()` with `invalid_client`, which the probe reports before any request. A consumer project with a provisioned SP runs the live proof.
@@ -89,7 +89,7 @@ Original plan:
 
 **As built.** `check_genie_space` asks each `probe_questions` entry after the static checks pass (skipped otherwise) via `start_conversation_and_wait`, one retry in a new conversation. Pass = message `COMPLETED`, a query attachment, and `get_message_attachment_query_result` reports `SUCCEEDED`. `warn` failures go to the target's `warnings` (printed, and in the gate result and `wave_<N>_runtime.json`); `fail` adds them to the problems. Setup validates the fields and adds `2 × probe_timeout_seconds` per question to the gate timeout.
 
-Findings (real space, `[dev matthew_giglia] WanderBricks Analytics`):
+Findings (a real dev Genie space):
 
 * A data question took 13 to 25 s and produced a `MEASURE()` query over the metric view; the attachment carries `statement_id` and `query_result_metadata.row_count`, and the result endpoint returns `SUCCEEDED`.
 * An off-topic question completes in about 5 s with status `COMPLETED` and only a text attachment. Status alone would pass it, so the query attachment is required.
@@ -112,7 +112,7 @@ Original plan:
 
 **As built.** Smoke `app_probe_check` also checks each `genie_space` target (`pass` / `fail` on no `CAN_EDIT` / `skipped` if not created yet) and only probes apps that have `probes` or `probe_auth`. `probe_auth` is now required for probes: `probe_client` raises without it, and setup rejects `probes` without it. Secret read errors are cut to one line.
 
-Live proof, one-time serverless job runs of `app_probe_check` against `lakeloom-ai-dev` (manifests kept in the git-ignored `.scratch/`):
+Live proof, one-time serverless job runs of `app_probe_check` against a dev Databricks App (manifests kept in the git-ignored `.scratch/`):
 
 | Case | Result |
 |---|---|

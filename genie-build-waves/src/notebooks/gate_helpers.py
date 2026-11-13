@@ -42,6 +42,11 @@ def gate_failure_message(wave, problems, limit: int = 20) -> str:
 
 VERDICT_TASK_KEY = "build_verdict"
 
+# Gate task result states that mean "this wave did not run in this run", not "its gate failed":
+# EXCLUDED (an earlier gate_check was false) and DISABLED (the task is disabled in the job, e.g.
+# waves already done in an earlier run). Both are ignored by the verdict.
+SKIPPED_GATE_STATES = {"EXCLUDED": "excluded", "DISABLED": "disabled"}
+
 
 def latest_task_states(run_tasks) -> dict:
     """{task_key: result_state} from jobs/runs/get `tasks`, keeping the latest attempt of each task.
@@ -59,17 +64,44 @@ def latest_task_states(run_tasks) -> dict:
     return {k: v[1] for k, v in best.items()}
 
 
-def build_verdict(wave_ids, task_states, results) -> dict:
+def _sync_problem(wid: str, task_states, sync) -> str | None:
+    """Why wave wid's branch sync (w<wid>_sync, git/hybrid workflows) fails the run, or None.
+
+    A failed sync sets synced=false, so the wave's gate is Excluded and would be ignored; the
+    sync result has to fail the run itself. Not in the run, Excluded or Disabled: no problem.
+    """
+    key = f"w{wid}_sync"
+    if task_states is None:
+        if sync is not None and not sync.get("ok"):
+            return f"branch sync failed: {sync.get('error')}"
+        return None
+    state = task_states.get(key)
+    if state is None or state in SKIPPED_GATE_STATES:
+        return None
+    if state != "SUCCESS":
+        return f"branch sync task {key} ended {state} (the sync notebook did not finish)"
+    if sync is not None and not sync.get("ok"):
+        return f"branch sync failed: {sync.get('error')}"
+    if sync is None and task_states.get(f"w{wid}_gate") in (None, "EXCLUDED"):
+        return f"branch sync task {key} wrote no wave_{wid}_sync.json and the wave did not run"
+    return None
+
+
+def build_verdict(wave_ids, task_states, results, sync_results=None) -> dict:
     """Run verdict from every runnable wave's gate.
 
     wave_ids: runnable wave ids in manifest order.
     task_states: {task_key: result_state} for this run (latest attempts), or None when the Jobs
         API could not be read; then only the result files decide.
     results: {wave_id: gate result dict (wave_<w>_gate_result.json) or None}.
+    sync_results: {wave_id: branch sync result (wave_<w>_sync.json) or None}; a failed sync
+        fails its wave even though the wave's gate was Excluded (see _sync_problem).
 
     Per wave: gate task not in this run (`only` subset) -> not_in_run; EXCLUDED (an earlier wave
-    failed) -> excluded; SUCCESS -> the result file decides (missing file = fail); any other
-    state (FAILED, TIMEDOUT, UPSTREAM_FAILED, CANCELED, ...) -> fail.
+    failed) -> excluded; DISABLED (task disabled in the job) -> disabled; SUCCESS -> the result
+    file decides (missing file = fail); any other state (FAILED, TIMEDOUT, UPSTREAM_FAILED,
+    CANCELED, ...) -> fail. Excluded and disabled waves are ignored, even if an older result file
+    exists, because their gate did not run in this run.
     """
     waves, failed = [], []
     for wid in wave_ids:
@@ -77,13 +109,20 @@ def build_verdict(wave_ids, task_states, results) -> dict:
         key = f"w{wid}_gate"
         res = results.get(wid)
         entry = {"wave": wid, "gate_task": key}
-        if task_states is not None:
+        if task_states is not None and f"w{wid}_sync" in task_states:
+            entry["sync_task_state"] = task_states[f"w{wid}_sync"]
+        sync_problem = _sync_problem(wid, task_states, (sync_results or {}).get(wid))
+        if sync_problem:
+            if task_states is not None:
+                entry["task_state"] = task_states.get(key)
+            entry.update(result="fail", problems=[sync_problem], sync_failed=True)
+        elif task_states is not None:
             state = task_states.get(key)
             entry["task_state"] = state
             if state is None:
                 entry["result"] = "not_in_run"
-            elif state == "EXCLUDED":
-                entry["result"] = "excluded"
+            elif state in SKIPPED_GATE_STATES:
+                entry["result"] = SKIPPED_GATE_STATES[state]
             elif state != "SUCCESS":
                 entry.update(result="fail", problems=[f"gate task ended {state} (the gate notebook did not finish)"])
             elif res is None:
@@ -100,15 +139,31 @@ def build_verdict(wave_ids, task_states, results) -> dict:
             failed.append(entry)
         waves.append(entry)
     checked = [e for e in waves if e["result"] in ("pass", "fail")]
+    # Nothing checked (every wave disabled, excluded or not in the run) is not a real pass:
+    # the run still succeeds, but the verdict is a warning so it is not mistaken for a build.
     return {"passed": not failed, "waves": waves, "failed": [e["wave"] for e in failed],
-            "checked": len(checked), "api_used": task_states is not None}
+            "checked": len(checked), "api_used": task_states is not None,
+            "disabled": [e["wave"] for e in waves if e["result"] == "disabled"],
+            "warning": not failed and not checked}
 
 
 def verdict_message(verdict: dict, per_wave: int = 5) -> str:
-    """BUILD_FAILED / BUILD_PASSED summary with the first problems of each failed wave and the repair step."""
+    """BUILD_FAILED / BUILD_WARNING / BUILD_PASSED summary with the first problems of each failed wave
+    and the repair step. BUILD_WARNING: no wave gate was checked (nothing failed, nothing passed)."""
+    disabled = verdict.get("disabled") or []
+    skipped = f" ({len(disabled)} disabled wave(s) skipped: {', '.join(disabled)})" if disabled else ""
+    if verdict.get("warning"):
+        counts = {}
+        for e in verdict["waves"]:
+            if e["result"] != "disabled":
+                counts[e["result"]] = counts.get(e["result"], 0) + 1
+        parts = ([f"{len(disabled)} disabled: {', '.join(disabled)}"] if disabled else []) + \
+            [f"{n} {r.replace('_', ' ')}" for r, n in counts.items()]
+        detail = f" ({'; '.join(parts)})" if parts else ""
+        return f"BUILD_WARNING: no wave gate was checked in this run{detail}"
     if verdict["passed"]:
-        return f"BUILD_PASSED: {verdict['checked']} wave gate(s) passed"
-    lines = [f"BUILD_FAILED: {len(verdict['failed'])} wave gate(s) failed: {', '.join(verdict['failed'])}"]
+        return f"BUILD_PASSED: {verdict['checked']} wave gate(s) passed{skipped}"
+    lines = [f"BUILD_FAILED: {len(verdict['failed'])} wave gate(s) failed: {', '.join(verdict['failed'])}{skipped}"]
     for e in verdict["waves"]:
         if e["result"] != "fail":
             continue
@@ -118,8 +173,17 @@ def verdict_message(verdict: dict, per_wave: int = 5) -> str:
         if len(probs) > per_wave:
             lines.append(f"  ... and {len(probs) - per_wave} more (see wave_{e['wave']}_gate_result.json)")
     first = verdict["failed"][0]
-    lines.append(f"Fix the cause, then repair from w{first}_integrate (or w{first}_sessions / w{first}_gate) "
-                 f"with rerun_dependent_tasks; see docs/prompts/repair-failed-wave.md")
+    first_entry = next(e for e in verdict["waves"] if e["wave"] == first)
+    if first_entry.get("sync_failed"):
+        lines.append(f"Fix the cause (see wave_{first}_sync.json), then repair from w{first}_sync "
+                     f"with rerun_dependent_tasks; see docs/prompts/repair-failed-wave.md")
+    elif "sync_task_state" in first_entry:
+        lines.append(f"Fix the cause, then repair from w{first}_integrate (or w{first}_sessions / w{first}_gate; "
+                     f"w{first}_sync if a fix was pushed to the branch) with rerun_dependent_tasks; "
+                     f"see docs/prompts/repair-failed-wave.md")
+    else:
+        lines.append(f"Fix the cause, then repair from w{first}_integrate (or w{first}_sessions / w{first}_gate) "
+                     f"with rerun_dependent_tasks; see docs/prompts/repair-failed-wave.md")
     return "\n".join(lines)
 
 
@@ -173,7 +237,7 @@ def normalise_genie_space(space: dict) -> dict:
     1. data_sources.metric_views is merged into data_sources.tables (the server lists both together).
     2. Lists of strings are joined (the server splits text into line arrays).
     3. Lists of objects are sorted by id / identifier / column_name / name.
-    Confirmed on the Semantic Ground Truth space against ground_truth_ops.geniespace.json.
+    Confirmed on a real deployed Genie space against its bundle source (*.geniespace.json).
     """
     s = copy.deepcopy(space or {})
     ds = s.get("data_sources")

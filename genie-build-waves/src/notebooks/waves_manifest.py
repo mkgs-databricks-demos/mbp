@@ -7,6 +7,19 @@ imports, so the tests can import it directly.
 Archived waves (`"archived": true`) are earlier builds kept in the manifest as
 history. They are validated (ids, duplicate session ids, runtime target references)
 but generate no job tasks, and their sessions count as already done for `depends_on`.
+
+Continuation passes (`"continuation_passes"`, top level or per wave, default 1, 0 turns them off, max 3). A
+session that stops at the Genie Code step limit still ends its for_each iteration SUCCESS,
+and a repair cannot re-run a SUCCESS iteration. After the sessions, each pass k runs
+w<w>_find_incomplete[k] (notebook: sessions with no final status) -> w<w>_has_incomplete[k]
+(If/else) -> w<w>_continue[k] (for_each over the incomplete sessions, runner with
+continuation=k). See docs/plans/2026-11-03_continuation-pass.md.
+
+Branch sync (git and hybrid workflows, `workflow.sync_branch`, default true). Each wave starts
+with w<w>_sync (notebook: pull the build branch into the Git folder, fast-forward, as the job's
+run_as) -> w<w>_synced (If/else on its `synced` value) -> w<w>_sessions. A fix pushed to the
+branch between runs (by a person or an external monitor) reaches the sessions when the run is
+repaired from w<w>_sync. A failed sync excludes the wave; build_verdict fails the run.
 """
 
 import json
@@ -18,6 +31,18 @@ from app_probes import validate_probe, validate_probe_auth
 VALID_MODES = {"edit", "execute", "configure", "converge"}
 VALID_TARGET_TYPES = {"app", "job", "pipeline", "dashboard", "genie_space", "table"}
 DEFAULT_TIMEOUT_MIN = {"edit": 60, "execute": 60, "configure": 60, "converge": 180}
+DEFAULT_CONTINUATION_PASSES = 1
+MAX_CONTINUATION_PASSES = 3
+FIND_INCOMPLETE_TIMEOUT_MIN = 10
+SYNC_TIMEOUT_MIN = 10
+SYNC_WORKFLOW_MODES = {"git", "hybrid"}
+MAX_JOB_TASKS = 1000  # Lakeflow Jobs limit per job
+
+# genie_task.parameters of the runner / integrator automations. The setup notebook puts a
+# {{param}} placeholder for each one in the automation prompt; a parameter missing here never
+# reaches the agent (tests check every generated parameter is listed).
+RUNNER_PARAMS = ["session_id", "wave", "run_id", "branch", "build_root", "manifest_path", "continuation"]
+INTEGRATOR_PARAMS = ["wave", "run_id", "branch", "build_root", "manifest_path"]
 
 # Task keys allow letters, digits, '_' and '-' (max 100 chars). Wave ids become the
 # task prefix w<wave_id>, e.g. wave "4-1" -> w4-1_sessions.
@@ -67,12 +92,83 @@ def unmet_dependencies(m: dict, session: dict) -> list[str]:
     return [d for d in session.get("depends_on") or [] if d not in done]
 
 
+def _valid_passes(v) -> bool:
+    return not isinstance(v, bool) and isinstance(v, int) and 0 <= v <= MAX_CONTINUATION_PASSES
+
+
+def continuation_passes(m: dict, wave_cfg: dict | None = None) -> int:
+    """Continuation passes for a wave: the wave's "continuation_passes", else the manifest's, else 1.
+
+    validate_manifest rejects bad values; here an invalid value falls back to the next level.
+    """
+    if wave_cfg is not None and _valid_passes(wave_cfg.get("continuation_passes")):
+        return wave_cfg["continuation_passes"]
+    v = m.get("continuation_passes", DEFAULT_CONTINUATION_PASSES)
+    return v if _valid_passes(v) else DEFAULT_CONTINUATION_PASSES
+
+
+def passes_in_run(prefix: str, task_keys) -> int:
+    """Continuation passes the job actually has for wave prefix w<wave_id> (from its task keys).
+
+    The gate uses this instead of the live manifest, so a manifest edited after setup does not
+    change how the run's iterations are read.
+    """
+    keys = set(task_keys or [])
+    k = 0
+    while k < MAX_CONTINUATION_PASSES and continuation_keys(prefix, k + 1)["continue"] in keys:
+        k += 1
+    return k
+
+
+def sync_enabled(m: dict) -> bool:
+    """Branch sync tasks run in git and hybrid workflows unless workflow.sync_branch is false."""
+    wf = m.get("workflow") or {}
+    return wf.get("mode", "git") in SYNC_WORKFLOW_MODES and wf.get("sync_branch", True) is not False
+
+
+def sync_keys(prefix: str) -> dict:
+    """Task keys of the branch sync for wave prefix w<wave_id>: the notebook and its If/else."""
+    return {"sync": f"{prefix}_sync", "synced": f"{prefix}_synced"}
+
+
+def job_task_count(m: dict) -> int:
+    """Tasks generate_wave_tasks makes per runnable wave: 4, + 2 with branch sync, + 3 per
+    continuation pass; + build_verdict."""
+    waves = runnable_waves(m)
+    per_sync = 2 if sync_enabled(m) else 0
+    return sum(4 + per_sync + 3 * continuation_passes(m, wv) for wv in waves) + (1 if waves else 0)
+
+
+def continuation_keys(prefix: str, k: int) -> dict:
+    """Task keys for continuation pass k (1-based) of wave prefix w<wave_id>.
+
+    Pass 1 has no suffix (w4-1_find_incomplete, w4-1_continue); later passes add the number
+    (w4-1_find_incomplete2). 'inner' is the for_each nested task key.
+    """
+    sfx = "" if k == 1 else str(k)
+    return {
+        "find": f"{prefix}_find_incomplete{sfx}",
+        "has": f"{prefix}_has_incomplete{sfx}",
+        "continue": f"{prefix}_continue{sfx}",
+        "inner": f"{prefix}_continue{sfx}_session",
+    }
+
+
 def manifest_summary(m: dict) -> str:
     waves = m.get("waves") or []
     n_arch = sum(1 for wv in waves if is_archived(wv))
     n_sessions = sum(len(wv.get("sessions") or []) for wv in waves)
     return (f"Manifest OK: {len(waves)} waves ({n_arch} archived, {len(waves) - n_arch} runnable), "
-            f"{n_sessions} sessions, {len(m.get('runtime_targets') or {})} runtime targets")
+            f"{n_sessions} sessions, {len(m.get('runtime_targets') or {})} runtime targets, "
+            f"continuation passes: {_passes_label(m)}, {job_task_count(m)} job tasks")
+
+
+def _passes_label(m: dict) -> str:
+    """'1 per wave', or 'default 2 (wave 3: 0)' when waves override the top-level value."""
+    default = continuation_passes(m)
+    overrides = [f"wave {wv.get('wave_id')}: {continuation_passes(m, wv)}" for wv in runnable_waves(m)
+                 if continuation_passes(m, wv) != default]
+    return f"default {default} ({', '.join(overrides)})" if overrides else f"{default} per wave"
 
 
 # --- Validation ----------------------------------------------------------------
@@ -176,6 +272,24 @@ def validate_manifest(m: dict) -> tuple[list[str], list[str]]:
     wf_mode = (m.get("workflow") or {}).get("mode", "git")
     targets = m.get("runtime_targets") or {}
     _validate_targets(m, targets, errors, warnings)
+
+    cp = m.get("continuation_passes")
+    if cp is not None and not _valid_passes(cp):
+        errors.append(f"continuation_passes must be an integer from 0 to {MAX_CONTINUATION_PASSES} (got {cp!r})")
+    for wv in m.get("waves") or []:
+        wcp = wv.get("continuation_passes")
+        if wcp is not None and not _valid_passes(wcp):
+            errors.append(f"wave {wv.get('wave_id')}: continuation_passes must be an integer from 0 to "
+                          f"{MAX_CONTINUATION_PASSES} (got {wcp!r})")
+    wf = m.get("workflow") or {}
+    if "sync_branch" in wf and not isinstance(wf["sync_branch"], bool):
+        errors.append(f"workflow.sync_branch must be true or false (got {wf['sync_branch']!r})")
+    elif wf.get("sync_branch") is True and wf_mode not in SYNC_WORKFLOW_MODES:
+        warnings.append(f"workflow.sync_branch is ignored in {wf_mode!r} mode (no Git branch to sync)")
+    n_tasks = job_task_count(m)
+    if n_tasks > MAX_JOB_TASKS:
+        errors.append(f"the build job would have {n_tasks} tasks; Lakeflow Jobs allows {MAX_JOB_TASKS}. "
+                      f"Archive finished waves, lower continuation_passes or set workflow.sync_branch to false")
 
     waves = m.get("waves") or []
     if not waves:
@@ -362,12 +476,26 @@ def verdict_notebook_path(gate_notebook_path: str) -> str:
     return os.path.join(os.path.dirname(gate_notebook_path), f"build_verdict{ext}")
 
 
+def find_incomplete_notebook_path(gate_notebook_path: str) -> str:
+    """find_incomplete_sessions sits next to the gate notebook, with the same extension."""
+    ext = os.path.splitext(gate_notebook_path)[1]
+    return os.path.join(os.path.dirname(gate_notebook_path), f"find_incomplete_sessions{ext}")
+
+
+def sync_notebook_path(gate_notebook_path: str) -> str:
+    """sync_branch sits next to the gate notebook, with the same extension."""
+    ext = os.path.splitext(gate_notebook_path)[1]
+    return os.path.join(os.path.dirname(gate_notebook_path), f"sync_branch{ext}")
+
+
 def make_verdict_task(gate_keys: list[str], notebook_path: str) -> dict:
-    """Final task: fails the run when any wave gate failed.
+    """Final task: fails the run when any wave gate (or branch sync) failed.
 
     A failed gate does not raise (the next wave's ALL_DONE integrator and gate would run on
-    UPSTREAM_FAILED). This task depends on every gate with run_if ALL_DONE; Excluded gates
-    count as done, so it runs after the cascade stops.
+    UPSTREAM_FAILED). This task depends on every gate, and on every w<w>_sync task when branch
+    sync is on, with run_if ALL_DONE; Excluded tasks count as done, so it runs after the
+    cascade stops. A failed sync excludes its own wave's gate, so without the sync dependency
+    a sync failure in the first wave would leave this task Excluded too.
     """
     return make_notebook_task(
         task_key=VERDICT_TASK_KEY,
@@ -384,22 +512,38 @@ def make_verdict_task(gate_keys: list[str], notebook_path: str) -> dict:
 
 
 def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: str,
-                        retries: dict | None = None, verdict_path: str | None = None) -> list[dict]:
+                        retries: dict | None = None, verdict_path: str | None = None,
+                        find_incomplete_path: str | None = None, sync_path: str | None = None) -> list[dict]:
     """Generate the build job's task graph from the manifest's runnable waves.
 
     Archived waves generate nothing, so the first runnable wave has no upstream
     dependency. Session-level depends_on never becomes a task dependency: wave order
     enforces it, and sessions in archived waves are already done. A final build_verdict
     task depends on every wave gate (see make_verdict_task).
+
+    Continuation passes sit between the sessions and the integrator. A task whose
+    dependencies are all Excluded is itself Excluded, so pass k+1's find task depends on
+    pass k's find task (never Excluded) as well as its continue task, and the integrator
+    depends on the last pass's find and continue tasks (run_if ALL_DONE). When nothing is
+    incomplete, every continue task is Excluded and the integrator still runs.
+    
+    With branch sync (sync_enabled), each wave starts with w<w>_sync (notebook, never raises,
+    sets `synced`) -> w<w>_synced (If/else) -> w<w>_sessions (outcome true). The sync task
+    takes the previous wave's gate_check dependency.
     """
     retries = genie_task_retries(m) if retries is None else retries
+    find_path = find_incomplete_path or find_incomplete_notebook_path(gate_notebook_path)
+    sync_nb = sync_path or sync_notebook_path(gate_notebook_path)
+    sync = sync_enabled(m)
     tasks = []
+    sync_task_keys = []
     prev_gate_key = None
 
     for wave_cfg in runnable_waves(m):
         wid = wave_cfg["wave_id"]
         prefix = f"w{wid}"
         sessions = wave_cfg["sessions"]
+        passes = continuation_passes(m, wave_cfg)
         deploying = any(s.get("mode") == "converge" or s.get("allow_deploy") for s in sessions)
         # Rule 7: deploys are single-writer (validate_manifest already enforces one session)
         concurrency = 1 if deploying else wave_cfg.get("concurrency", len(sessions))
@@ -412,13 +556,42 @@ def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: st
             "manifest_path": "{{job.parameters.manifest_path}}",
         }
 
+        # Dependency on a condition_task (If/else) requires an outcome.
+        # "true" = only run when the previous gate passed (or this wave's sync succeeded).
+        upstream = [{"task_key": prev_gate_key, "outcome": "true"}] if prev_gate_key else None
+
+        # --- Branch sync (notebook + If/else) ---
+        if sync:
+            skeys = sync_keys(prefix)
+            sync_task = make_notebook_task(
+                task_key=skeys["sync"],
+                notebook_path=sync_nb,
+                params={"wave": wid, **common},
+                timeout_minutes=SYNC_TIMEOUT_MIN,
+            )
+            if upstream:
+                sync_task["depends_on"] = upstream
+            tasks.append(sync_task)
+            tasks.append({
+                "task_key": skeys["synced"],
+                "condition_task": {
+                    "op": "EQUAL_TO",
+                    "left": "{{" + f"tasks.{ref_ident(skeys['sync'])}.values.synced" + "}}",
+                    "right": "true",
+                },
+                "depends_on": [{"task_key": skeys["sync"]}],
+            })
+            sync_task_keys.append(skeys["sync"])
+            upstream = [{"task_key": skeys["synced"], "outcome": "true"}]
+
         # --- Sessions (for_each) ---
         # Include title in inputs so iterations are identifiable in the UI.
         inputs = json.dumps([
             {"session_id": s["session_id"], "title": s.get("title", s["session_id"])}
             for s in sessions
         ])
-        session_params = {**common, "wave": wid, "session_id": "{{input.session_id}}"}
+        # continuation "0" on the first run: every RUNNER_PARAMS placeholder must get a value.
+        session_params = {**common, "wave": wid, "session_id": "{{input.session_id}}", "continuation": "0"}
 
         inner_task = make_genie_task(
             task_key=f"{prefix}_session",
@@ -438,11 +611,58 @@ def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: st
                 "task": inner_task,
             },
         }
-        if prev_gate_key:
-            # Dependency on a condition_task (If/else) requires an outcome.
-            # "true" = only run when the gate passed.
-            sessions_task["depends_on"] = [{"task_key": prev_gate_key, "outcome": "true"}]
+        if upstream:
+            sessions_task["depends_on"] = upstream
         tasks.append(sessions_task)
+
+        # --- Continuation passes (sessions that stopped before a final status) ---
+        integrate_deps = [f"{prefix}_sessions"]
+        for k in range(1, passes + 1):
+            keys = continuation_keys(prefix, k)
+            tasks.append(
+                make_notebook_task(
+                    task_key=keys["find"],
+                    notebook_path=find_path,
+                    params={
+                        "wave": wid,
+                        "continuation": k,
+                        "run_id": "{{job.run_id}}",
+                        "build_root": "{{job.parameters.build_root}}",
+                        "manifest_path": "{{job.parameters.manifest_path}}",
+                    },
+                    depends_on=integrate_deps,
+                    run_if="ALL_DONE",
+                    timeout_minutes=FIND_INCOMPLETE_TIMEOUT_MIN,
+                )
+            )
+            tasks.append({
+                "task_key": keys["has"],
+                "condition_task": {
+                    "op": "EQUAL_TO",
+                    "left": "{{" + f"tasks.{ref_ident(keys['find'])}.values.has_incomplete" + "}}",
+                    "right": "true",
+                },
+                "depends_on": [{"task_key": keys["find"]}],
+            })
+            cont_inner = make_genie_task(
+                task_key=keys["inner"],
+                config_id=configuration_ids["runner"],
+                params={**session_params, "continuation": k},
+                timeout_minutes=session_timeout_minutes(wave_cfg),
+                retries=retries,
+            )
+            cont_inner["description"] = f"{{{{input.session_id}}}}: {{{{input.title}}}} (continuation {k})"
+            tasks.append({
+                "task_key": keys["continue"],
+                "description": f"Wave {wid} continuation pass {k}: re-run sessions with no final status",
+                "for_each_task": {
+                    "inputs": "{{" + f"tasks.{ref_ident(keys['find'])}.values.incomplete" + "}}",
+                    "concurrency": concurrency,
+                    "task": cont_inner,
+                },
+                "depends_on": [{"task_key": keys["has"], "outcome": "true"}],
+            })
+            integrate_deps = [keys["find"], keys["continue"]]
 
         # --- Integrator ---
         tasks.append(
@@ -450,7 +670,7 @@ def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: st
                 task_key=f"{prefix}_integrate",
                 config_id=configuration_ids["integrator"],
                 params={**common, "wave": wid},
-                depends_on=[f"{prefix}_sessions"],
+                depends_on=integrate_deps,
                 run_if="ALL_DONE",
                 timeout_minutes=60,
                 retries=retries,
@@ -492,5 +712,6 @@ def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: st
 
     gate_keys = [t["task_key"] for t in tasks if t["task_key"].endswith("_gate") and "notebook_task" in t]
     if gate_keys:
-        tasks.append(make_verdict_task(gate_keys, verdict_path or verdict_notebook_path(gate_notebook_path)))
+        tasks.append(make_verdict_task(gate_keys + sync_task_keys,
+                                       verdict_path or verdict_notebook_path(gate_notebook_path)))
     return tasks

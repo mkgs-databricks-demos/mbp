@@ -30,6 +30,8 @@ resources:
               skills_schema: ${var.skills_schema}
               runner_skill_id: ${var.runner_skill_id}
               integrator_skill_id: ${var.integrator_skill_id}
+              monitor_skill_id: ${var.monitor_skill_id}
+              monitor_principal: ${var.monitor_principal}
               build_job_id: ${resources.jobs.build_waves.id}
               smoke_job_id: ${resources.jobs.build_waves_smoke.id}
               gate_notebook_path: ${workspace.file_path}/src/notebooks/wave_gate_check.ipynb

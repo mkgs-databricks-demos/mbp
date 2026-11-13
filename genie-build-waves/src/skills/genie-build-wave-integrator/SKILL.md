@@ -27,7 +27,7 @@ You run once per wave, after every session of the wave has finished (successfull
 
 ### Git guardrails (workflow `git` or `hybrid`)
 
-4. Commit and push **only** to the `branch` parameter. If `branch` is `main` or `master`, write a `fail` gate (step 7) and stop without committing. Never force-push, merge, rebase, reset, checkout or switch branches. If the Git folder is not on `branch`, write a `fail` gate and stop.
+4. Commit and push **only** to the `branch` parameter. If `branch` is `main` or `master`, write a `fail` gate (step 7) and stop without committing. Never force-push, merge, rebase, reset, checkout or switch branches. If the Git folder is not on `branch`, write a `fail` gate and stop. Never pull either: the job's `w<wave>_sync` task pulls the branch before the wave's sessions. If the push is rejected as non-fast-forward (someone pushed to `branch` during the run), write a `fail` gate that says so and names the commit SHA you made (the local branch has now diverged; a person reconciles it before the run is repaired).
 5. Stage files by explicit path. Never stage everything. Never stage anything under `status_dir`.
 
 ## Steps
@@ -46,9 +46,9 @@ Determine: `workflow_mode` = `manifest.workflow.mode` or `"git"`.
 
 ### 2. Collect session results
 
-For each session, read `build_root/<status_dir>/<run_id>/<session_id>.json`. A missing file counts as `error` (the task crashed or never ran). A file with `status: "in_progress"` also counts as `error` (the session hit the turn limit or crashed before writing its final status). Build a table: session_id, mode, status, files_changed, assets_changed, failed/skipped checks, requests, blocking. For `converge` sessions also note the number of `attempts`, the last attempt's `result`, and every entry in `suppressions`. For a session that is `error` or `in_progress`, also copy its `progress` (`done`, `next`, `attempt`) into the table and the gate file's `reason`, so whoever resumes or repairs it knows where to pick up.
+For each session, read `build_root/<status_dir>/<run_id>/<session_id>.json`. Only `pass`, `fail`, `blocked` and `error` are final statuses (the same rule as the gate notebook and the continuation passes, `session_outcome` in `session_status.py`). A session is **incomplete**, and counts as `error`, when its file is missing (the task crashed or never ran), unreadable (not valid JSON, or not a JSON object), or has any other status, such as `in_progress` (the session hit the turn limit or crashed before writing its final status). Build a table: session_id, mode, status, files_changed, assets_changed, failed/skipped checks, requests, blocking. For `converge` sessions also note the number of `attempts`, the last attempt's `result`, and every entry in `suppressions`. For a session that is `error` or incomplete, also copy its `progress` (`done`, `next`, `attempt`; when the file is readable) into the table and the gate file's `reason`, so whoever resumes or repairs it knows where to pick up.
 
-**Incomplete session file credit.** When a session's status is `error` because its file is missing or `in_progress`, scan the working tree for files under its `owned_paths` (and not its `exclude_paths`). If any exist, add them to that session's `files_changed` in your table and note `reason: "incomplete session file credit"`. This prevents the stray detector from flagging code a partially-complete session left behind. The session still fails the gate (its status is `error`), so the repair run re-executes it.
+**Incomplete session file credit.** When a session is incomplete (file missing, unreadable, or not a final status), scan the working tree for files under its `owned_paths` (and not its `exclude_paths`). If any exist, add them to that session's `files_changed` in your table and note `reason: "incomplete session file credit"`. This prevents the stray detector from flagging code a partially-complete session left behind. The session still fails the gate (its status is `error`), so the repair run re-executes it.
 
 **Inherited files.** A session rerun in a new build run keeps the uncommitted changes an earlier run of it left in its `owned_paths` (the usual recovery after a failed gate is a new run, not a repair). Those files are in its top-level `files_changed` but in none of this run's attempts. A file in a `converge` session's `files_changed` that no attempt lists is **inherited** when a status file of the **same session** from another run (`status_dir/<other_run_id>/<session_id>.json`, top-level or attempt `files_changed`) lists it; the newest such run is its source. An inherited file must match the session's `owned_paths` and not its `exclude_paths`; if it does not, the session is inconsistent.
 
@@ -133,7 +133,7 @@ Path: `build_root/<status_dir>/<run_id>/wave_<wave>_gate.json`:
   "checks": [{"name": "bundle validate --strict", "result": "pass", "detail": ""}],
   "bundle_validations": [{"root": "my-app", "target": "dev", "result": "pass | fail", "detail": "first error line when fail"}],
   "stray_files": [],
-  "carryover_files": [{"path": "docs/sessions/2026-10-20_w3-09-routes.md", "kind": "summary | prior_run_code | owned_by_later_wave | inherited", "source": "run 376065156883918 / session 09", "claimed_by": "09 (inherited only)", "staged": true}],
+  "carryover_files": [{"path": "docs/sessions/2026-10-20_w3-09-routes.md", "kind": "summary | prior_run_code | owned_by_later_wave | inherited", "source": "run <run_id> / session 09", "claimed_by": "09 (inherited only)", "staged": true}],
   "requests": [{"from": "07", "path": "package.json", "change": "..."}],
   "suppressions": [{"from": "14", "path": "tsconfig.server.json", "kind": "compile-exclude", "why": "..."}],
   "commit_sha": "abc1234 or empty",

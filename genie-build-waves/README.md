@@ -25,17 +25,21 @@ Wave 1:  [02] [03] [04] -> integrate -> gate -> gate_check
                                                     |
 Wave N:  [...] ----------> integrate -> gate -> gate_check -> done
 
-build_verdict (run_if ALL_DONE, depends on every gate): fails the run if any gate failed
+build_verdict (run_if ALL_DONE, depends on every gate and sync): fails the run if any gate or sync failed
+
+git / hybrid workflows: each wave starts with sync -> synced (If/else), which pulls the build branch
 ```
 
-Each wave follows a four-phase pattern:
+Each wave follows a four-phase pattern, after a branch sync in `git` / `hybrid` workflows:
 
+0. **Branch sync** (`git` / `hybrid` workflows, `workflow.sync_branch`, default on) — `wN_sync` (notebook) pulls the build branch into the `build_root` Git folder, then `wN_synced` (If/else) lets the sessions start. The integrator never pulls, so this is how a fix pushed to the branch from elsewhere reaches a repaired run: repair from `wN_sync`. A failed sync (folder on another branch, or an incoming commit changes a file left uncommitted in the folder) excludes the wave, and `build_verdict` fails the run. See [Branch Sync](docs/manifest-schema.md#branch-sync).
 1. **Sessions** (`for_each` at full wave concurrency) — Genie Code tasks that each complete one plan file. `edit` sessions write files within `owned_paths`; `execute` sessions run notebooks/SQL; `configure` sessions set up resources; `converge` sessions (follow-up builds) deploy, read telemetry, fix and redeploy.
+   * **Continuation passes** (manifest or wave `continuation_passes`, default 1, `0` = off) — a session that hits the Genie Code step limit still ends its iteration SUCCESS, and a repair cannot re-run it. `wN_find_incomplete` (notebook, `run_if: ALL_DONE`) lists sessions whose status file is missing, unreadable or not final (anything but `pass`, `fail`, `blocked`, `error`); `wN_has_incomplete` (If/else) and `wN_continue` (`for_each`) re-run only those, with `continuation=k`, so each resumes from `progress.next`. When nothing is incomplete the continue task is Excluded and the integrator runs as before. See [Continuation Passes](docs/manifest-schema.md#continuation-passes).
 2. **Integrator** (single Genie Code task, `run_if: ALL_DONE`) — Collects session status files, runs gate checks. In `git`/`hybrid` mode: checks for stray files and commits by explicit path (the *only* committer). In `workspace` mode: status collection and gates only.
 3. **Gate notebook** (`run_if: ALL_DONE`) — Reads the integrator's gate JSON and every session's status file independently. Sets a `gate_passed` task value (`true`/`false`).
 4. **Gate check** (If/else condition task) — Checks `gate_passed == "true"`. If false, all downstream wave tasks are **Excluded** — zero compute on cascade failure.
 
-After the last wave, **`build_verdict`** (notebook, `run_if: ALL_DONE`, depends on every wave's gate) reads each gate's task state and `wave_<N>_gate_result.json` and raises `BUILD_FAILED` when any gate failed, so the run ends **FAILED** and notifications fire. The gate itself never raises on a failed wave: a FAILED gate would make the next wave `UPSTREAM_FAILED`, and that wave's `run_if: ALL_DONE` integrator and gate would still run (Jobs treats Upstream failed as failed, and ALL_DONE runs regardless of status).
+After the last wave, **`build_verdict`** (notebook, `run_if: ALL_DONE`, depends on every wave's gate) reads each gate's task state and `wave_<N>_gate_result.json` and raises `BUILD_FAILED` when any gate failed, so the run ends **FAILED** and notifications fire. If no gate was checked at all (every wave disabled, excluded or not in the run), it succeeds with `BUILD_WARNING: no wave gate was checked in this run (...)` instead of a pass. The gate itself never raises on a failed wave: a FAILED gate would make the next wave `UPSTREAM_FAILED`, and that wave's `run_if: ALL_DONE` integrator and gate would still run (Jobs treats Upstream failed as failed, and ALL_DONE runs regardless of status).
 
 ## Initial builds and follow-up builds
 
@@ -67,7 +71,11 @@ A manifest can span several bundles. List them in a wave's `validate_bundles` (`
 |---|---|---|
 | Session Runner skill | `src/skills/genie-build-session-runner/SKILL.md` | Prompt for one session: load manifest, read plan, implement within owned paths, validate, write status JSON |
 | Wave Integrator skill | `src/skills/genie-build-wave-integrator/SKILL.md` | Prompt for per-wave integration: collect status, check strays, commit+push, write gate JSON |
+| Build Monitor skill | `src/skills/genie-build-monitor/SKILL.md` | Optional external monitor (any agent with the Databricks CLI and Git): reports waves, repairs per a decision table, optional level 3 fix-and-repair via `wN_sync`, code review after the build. Setup publishes it to UC as `<skills_catalog>.<skills_schema>.genie_build_monitor` for agents that read UC Skills; no automation uses it. See `docs/plans/2026-11-03_devin-monitor-requirements.md` |
 | Build Planner skill | `src/skills/genie-build-planner/SKILL.md` | Planning guide you give Genie Code in your project folder: decompose into waves/sessions, write plans and `waves.json`. Not published to UC |
+| Branch sync notebook | `src/notebooks/sync_branch.ipynb` | First task of each wave in `git` / `hybrid` workflows: pulls the build branch into the Git folder (helpers in `branch_sync.py`), writes `wave_<N>_sync.json`, sets `synced` for `wN_synced` |
+| Monitor grants helpers | `src/notebooks/monitor_grants.py` | Least-privilege UC grants setup gives `monitor_principal`: USE CATALOG, USE SCHEMA, READ VOLUME on the monitor skill only |
+| Find incomplete notebook | `src/notebooks/find_incomplete_sessions.ipynb` | Continuation pass: lists the wave's sessions with no final status (helper `incomplete_sessions` in `session_status.py`) and sets the `incomplete` / `has_incomplete` task values for `wN_continue` |
 | Gate check notebook | `src/notebooks/wave_gate_check.ipynb` | Deterministic stop: reads gate + status files; for `runtime_gate` waves also checks app/job/pipeline/dashboard/Genie space state, soak stability, OTel error lines, app probes and traces, dashboard datasets, Genie space tables, example SQL and probe questions, pipeline expectation budgets, and `table` row counts, columns and freshness itself; checks `validate_bundles` results |
 | App probe module | `src/notebooks/app_probes.py` | HTTP / MCP `initialize` probes against an app's own URL as the `probe_auth` service principal, plus MLflow 3 trace counts; shared by the gate and the smoke job |
 | Manifest module | `src/notebooks/waves_manifest.py` | Manifest validation (including `archived` waves) and task-graph generation; shared by setup and the gate |
@@ -186,7 +194,7 @@ databricks bundle deploy --target dev \
   --var="skills_schema=my_schema"
 ```
 
-Optional variables (with defaults): `project_name` (`"Genie Build Waves"`, used in job names), `instance_suffix` (`""`), `create_skills_schema` (`"true"`), `runner_skill_id`, `integrator_skill_id`.
+Optional variables (with defaults): `project_name` (`"Genie Build Waves"`, used in job names), `instance_suffix` (`""`), `create_skills_schema` (`"true"`), `runner_skill_id`, `integrator_skill_id`, `monitor_skill_id` (`"genie_build_monitor"`; empty skips publishing the monitor skill), `monitor_principal` (`""`) and `monitor_job_level` (`"CAN_VIEW"`), see "External monitor (optional)".
 
 **One deployment per project.** `instance_suffix` is appended to the bundle root path (`.bundle/genie-build-waves<suffix>/<target>`), so each project gets its own **remote** deployment state and its own build, setup and smoke jobs. Use the same suffix every time you deploy or validate for a project. Without it, deploying for a second project replaces the first project's jobs.
 
@@ -222,19 +230,19 @@ Pass = both iterations SUCCESS, each echoing its `session_id` and the nonce. Bef
 databricks bundle run build_waves --target dev
 ```
 
-Or choose **Run now** on the build job in the Jobs UI. `branch` defaults to `build_branch`; override it with `--params branch=<branch>`. Each wave runs `wN_sessions` → `wN_integrate` → `wN_gate` → `wN_gate_check`, and the next wave starts only when `wN_gate_check` is true. Watch each `wN_gate` task. The run's result comes from `build_verdict`: FAILED when any wave gate failed.
+Or choose **Run now** on the build job in the Jobs UI. `branch` defaults to `build_branch`; override it with `--params branch=<branch>`. Each wave runs (`wN_sync` → `wN_synced`, in `git` / `hybrid` workflows) → `wN_sessions` → (`wN_find_incomplete` → `wN_has_incomplete` → `wN_continue`, per continuation pass) → `wN_integrate` → `wN_gate` → `wN_gate_check`, and the next wave starts only when `wN_gate_check` is true. Watch each `wN_gate` task. The run's result comes from `build_verdict`: FAILED when any wave gate or branch sync failed.
 
 ## When a wave fails
 
 1. Read the `build_verdict` error (`BUILD_FAILED: ...` with each failed wave's first problems), the `wN_gate` output (`GATE_FAILED: wave N: ...` and the result JSON, also in `.build-status/<run_id>/wave_<N>_gate_result.json`), `.build-status/<run_id>/wave_<N>_gate.json` and, for convergence waves, `wave_<N>_runtime.json` (deployment id, states, error samples, missing markers, Genie space `freshness`).
-2. Read the failing session's status file and summary in `docs/sessions/`. A session that hit the Genie Code step limit, is still `in_progress`, or wrote no status file is named in the gate problems with its conversation id and its `progress.next`: resume that conversation, then repair from `wN_integrate`.
+2. Read the failing session's status file and summary in `docs/sessions/`. A session that hit the Genie Code step limit, is still `in_progress`, or wrote no status file is named in the gate problems with its conversation id and its `progress.next`: resume that conversation, then repair from `wN_integrate`. Such a session has usually already been re-run by the continuation passes; the problem then says `after continuation pass k` and names the latest conversation. A repair does not re-run continuation iterations that ended SUCCESS, so resume by hand.
 3. Passing sessions are already committed. Failing sessions' code is left uncommitted.
 4. Fix the cause (plan, manifest, or code), then repair the run (below).
 5. `requests` in the gate file list changes a session needed outside its owned paths. Apply them before repairing.
 
-Note: downstream waves show as **Excluded** (not failed). This is the correct cascade behavior — they never ran and consumed no compute. `build_verdict` still runs (Excluded dependencies count as done) and fails the run.
+Note: downstream waves show as **Excluded** (not failed). This is the correct cascade behavior — they never ran and consumed no compute. `build_verdict` still runs (Excluded dependencies count as done) and fails the run. Waves whose tasks are disabled in the job (for example waves finished in an earlier run) end **Disabled**; `build_verdict` ignores them like Excluded waves and lists them as skipped in its message. If every wave is disabled, the verdict is `BUILD_WARNING` (the run succeeds, but nothing was built or checked).
 
-**Fixes outside every session's paths.** If you (or a planner session) fix something outside every session's `owned_paths` before repairing (manifest, shared config, a plan file), commit it to the build branch yourself first; otherwise the integrator correctly reports it as a stray and fails the wave again.
+**Fixes outside every session's paths.** If you (or a planner session) fix something outside every session's `owned_paths` before repairing (manifest, shared config, a plan file), commit it to the build branch yourself first; otherwise the integrator correctly reports it as a stray and fails the wave again. If you commit it from another clone (or an external monitor pushes it), repair from `wN_sync` so the Git folder pulls it before the integrator pushes. Push only while no build run is active.
 
 ### Repairing a failed wave
 
@@ -257,6 +265,7 @@ Which tasks to name in `rerun_tasks`:
 
 | What failed | `rerun_tasks` |
 |---|---|
+| The branch sync, or a fix was pushed to the build branch from outside the `build_root` Git folder | `wN_sync` |
 | A session (code, plan or manifest fixed) | `wN_sessions`, `wN_integrate`, `wN_gate` |
 | Only the integrator (sessions passed) | `wN_integrate`, `wN_gate` |
 | Only the gate verdict (e.g. stray files committed by hand, runtime soak) | `wN_gate` |
@@ -278,6 +287,30 @@ A convergence wave can commit (its session passed) and still fail on `runtime_ga
 ### Retarget after merge
 
 After a feature branch is merged to main and deleted on the remote, the build job's `branch` parameter still points at the deleted branch. The integrator will fail with `branch not found on remote`. To retarget: create a new feature branch, update `branch` in `waves.json`, re-deploy with `--var build_branch=<new>`, re-run setup, and start a new run.
+
+## External monitor (optional)
+
+An agent outside the workspace (a coding agent, an operations agent) can watch build runs, report each wave, repair, and review the result, following `src/skills/genie-build-monitor/SKILL.md`. It works at a level you give it: 1 report, 2 repair, 3 fix and repair, 4 act for you (start the build, push small fixes and repair from `w<wave>_sync` without asking, within `max_repairs` and the skill's stop conditions). Setup publishes that skill to UC as `<skills_catalog>.<skills_schema>.genie_build_monitor`. Full requirements: `docs/plans/2026-11-03_devin-monitor-requirements.md`.
+
+**Manual setup (once per monitor):**
+
+1. Create a dedicated service principal for the monitor (not the deploy or `run_as` principal) with the **Workspace access** entitlement only.
+2. Generate an OAuth secret for it with an expiry, scoped as the requirements doc describes, and give the agent `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID` and `DATABRICKS_CLIENT_SECRET`. To read the skill from UC instead of the repo, the secret also needs the `files` scope: the agent reads `/Skills/<skills_catalog>/<skills_schema>/genie_build_monitor/SKILL.md` (not `/Volumes/...`). The Unity Gateway skills preview must be on.
+3. Grant it `CAN_READ` on `build_root` (the project Git folder; the bundle does not manage it). Never more. Do not grant it the shared `/Workspace/.bundle` folder: a grant there covers every bundle deployed under it.
+   * If the workspace uses IP access lists, allow the agent's egress address first (a `/32` when you know it); changes take a few minutes to apply.
+   * Give the agent a Databricks CLI profile with `scopes = jobs,workspace` (plus `files` to read the UC skill): the CLI requests `all-apis` by default and a scoped secret is refused.
+   * Levels 3-4: a fine-grained Git token on the project repo with **Contents: Read and write** (add Pull requests write only to post its review), ideally for the agent's own Git identity so its commits are not attributed to you. Check with `git push --dry-run` before the first run.
+4. Set the bundle variables in your vars file (or with `--var`): `monitor_principal` = its application (client) ID, and `monitor_job_level` = `CAN_VIEW` (report, the default) or `CAN_MANAGE_RUN` (repair). `scripts/deploy_instance.py` refuses any other level or a user name. Then deploy and run setup.
+
+**What deploy grants:** `build_waves.job.yml` declares the build job's permissions: `monitor_principal` at `monitor_job_level`, plus the deployer as `IS_OWNER` (added by the CLI). The CLI drops the monitor entry when `monitor_principal` is empty. This makes the bundle the owner of the build job's ACL: every deploy sets it to exactly these entries, so clearing `monitor_principal` revokes the grant on the next deploy, and grants added in the UI are expected to be removed (not yet verified). Put any other build job grants in the bundle (top-level `permissions` or a target override), not in the UI. `jobs/reset` in setup does not touch permissions. The setup and smoke jobs get no monitor grant.
+
+**What setup grants** when `monitor_principal` is set (`monitor_grants.py`): `USE CATALOG` on `skills_catalog`, `USE SCHEMA` on `skills_schema`, and `READ VOLUME` on the monitor skill only. That is the minimum to read one skill: UC Skills use the volume privileges, and `READ VOLUME` is granted on the skill, not the schema, so the other skills (and any volumes) in the schema stay private. Grants the principal already holds, directly or through a group, are skipped. Setup grants as its job's `run_as` identity, which needs `MANAGE` (or ownership) on the catalog, schema and skill; when a grant fails, setup prints the `databricks grants update ...` command for an owner and carries on. Unlike the job grant, these UC grants are additive: after changing or clearing `monitor_principal`, revoke the old principal's UC grants by hand. Leave `monitor_principal` empty (the default) for no grants.
+
+Genie Code prompt to wire it up:
+
+> Read `[/Workspace/Users/you@example.com/genie-build-waves]/README.md`, section "External monitor (optional)", and `docs/plans/2026-11-03_devin-monitor-requirements.md`. The monitor's service principal application ID is `[application id]` (or: I have not created it yet; list the manual steps for me and stop). Add `monitor_principal` to my vars file `[vars file path]`, redeploy this instance with `scripts/deploy_instance.py`, run the setup job, and show me `monitor_grants` from the setup output. Also set `monitor_job_level` to `[CAN_VIEW | CAN_MANAGE_RUN]`, show me the build job's permissions after the deploy, then grant the principal `CAN_READ` on `build_root` after I confirm. Do not edit `databricks.yml`.
+
+**Between builds.** The same agent can make small owner-requested changes on the build branch while no run is active: Genie Code drafts the prompt (scope, files allowed, checks, expected branch HEAD), you review it, the agent pulls, checks the HEAD, commits and pushes fast-forward only, and Genie Code pulls, reviews the diff, validates with your credentials and deploys. Keep one writer at a time on the branch.
 
 ## Changing a build
 

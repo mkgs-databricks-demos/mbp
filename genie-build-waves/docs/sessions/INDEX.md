@@ -1,5 +1,31 @@
 # Session Summaries — genie-build-waves
 
+## 2026-11-12
+
+| Session | Summary |
+|---|---|
+| [monitor-level-4-and-lessons](2026-11-12_monitor-level-4-and-lessons.md) | Monitor skill level 4 "act for the owner" (`max_repairs` 3, 2 attempts per failure, stop conditions, first run and one fresh run allowed). Lessons from the first external-monitor test folded into the monitor requirements, repair prompt, planner skill and README. 173 pass. |
+
+## 2026-11-09
+
+| Session | Summary |
+|---|---|
+| [monitor-principal-grants](2026-11-09_monitor-principal-grants.md) | New `monitor_principal` variable: setup grants it least privilege to read the UC monitor skill (USE CATALOG, USE SCHEMA, READ VOLUME on the skill only, skipping held grants, never raising). Build job grant declared in the bundle (`monitor_job_level`, default `CAN_VIEW`; the bundle owns the job ACL, clearing revokes). 173 pass. |
+| [build-monitor-skill](2026-11-09_build-monitor-skill.md) | New generic `genie-build-monitor` skill (CLI + Git only): report, repair per a level 1-3 decision table, fix and repair via `w<wave>_sync`, code review after `BUILD_PASSED`. Setup publishes it to UC as `genie_build_monitor` (`monitor_skill_id` variable). Field names and CLI flags checked against the code and CLI v1.23.0. |
+| [branch-sync-task](2026-11-09_branch-sync-task.md) | New `w<wave>_sync` -> `w<wave>_synced` tasks at the start of each git/hybrid wave pull the build branch into the Git folder (Repos API, never raises, `workflow.sync_branch` to opt out), so a fix pushed from another clone reaches a repair from `w<wave>_sync`. `build_verdict` fails on a failed sync. Monitor requirements gain an optional level 3. 167 pass. |
+
+## 2026-11-08
+
+| Session | Summary |
+|---|---|
+| [verdict-warning-generic-docs](2026-11-08_verdict-warning-generic-docs.md) | `build_verdict` ends `BUILD_WARNING` (run succeeds) when no gate was checked, e.g. every wave disabled. Project names and real IDs removed from plans, design doc, skills, tests and comments (session summaries keep them). Planner skill and follow-up/repair prompts now cover `continuation_passes`, disabled waves and the warning. 138 pass. |
+
+## 2026-11-07
+
+| Session | Summary |
+|---|---|
+| [verdict-skips-disabled-waves](2026-11-07_verdict-skips-disabled-waves.md) | `build_verdict` ignores gate tasks that end `DISABLED` (waves disabled in the job after an earlier run) like `EXCLUDED`, and lists them as skipped in the message. AgenticTrading run C went from 9 failed gates (5-0..5-7 disabled + 5-10) to 1 (5-10). New test; 137 pass. No redeploy needed. |
+
 ## 2026-10-26
 
 | Session | Summary |

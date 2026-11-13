@@ -42,9 +42,22 @@ The manifest supports three workflow modes that control how sessions operate and
 | `context_files` | string[] | No | Extra files (relative to `build_root`) for sessions to read before working. Project memory, coding standards, architecture docs, data dictionaries, model cards. |
 | `skills` | object | No | Overrides for skill locations. See Skills section. |
 | `task_retries` | object | No | Automatic retries for Genie Code tasks (sessions and integrators), for transient agent start-up errors such as `INTERNAL_ERROR: start_agent_run`. Keys: `max_retries` (default `2`; `0` disables), `min_retry_interval_seconds` (default `60`). Timeouts are never retried. Gate notebooks are not retried. |
+| `continuation_passes` | integer | No | How many times the job re-runs, in the same build run, sessions that stopped without a final status (status file missing, unreadable, or a status other than `pass`, `fail`, `blocked`, `error`; usually the Genie Code step limit). `0`-`3`, default `1`; `0` turns continuation off. A wave can override it. Each pass adds 3 tasks per wave; setup fails if the job would exceed the Lakeflow Jobs limit of 1,000 tasks (Branch Sync adds 2 per wave in `git` / `hybrid` workflows). See Continuation Passes. |
 | `runtime_targets` | map<string, RuntimeTarget> | No | Deployable things (apps, jobs, pipelines, dashboards, Genie spaces) that `converge` sessions deploy and `runtime_gate` checks. Keyed by a short target name. See RuntimeTarget. |
 | `probe_auth` | ProbeAuth | No | Default service principal for app `probes` (a target's own `probe_auth` overrides it). See Probe Object. |
 | `waves` | Wave[] | Yes | Ordered list of waves. Executed sequentially; sessions within a wave run in parallel. |
+
+## Continuation Passes
+
+A Genie Code session that runs out of steps still ends its `for_each` iteration SUCCESS, and a job repair cannot re-run a SUCCESS iteration. Continuation passes re-run those sessions before the integrator. For each pass `k` (pass 1 has no number suffix):
+
+| Task | Type | Does |
+|---|---|---|
+| `w<wave_id>_find_incomplete[k]` | notebook (`find_incomplete_sessions`), run_if ALL_DONE | Lists sessions whose status file is missing, unreadable (bad JSON or not an object) or has no final status; sets task values `incomplete` and `has_incomplete` |
+| `w<wave_id>_has_incomplete[k]` | If/else | `has_incomplete == "true"` |
+| `w<wave_id>_continue[k]` | for_each over `incomplete` | Runs the session runner again with `continuation=k`; it resumes from `progress.next` in its status file |
+
+The integrator depends on the last pass (run_if ALL_DONE), so it still runs when nothing was incomplete (the continue tasks are Excluded). `pass`, `blocked`, `fail` and `error` are final and never re-run. The gate reads the latest iteration of each session, first run or continuation, so a session that stops again is reported with the conversation to resume. Each pass costs at most one more session run per incomplete session, bounded by the session timeout. Each pass adds 3 tasks per wave (7 per wave with the default of 1, plus 2 for Branch Sync in `git` / `hybrid` workflows).
 
 ## Wave Object
 
@@ -55,6 +68,7 @@ The manifest supports three workflow modes that control how sessions operate and
 | `archived` | boolean | No | `true` = an earlier build's wave, kept as history. Validated (ids, duplicate session ids, modes, runtime target references) but gets **no** job tasks, skips the single-writer rule, and its sessions count as done for `depends_on`. Default `false`. See Archived waves. |
 | `build` | string | No | Informational build label (e.g. `"4"`; an integer is accepted too). Not used by the runtime. |
 | `concurrency` | integer | No | Max parallel sessions. Defaults to the number of sessions. |
+| `continuation_passes` | integer | No | Overrides the top-level `continuation_passes` for this wave (`0`-`3`). |
 | `manual_prereqs` | ManualPrereq[] | No | Sessions that must be done outside Genie Code before this wave runs. |
 | `gate` | string[] | Yes | List of checks the integrator runs after all sessions finish. Plain text descriptions; the integrator interprets them. |
 | `runtime_gate` | string[] | No | Names of `runtime_targets` the **gate notebook** checks deterministically after the integrator commits (deployment succeeded in this run, running, soak-stable, clean logs). Required on any wave with a `converge` session. A failing runtime gate fails the wave regardless of what the Genie Code tasks reported. |
@@ -209,8 +223,26 @@ One root-level manifest can drive several bundles (for example an infra bundle a
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `mode` | string | No | `git` (default), `workspace`, or `hybrid`. Controls Git guardrails and integration behavior. |
+| `sync_branch` | boolean | No | `git` / `hybrid` only, default `true`. Each wave starts by pulling the build branch into the `build_root` Git folder (see Branch Sync). `false` removes the sync tasks. Ignored, with a warning, in `workspace` mode. |
 
 When omitted, the entire `workflow` object defaults to `{"mode": "git"}`.
+
+## Branch Sync
+
+The integrator commits and pushes from the `build_root` Git folder and never pulls. A fix pushed to the build branch from anywhere else (another clone, a person, an external monitor agent repairing the run) is not in the folder, and the integrator's next push would be rejected as non-fast-forward. In `git` and `hybrid` workflows each wave therefore starts with:
+
+| Task | Type | Does |
+|---|---|---|
+| `w<wave_id>_sync` | notebook (`sync_branch`) | Finds the Git folder at or above `build_root` and pulls the build branch into it (Repos API, as the job's `run_as`). Writes `wave_<wave_id>_sync.json` (commits and files pulled, or the error) and sets task value `synced`. Never raises. |
+| `w<wave_id>_synced` | If/else | `synced == "true"`; `w<wave_id>_sessions` depends on its `true` outcome |
+
+The sync task takes the previous wave's `gate_check` dependency (outcome `true`), so a fix pushed between a failed run and its repair reaches the sessions when the repair starts from `w<wave_id>_sync`. A failed sync excludes the wave and later waves; `build_verdict` depends on every sync task too and fails the run with the reason. The sync fails when:
+
+* the Git folder is not on the build branch (the sync never switches branches), or the branch is `main` / `master`
+* an incoming commit changes a file that is uncommitted in the folder (the Repos API refuses the pull and lists the files; the folder is unchanged). Uncommitted files the incoming commits do not touch, such as carryover from sessions that did not pass, are kept.
+* no Git folder is found at or above `build_root`, or the pull fails for another reason (credentials, network)
+
+Push to the build branch only while no build run is active: the build job runs one run at a time, and a repair can only start on a finished run. The job's `run_as` needs a Git credential that can pull the repository. Each wave gets 2 more tasks (9 per wave with the default of 1 continuation pass).
 
 ## Skills Object (optional)
 
@@ -222,6 +254,7 @@ Overrides the default skill locations. If omitted, the setup notebook uses its o
 | `schema` | string | UC schema for publishing skills. |
 | `runner` | `{skill_id, folder}` | Runner skill: UC skill id and workspace folder containing `SKILL.md`. |
 | `integrator` | `{skill_id, folder}` | Integrator skill: UC skill id and workspace folder containing `SKILL.md`. |
+| `monitor` | `{folder}` | External monitor skill folder (published for agents that read UC Skills; no automation uses it). Its UC id comes from the `monitor_skill_id` bundle variable. |
 
 ## Design Rules
 

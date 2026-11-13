@@ -17,6 +17,13 @@ resources:
       tags:
         purpose: build-waves
         managed_by: genie-build-waves
+      # External monitor (README "External monitor (optional)"). The CLI drops this entry when
+      # monitor_principal is empty. With this block the bundle owns the job ACL: every deploy
+      # sets it to these entries plus the deployer as IS_OWNER, so clearing monitor_principal
+      # revokes the grant. Add other job grants here or in top-level permissions, not in the UI.
+      permissions:
+        - service_principal_name: ${var.monitor_principal}
+          level: ${var.monitor_job_level}
       parameters:
         - name: branch
           default: ${var.build_branch}

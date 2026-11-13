@@ -9,6 +9,7 @@ This folder covers general patterns for registering external MCP servers, plus w
 | Example | Topic |
 | --- | --- |
 | [robinhood-mcp](robinhood-mcp/docs/guide.md) | A brokerage MCP server whose OAuth only accepts a fixed loopback redirect: proxy Databricks App with a paste-back connect flow, encrypted token handling, read-only tool allowlist, and Unity Gateway registration |
+| [devin-mcp](devin-mcp/docs/guide.md) | Devin (Cognition) in both directions: Devin and DeepWiki MCP servers as Unity Gateway services, Devin access to a workspace (service principal, repository access, Devin secret scopes), and the Devin CLI for setup |
 
 ## Choose the Right Service Type
 

@@ -16,7 +16,7 @@ The build run `[run_id]` on job `[job_id]` has a failed wave `[wave_number]`. I 
 Before repairing, understand what went wrong:
 
 1. Read the `build_verdict` task error (`BUILD_FAILED: ...`, the failed waves and their first problems) and the `w[wave_number]_gate` task output (`GATE_FAILED: wave [wave_number]: ...` plus the result JSON, also in `.build-status/[run_id]/wave_[wave_number]_gate_result.json`).
-2. Read `.build-status/[run_id]/wave_[wave_number]_gate.json` — this lists which checks failed and why. A session that hit the Genie Code step limit, is still `in_progress`, or wrote no status file is named in the gate problems with its conversation id and `progress.next`: resume that conversation in Genie Code first, then repair from `w[wave_number]_integrate`.
+2. Read `.build-status/[run_id]/wave_[wave_number]_gate.json` — this lists which checks failed and why. A session that hit the Genie Code step limit, is still `in_progress`, or wrote no status file is named in the gate problems with its conversation id and `progress.next`: resume that conversation in Genie Code first, then repair from `w[wave_number]_integrate`. With continuation passes on (manifest `continuation_passes`, default 1), the job already re-ran such sessions before the integrator (`w[wave_number]_continue[k]`); the problem then says `after continuation pass k` and names the continuation's conversation, which is the one to resume.
 3. If it's a convergence wave, also read `.build-status/[run_id]/wave_[wave_number]_runtime.json` for deployment IDs, states, and error samples.
 4. Read the failing session's status file and summary in `docs/sessions/`.
 5. Check for `requests` in the gate file — these list changes a session needed outside its owned paths. Apply them before repairing.
@@ -24,6 +24,8 @@ Before repairing, understand what went wrong:
 7. Fix the root cause (plan, manifest, or code) before attempting the repair. Commit any fix outside every session's `owned_paths` (manifest, shared config, plan files) to the build branch yourself first, or the integrator reports it as a stray.
 
 Note: downstream waves show as **Excluded** (not failed). This is correct cascade behavior — they never ran and consumed no compute. The wave gate itself ends SUCCESS with `gate_passed=false`; the run is FAILED because `build_verdict` failed.
+
+Waves whose tasks are disabled in the job end **Disabled**; `build_verdict` ignores them and lists them as skipped. If the verdict is `BUILD_WARNING: no wave gate was checked in this run`, nothing failed but nothing was built either (every wave disabled, excluded or not in the run): enable the waves you meant to run, or mark finished waves `"archived": true` and rerun setup (see `follow-up-build.md`), then start a new run.
 
 ### Step 2: Repair the run
 
@@ -58,11 +60,18 @@ In the UI: choose **Repair run** and select the failed wave's tasks **and** ever
 
 | What failed | `rerun_tasks` |
 |---|---|
+| The branch sync (`branch sync failed` in the verdict), or a fix was pushed to the build branch from outside the `build_root` Git folder | `w[wave_number]_sync` (its dependents re-run the whole wave) |
 | A session (code, plan, or manifest fixed) | `w[wave_number]_sessions`, `w[wave_number]_integrate`, `w[wave_number]_gate` |
 | Only the integrator (sessions passed) | `w[wave_number]_integrate`, `w[wave_number]_gate` |
 | Only the gate verdict (e.g. stray files, runtime soak) | `w[wave_number]_gate` |
 
 Keep `rerun_dependent_tasks=True` in every case. Without it, nothing after the named tasks runs.
+
+In `git` / `hybrid` workflows each wave starts with `w[wave_number]_sync`, which pulls the build branch into the Git folder before the sessions (see Branch Sync in `docs/manifest-schema.md`). The integrator never pulls, so a fix committed from another clone is only picked up when the repair starts at `w[wave_number]_sync`; otherwise the integrator's push is rejected. Push such fixes only while no run is active. A sync that fails on conflicting files means the fix touched a file that a session left uncommitted in the folder: commit or discard that file in the Git folder first, or move the fix out of the session's `owned_paths`.
+
+With continuation passes, rerunning `w[wave_number]_sessions` also reruns the wave's `_find_incomplete` / `_has_incomplete` / `_continue` tasks, because they depend on it.
+
+Do not count on a repair to continue a session that a continuation pass already ran: Jobs keeps `for_each` iterations that ended SUCCESS, including continuation iterations. For a session that stopped again after its last continuation pass, resume its conversation by hand, then repair from `w[wave_number]_integrate`.
 
 **Pass `job_parameters` on every repair.** A `repair_run` falls back to the job-level parameter defaults when `job_parameters` is omitted. The setup job writes these defaults from the manifest, but if the original run was started with custom parameters (e.g. a different branch), the repair would silently use the wrong values. Always pass the same `branch`, `build_root`, and `manifest_path` the original run used:
 
@@ -90,7 +99,11 @@ w = WorkspaceClient()
 
 # List all task keys from the failed wave onward
 only_tasks = [
-    "w[wave_number]_sessions", "w[wave_number]_integrate", "w[wave_number]_gate", "w[wave_number]_gate_check",
+    "w[wave_number]_sync", "w[wave_number]_synced",  # git / hybrid workflows (branch sync)
+    "w[wave_number]_sessions",
+    # continuation pass tasks, one set per pass (pass 2+ add the number: _find_incomplete2, ...)
+    "w[wave_number]_find_incomplete", "w[wave_number]_has_incomplete", "w[wave_number]_continue",
+    "w[wave_number]_integrate", "w[wave_number]_gate", "w[wave_number]_gate_check",
     # ... all tasks from later waves too
     "build_verdict",  # without it, a failed gate leaves the run SUCCESS
 ]
@@ -110,6 +123,10 @@ Earlier waves show as SKIPPED. Files left in the working tree by the earlier run
 ### Step 5: Convergence wave failures
 
 A convergence wave can commit (its session passed) and still fail on `runtime_gate` (e.g. the app crashed during the soak). The commit is kept as progress; repair re-runs the converge session, which starts from the committed code.
+
+### External monitor
+
+An external monitor following `src/skills/genie-build-monitor/SKILL.md` applies these same steps. Up to level 3 it repairs only the cases its decision table allows and escalates the rest to you. At level 4 (act for the owner) it does Steps 1-3 itself: it may push a small fix (even in the failed session's `owned_paths` when it can quote the cause) and repair from `w[wave_number]_sync`, and start one fresh run after a refused repair, within `max_repairs` (default 3) and 2 attempts at the same failure. It escalates on its stop conditions: fixes outside bundle source, the manifest or plans, permissions, grants, IP lists or job settings, a repeated failure, infrastructure failures, anything that destroys or recreates a resource or touches prod, and sessions that need a person. It never runs setup or deploys. See `docs/plans/2026-11-03_devin-monitor-requirements.md`.
 
 ---
 

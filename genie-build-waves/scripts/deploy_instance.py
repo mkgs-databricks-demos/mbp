@@ -132,6 +132,14 @@ def main(argv=None) -> int:
 
     with open(a.vars) as f:
         variables = json.load(f)
+    # The build job ACL is bundle-managed (monitor_principal at monitor_job_level): stop before
+    # deploying a grant that is not a service principal or is above CAN_MANAGE_RUN.
+    from monitor_grants import monitor_var_problems
+    var_problems = monitor_var_problems(variables)
+    if var_problems:
+        for p in var_problems:
+            print(f"ERROR: {p}")
+        return 2
     flags = ["--target", a.target] + var_flags(variables)
 
     if not a.keep_cache:

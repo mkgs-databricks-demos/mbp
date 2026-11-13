@@ -21,9 +21,9 @@ variables:
 
   # One deployment per project: appended to the bundle root path so each project gets its
   # own deployment state and its own build/setup/smoke jobs. Empty keeps the original path
-  # (.bundle/genie-build-waves/<target>). Example: "-agentic-trading".
+  # (.bundle/genie-build-waves/<target>). Example: "-my-project".
   instance_suffix:
-    description: "Per-project deployment suffix (e.g. '-agentic-trading'); empty = default instance"
+    description: "Per-project deployment suffix (e.g. '-my-project'); empty = default instance"
     default: ""
 
   # Absolute workspace path to the Git folder being built.
@@ -58,6 +58,22 @@ variables:
   integrator_skill_id:
     description: "UC Skill id for the wave integrator"
     default: "genie_build_wave_integrator"
+  monitor_skill_id:
+    description: "UC Skill id for the external build monitor (no automation uses it; empty skips publishing)"
+    default: "genie_build_monitor"
+
+  # Optional external monitoring agent (any agent that reads job runs and the monitor skill).
+  # Application (client) ID of its service principal. Set:
+  # * deploy grants it monitor_job_level on the build job (bundle-managed job ACL), and
+  # * setup grants it USE CATALOG, USE SCHEMA and READ VOLUME on the monitor skill only.
+  # Empty (default): no grants. The build_root folder grant stays manual (README: "External monitor").
+  monitor_principal:
+    description: "Service principal application ID of an external monitoring agent; empty = no grants"
+    default: ""
+  # CAN_VIEW: report only (level 1). CAN_MANAGE_RUN: repair runs (levels 2-3). Never CAN_MANAGE.
+  monitor_job_level:
+    description: "Build job permission for monitor_principal: CAN_VIEW or CAN_MANAGE_RUN"
+    default: "CAN_VIEW"
 
 targets:
   # Pass project-specific values at deploy time with --var flags.
@@ -84,6 +100,9 @@ targets:
       manifest_path: /Workspace/Users/you@example.com/my-project/docs/plans/waves.json
       skills_catalog: hls_fde_dev
       skills_schema: dev_build_waves
+      # Uncomment to grant an external monitor the build job and the monitor skill (or pass --var):
+      # monitor_principal: 00000000-0000-0000-0000-000000000000  # monitor SPN application ID
+      # monitor_job_level: CAN_MANAGE_RUN  # default CAN_VIEW (report only)
 
   prod:
     mode: production

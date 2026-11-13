@@ -4,6 +4,8 @@ import json
 import os
 import time
 
+import pytest
+
 import session_status as ss
 
 SESSION = {
@@ -123,7 +125,7 @@ def test_edit_mode_session_not_checked():
 
 # --- session outcome -------------------------------------------------------------------
 
-# Verbatim genie_task_output.agent_output.response of iteration 861320051785964 (run 110489694161084).
+# Verbatim genie_task_output.agent_output.response of a real session iteration that hit the step limit.
 STEP_LIMIT = "I've reached the maximum number of steps for this turn. Would you like me to continue?"
 NORMAL = "session_id 33, mode edit, status pass, 4 files changed, no failed checks."
 
@@ -144,8 +146,8 @@ def test_session_outcome_cases():
 
 
 def test_session_problem_names_session_conversation_and_repair():
-    msg = ss.session_problem("33", "step_limit", "3614498846438467", "4-1")
-    assert msg == ("session 33 hit the Genie Code step limit (conversation 3614498846438467): "
+    msg = ss.session_problem("33", "step_limit", "1234567890123456", "4-1")
+    assert msg == ("session 33 hit the Genie Code step limit (conversation 1234567890123456): "
                    "resume that conversation, then repair from w4-1_integrate")
     msg = ss.session_problem("35", "in_progress", None, "4-3", {"next": "attempt 2: fix TS2345"})
     assert "conversation unknown; next step: attempt 2: fix TS2345" in msg
@@ -165,3 +167,157 @@ def test_iteration_index_and_latest_attempt():
         {"index": None, "attempt_number": 0, "run_id": 5},
     ])
     assert {i: e["run_id"] for i, e in best.items()} == {0: 3, 1: 4}
+
+
+# --- Continuation passes ---------------------------------------------------------
+
+def test_incomplete_sessions_by_status(tmp_path):
+    d = tmp_path / "111"
+    d.mkdir()
+    statuses = {"p": "pass", "b": "blocked", "f": "fail", "e": "error", "i": "in_progress"}
+    for sid, st in statuses.items():
+        (d / f"{sid}.json").write_text(json.dumps({"session_id": sid, "status": st}))
+    (d / "bad.json").write_text("{not json")
+    (d / "lst.json").write_text("[]")  # valid JSON, not a status object
+    wave = {"sessions": [{"session_id": s, "title": f"T {s}"} for s in ["p", "b", "f", "e", "i", "bad", "lst"]]
+            + [{"session_id": "m"}]}  # no status file, no title
+    got = ss.incomplete_sessions(wave, str(d))
+    # Final statuses are never re-run; manifest order is kept; title defaults to the session id.
+    assert got == [
+        {"session_id": "i", "title": "T i", "reason": "in_progress"},
+        {"session_id": "bad", "title": "T bad", "reason": "unreadable"},
+        {"session_id": "lst", "title": "T lst", "reason": "unreadable"},
+        {"session_id": "m", "title": "m", "reason": "missing"},
+    ]
+
+
+def test_incomplete_sessions_missing_status_dir(tmp_path):
+    wave = {"sessions": [{"session_id": "a"}, {"session_id": "b"}]}
+    got = ss.incomplete_sessions(wave, str(tmp_path / "no-such-run"))
+    assert [g["reason"] for g in got] == ["missing", "missing"]
+    assert ss.incomplete_sessions({"sessions": []}, str(tmp_path)) == []
+
+
+def test_incomplete_matches_gate_outcome_without_response(tmp_path):
+    """The find task and the gate agree: incomplete == session_outcome not complete (no agent response)."""
+    d = tmp_path / "1"
+    d.mkdir()
+    for sid, st in {"a": "pass", "b": "in_progress", "c": "blocked"}.items():
+        (d / f"{sid}.json").write_text(json.dumps({"status": st}))
+    wave = {"sessions": [{"session_id": s} for s in "abcd"]}
+    incomplete = {g["session_id"] for g in ss.incomplete_sessions(wave, str(d))}
+    by_outcome = set()
+    for s in "abcd":
+        st, _ = ss.read_status_file(str(d / f"{s}.json"))
+        if ss.session_outcome(None, st)["outcome"] != "complete":
+            by_outcome.add(s)
+    assert incomplete == by_outcome == {"b", "d"}
+
+
+@pytest.mark.parametrize("status,outcome", [
+    ({"status": "pass"}, "complete"), ({"status": "blocked"}, "complete"),
+    ({"status": "fail"}, "complete"), ({"status": "error"}, "complete"),
+    ({"status": "in_progress"}, "in_progress"), ({"status": "running"}, "in_progress"),
+    ({"status": "in-progress"}, "in_progress"), ({"status": None}, "in_progress"), ({}, "in_progress"),
+    ([], "unreadable"), ("pass", "unreadable"), (None, "missing"),
+])
+def test_session_outcome_only_final_statuses_complete(status, outcome):
+    assert ss.session_outcome(None, status)["outcome"] == outcome
+
+
+def test_session_outcome_unreadable_flag_and_step_limit():
+    assert ss.session_outcome("x", None, unreadable=True)["outcome"] == "unreadable"
+    assert ss.session_outcome("I have reached the maximum number of steps", {"status": "running"})["outcome"] == "step_limit"
+    assert ss.session_outcome("reached the maximum number of steps", [])["outcome"] == "unreadable"
+    assert "not a readable JSON object" in ss.session_problem("s", "unreadable", None, "1")
+
+
+def test_incomplete_sessions_unknown_status_is_continued(tmp_path):
+    d = tmp_path / "1"
+    d.mkdir()
+    (d / "a.json").write_text(json.dumps({"status": "running"}))
+    (d / "b.json").write_text(json.dumps({"files_changed": []}))
+    got = ss.incomplete_sessions({"sessions": [{"session_id": "a"}, {"session_id": "b"}]}, str(d))
+    assert [(g["session_id"], g["reason"]) for g in got] == [("a", "in_progress"), ("b", "in_progress")]
+
+
+def test_incomplete_sessions_unreadable_files(tmp_path):
+    d = tmp_path / "1"
+    d.mkdir()
+    (d / "a.json").write_text("[]")
+    (d / "b.json").write_text("{not json")
+    (d / "c.json").write_text('"pass"')
+    got = ss.incomplete_sessions({"sessions": [{"session_id": x} for x in "abc"]}, str(d))
+    assert [(g["session_id"], g["reason"]) for g in got] == [("a", "unreadable"), ("b", "unreadable"), ("c", "unreadable")]
+
+
+def test_read_status_file(tmp_path):
+    assert ss.read_status_file(str(tmp_path / "none.json")) == (None, "missing")
+    (tmp_path / "bad.json").write_text("{")
+    assert ss.read_status_file(str(tmp_path / "bad.json")) == (None, "unreadable")
+    (tmp_path / "ok.json").write_text('{"status": "pass"}')
+    assert ss.read_status_file(str(tmp_path / "ok.json")) == ({"status": "pass"}, None)
+
+
+# --- map_iterations / latest_task_attempt / parse_inputs ----------------------------
+
+INPUTS = [{"session_id": "a"}, {"session_id": "b"}]
+
+
+def _it(i, attempt=0, start=100, run=None):
+    return {"index": i, "attempt_number": attempt, "start_time": start, "run_id": run or f"{i}-{attempt}"}
+
+
+def test_map_iterations_by_index_with_retries():
+    got, warns = ss.map_iterations(INPUTS, [_it(0), _it(1), _it(1, attempt=1)])
+    assert {k: v["run_id"] for k, v in got.items()} == {"a": "0-0", "b": "1-1"} and warns == []
+
+
+def test_map_iterations_out_of_range_and_bad_inputs():
+    got, warns = ss.map_iterations([{"session_id": "a"}, "oops"], [_it(0), _it(1), _it(5), {"index": None}])
+    assert set(got) == {"a"}
+    assert any("#1" in w for w in warns) and any("#5" in w for w in warns)
+
+
+def test_map_iterations_unreadable_inputs_warn():
+    for inputs in (None, [], "{{tasks.x.values.incomplete}}"):
+        got, warns = ss.map_iterations(inputs, [_it(0)])
+        assert got == {} and any("could not be read" in w for w in warns)
+    assert ss.map_iterations(None, []) == ({}, [])  # nothing ran: nothing to report
+
+
+def test_map_iterations_drops_iterations_older_than_the_input_list():
+    """A repair re-ran the find task (new list [b]) but Jobs kept the continue task's SUCCESS
+    iteration #0, which ran for session a. Matching it by index would pin a's run on b."""
+    got, warns = ss.map_iterations([{"session_id": "b"}], [_it(0, start=100)], not_before=500)
+    assert got == {} and any("earlier attempt" in w for w in warns)
+    got, warns = ss.map_iterations([{"session_id": "b"}], [_it(0, start=100), _it(0, attempt=1, start=600)], not_before=500)
+    assert {k: v["run_id"] for k, v in got.items()} == {"b": "0-1"}
+
+
+def test_latest_task_attempt_skips_excluded():
+    tasks = [
+        {"task_key": "c", "attempt_number": 0, "start_time": 1, "run_id": 1, "state": {"result_state": "SUCCESS"}},
+        {"task_key": "c", "attempt_number": 1, "start_time": 2, "run_id": 2, "state": {"result_state": "EXCLUDED"}},
+        {"task_key": "d", "attempt_number": 0, "start_time": 1, "run_id": 3, "state": {"result_state": "EXCLUDED"}},
+        {"task_key": "e", "attempt_number": 0, "start_time": 1, "run_id": 4, "state": {"life_cycle_state": "RUNNING"}},
+    ]
+    assert ss.latest_task_attempt(tasks, "c")["run_id"] == 1
+    assert ss.latest_task_attempt(tasks, "d") is None
+    assert ss.latest_task_attempt(tasks, "e")["run_id"] == 4
+    assert ss.latest_task_attempt(tasks, "missing") is None
+
+
+def test_parse_inputs():
+    assert ss.parse_inputs('[{"session_id": "a"}]') == [{"session_id": "a"}]
+    assert ss.parse_inputs([1]) == [1]
+    assert ss.parse_inputs("{{tasks.`w1_find_incomplete`.values.incomplete}}") is None
+    assert ss.parse_inputs('{"a": 1}') is None
+    assert ss.parse_inputs(None) is None
+
+
+def test_session_problem_names_continuation_pass():
+    msg = ss.session_problem("36", "step_limit", "conv-2", "4-4", {"next": "run tests"}, continued=1)
+    assert "hit the Genie Code step limit after continuation pass 1" in msg
+    assert "conversation conv-2" in msg and "next step: run tests" in msg
+    assert "continuation pass" not in ss.session_problem("36", "missing", None, "4-4")
