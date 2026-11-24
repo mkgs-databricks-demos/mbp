@@ -8,9 +8,10 @@ A developer toolkit that automates the standup of modeled knowledge for Genie On
 
 ## Status
 
-* Phase: **build-0 planned, not yet run**. Design docs, examples and the build-0 plan set exist. No SDK runtime code, no deployed resources, no build-waves instance yet.
+* Phase: **build-0 planned; genie-build-waves instance deployed (dev), setup not yet run, no build run yet**. Build, smoke and setup jobs exist under the instance's own bundle root (`instance_suffix` `-genie-ontology-sdk`); job ids are in the [instance deployment session summary](docs/sessions/2026-11-24_build-waves-instance-deploy.md). The vars file lives outside this repo (it holds workspace paths).
+* Build-0 executor: an external monitor agent (Devin) at **level 4** (acts for the owner: starts the build, repairs, pushes small fixes, escalates only on the monitor skill's stop conditions). Needs `monitor_principal` + `monitor_job_level=CAN_MANAGE_RUN` in the vars file, a redeploy, setup, and `CAN_READ` on `build_root` for the monitor principal.
 * Build-0 = build the reusable SDK, then dogfood it end to end on `samples.tpch` into `examples/tpch/`. 11 waves (`0-0`..`0-10`), 19 sessions, hybrid workflow. `validate_manifest`: 0 errors, 0 warnings, 100 job tasks.
-* **Manual prerequisite before wave 0-3:** the owner writes the gitignored `examples/tpch/ontology-metric-views/.databricks/bundle/dev/variable-overrides.json` (`catalog`, `warehouse_id`) and `examples/tpch/ontology-genie-agents/.databricks/bundle/dev/variable-overrides.json` (`catalog`, `schema` = dev-prefixed metric view schema, `warehouse_id`, `curator_group`). Workspace-specific values never go in committed files.
+* **Manual prerequisite before wave 0-3 (done 2026-11-24):** the owner writes the gitignored `examples/tpch/ontology-metric-views/.databricks/bundle/dev/variable-overrides.json` (`catalog`, `warehouse_id`) and `examples/tpch/ontology-genie-agents/.databricks/bundle/dev/variable-overrides.json` (`catalog`, `schema` = dev-prefixed metric view schema, `warehouse_id`, `curator_group`). Workspace-specific values never go in committed files.
 * History: see [docs/sessions/INDEX.md](docs/sessions/INDEX.md).
 
 ## Layout
@@ -94,13 +95,14 @@ Original findings: Details and evidence: [2026-11-24 initial design session](doc
 
 ## Next steps
 
-1. Owner writes the two `variable-overrides.json` files (manual prerequisite above).
-2. Deploy a genie-build-waves instance for this project with `scripts/deploy_instance.py` and its own `instance_suffix`: `build_root` = this folder, `manifest_path` = `docs/plans/waves.json`, `build_branch` = the SDK feature branch.
-3. Run setup (and the smoke test), then start the build.
+1. ~~Owner writes the two `variable-overrides.json` files~~ (done).
+2. ~~Deploy a genie-build-waves instance~~ (done, first deploy; pre/post-deploy guard checks passed).
+3. Redeploy with the monitor variables (web terminal, `scripts/deploy_instance.py`), grant the monitor principal `CAN_READ` on `build_root`, run setup (+ smoke).
+4. Hand build-0 to the level 4 monitor; it starts the run and drives it to `BUILD_PASSED` or escalates.
 
 ## Build-0 open decisions (defaults applied)
 
 * Deploy waves (0-6, 0-8, 0-9) use `allow_deploy` sessions + integrator `required_checks`, not `converge` + `runtime_targets` (those need workspace-specific names or ids in a committed file). Revisit in build 1 once ids are in session summaries.
 * Tuning gate: scored results are required; accuracy below 70% becomes a build-1 backlog item.
 * UC Pages (session 13) may be refused to job tasks: it may stop `blocked` without failing the wave.
-* No external monitor in build-0.
+* Monitor: changed by the owner (2026-11-24) from "no external monitor" to Devin at level 4, allowed to decide on its own to drive build-0 to completion within the monitor skill's guardrails and stop conditions.
