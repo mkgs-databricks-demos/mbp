@@ -1,0 +1,64 @@
+# Registers every metric view YAML under metric_views/ and tests the result.
+#
+#   generate_manifest -> register_each_mv (forEach, 4 at a time) -> smoke_test
+#                                                               -> cardinality_test
+#
+# All tasks are serverless notebook tasks (no cluster spec). Paths in the
+# manifest are relative to the bundle root, passed as ${workspace.file_path}.
+resources:
+  jobs:
+    register_metric_views:
+      name: register_metric_views
+      description: Register Genie Ontology metric views (CREATE OR REPLACE VIEW ... WITH METRICS LANGUAGE YAML), then smoke and cardinality test them
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: generate_manifest
+          notebook_task:
+            notebook_path: ../notebooks/generate_manifest.ipynb
+            base_parameters:
+              bundle_root: ${workspace.file_path}
+              metric_views_dir: metric_views
+          # Sets task value metric_view_list: [{name, yaml_path, domain, subdomain}]
+
+        - task_key: register_each_mv
+          depends_on:
+            - task_key: generate_manifest
+          for_each_task:
+            inputs: "{{tasks.generate_manifest.values.metric_view_list}}"
+            concurrency: 4
+            task:
+              task_key: register_single_mv
+              notebook_task:
+                notebook_path: ../notebooks/register_single_mv.ipynb
+                base_parameters:
+                  bundle_root: ${workspace.file_path}
+                  yaml_path: "{{input.yaml_path}}"
+                  mv_name: "{{input.name}}"
+                  source_catalog: ${var.source_catalog}
+                  source_schema: ${var.source_schema}
+                  target_catalog: ${resources.schemas.ontology_schema.catalog_name}
+                  target_schema: ${resources.schemas.ontology_schema.name}
+
+        - task_key: smoke_test
+          depends_on:
+            - task_key: register_each_mv
+          notebook_task:
+            notebook_path: ../notebooks/smoke_test.ipynb
+            base_parameters:
+              bundle_root: ${workspace.file_path}
+              metric_views_dir: metric_views
+              target_catalog: ${resources.schemas.ontology_schema.catalog_name}
+              target_schema: ${resources.schemas.ontology_schema.name}
+
+        - task_key: cardinality_test
+          depends_on:
+            - task_key: register_each_mv
+          notebook_task:
+            notebook_path: ../notebooks/cardinality_test.ipynb
+            base_parameters:
+              bundle_root: ${workspace.file_path}
+              metric_views_dir: metric_views
+              source_catalog: ${var.source_catalog}
+              source_schema: ${var.source_schema}
+              target_catalog: ${resources.schemas.ontology_schema.catalog_name}
+              target_schema: ${resources.schemas.ontology_schema.name}

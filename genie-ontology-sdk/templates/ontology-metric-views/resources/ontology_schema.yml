@@ -1,0 +1,15 @@
+# Ontology schema: receives the registered metric views.
+# Everything else in the bundle references it as
+# ${resources.schemas.ontology_schema.*} (never ${var.schema_name} directly), so
+# the schema is created before the job and dev-mode prefixes are applied.
+resources:
+  schemas:
+    ontology_schema:
+      catalog_name: ${var.catalog}
+      name: ${var.schema_name}
+      comment: Genie Ontology metric views (registered by the register_metric_views job)
+      grants:
+        - principal: ${var.consumer_group}
+          privileges:
+            - USE_SCHEMA
+            - SELECT

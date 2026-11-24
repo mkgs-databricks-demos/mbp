@@ -1,0 +1,18 @@
+# One genie_spaces entry per agents/<name>.geniespace.json.
+# file_path points at the RENDERED copy (.rendered/, gitignored): the CLI inlines the file as
+# serialized_space without ${...} interpolation, so the committed source stays tokenized
+# (${target_catalog}.${target_schema}) and is rendered per target first (README.md).
+# file_path takes precedence over serialized_space and is relative to THIS file (resources/).
+resources:
+  genie_spaces:
+    ontology_agent:
+      title: Ontology Agent
+      description: Genie Agent over the domain metric views registered by the ontology-metric-views bundle.
+      warehouse_id: ${var.warehouse_id}
+      parent_path: ${var.genie_parent_path}
+      file_path: ../.rendered/ontology_agent.geniespace.json
+      permissions:
+        - level: CAN_RUN
+          group_name: ${var.consumer_group}
+        - level: CAN_EDIT
+          group_name: ${var.curator_group}
