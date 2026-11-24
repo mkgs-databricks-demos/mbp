@@ -4,7 +4,14 @@
   "workflow": {
     "mode": "hybrid"
   },
+  "branch": "mg-genie-ontology-modeled-knowledge-sdk",
   "bundle_target": "dev",
+  "authorization_policy": {
+    "monitor_may_authorize": [
+      {"action": "jobs.run_now", "scope": "owned_assets"},
+      {"action": "bundle.deploy", "scope": "owned_assets"}
+    ]
+  },
   "status_dir": ".build-status",
   "plans_dir": "docs/plans",
   "sessions_dir": "docs/sessions",
