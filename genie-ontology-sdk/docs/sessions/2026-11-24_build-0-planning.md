@@ -51,6 +51,6 @@ Defaults I chose (recorded in PROJECT_MEMORY "Build-0 open decisions"):
 * Not verified: the plans' technical assumptions that sessions must check themselves (`genie_spaces` `file_path` interpolation, Pages API availability to job tasks, metric view YAML keys).
 
 ## Follow-ups
-- [ ] Owner: write both `variable-overrides.json` files (see PROJECT_MEMORY).
+- [x] Owner-approved: both `variable-overrides.json` files written (gitignored, verified with `git check-ignore`). Values: catalog `hls_fde_dev` (owner has ALL_PRIVILEGES), schema `dev_matthew_giglia_ontology_tpch` (expected dev-mode prefix of the `ontology_tpch` schema resource; confirm after the first deploy), warehouse `24087b85239cacac` (Serverless Starter Warehouse), curator_group `admins` (placeholder default).
 - [ ] Deploy a genie-build-waves instance for this project (`deploy_instance.py`, own `instance_suffix`), run setup + smoke, start build-0.
 - [ ] Open the PR for `mg-genie-ontology-modeled-knowledge-sdk` when the owner is ready.
