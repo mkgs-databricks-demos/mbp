@@ -1,0 +1,115 @@
+# subdomain: sales
+# Line-item-grain market volume with both customer and supplier geography (TPC-H Q8).
+# KPIs: National Market Share (supplier nation volume / total volume).
+version: 1.1
+comment: "Market volume at order-line grain with supplier geography and customer geography side by side, for national market share analysis (TPC-H Q8): the share of volume supplied by one supplier nation within a customer region, by order year and part type."
+
+source: ${source_catalog}.${source_schema}.lineitem
+
+joins:
+  # verified: lineitem -> orders on l_orderkey = o_orderkey, orphan_rate 0.0
+  - name: orders
+    source: ${source_catalog}.${source_schema}.orders
+    on: source.l_orderkey = orders.o_orderkey
+    cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+    joins:
+      # verified: orders -> customer on o_custkey = c_custkey, orphan_rate 0.0
+      - name: customer
+        source: ${source_catalog}.${source_schema}.customer
+        on: orders.o_custkey = customer.c_custkey
+        cardinality: many_to_one
+        rely:
+          at_most_one_match: true
+        joins:
+          # verified: customer -> nation on c_nationkey = n_nationkey, orphan_rate 0.0
+          - name: customer_nation
+            source: ${source_catalog}.${source_schema}.nation
+            on: customer.c_nationkey = customer_nation.n_nationkey
+            cardinality: many_to_one
+            rely:
+              at_most_one_match: true
+            joins:
+              # verified: nation -> region on n_regionkey = r_regionkey, orphan_rate 0.0
+              - name: customer_region
+                source: ${source_catalog}.${source_schema}.region
+                on: customer_nation.n_regionkey = customer_region.r_regionkey
+                cardinality: many_to_one
+                rely:
+                  at_most_one_match: true
+  # verified: lineitem -> supplier on l_suppkey = s_suppkey, orphan_rate 0.0
+  - name: supplier
+    source: ${source_catalog}.${source_schema}.supplier
+    on: source.l_suppkey = supplier.s_suppkey
+    cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+    joins:
+      # verified: supplier -> nation on s_nationkey = n_nationkey, orphan_rate 0.0
+      - name: supplier_nation
+        source: ${source_catalog}.${source_schema}.nation
+        on: supplier.s_nationkey = supplier_nation.n_nationkey
+        cardinality: many_to_one
+        rely:
+          at_most_one_match: true
+  # verified: lineitem -> part on l_partkey = p_partkey, orphan_rate 0.0
+  - name: part
+    source: ${source_catalog}.${source_schema}.part
+    on: source.l_partkey = part.p_partkey
+    cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+
+dimensions:
+  - name: Order Year
+    expr: YEAR(orders.o_orderdate)
+    comment: "Calendar year the order was placed (Q8 compares 1995 and 1996)"
+  - name: Customer Nation
+    expr: orders.customer.customer_nation.n_name
+    comment: "Nation of the ordering customer"
+  - name: Customer Region
+    expr: orders.customer.customer_nation.customer_region.r_name
+    comment: "Region of the ordering customer; Q8 restricts the market to one customer region"
+  - name: Supplier Nation
+    expr: supplier.supplier_nation.n_name
+    comment: "Nation of the supplier that fulfilled the line; the numerator nation of national market share"
+    synonyms:
+      - supplying nation
+      - vendor country
+  - name: Part Type
+    expr: part.p_type
+    comment: "Part type; Q8 restricts the market to one part type"
+    synonyms:
+      - product type
+
+measures:
+  - name: Market Volume
+    expr: SUM(source.l_extendedprice * (1 - source.l_discount))
+    comment: "Discounted line revenue in USD used as market volume (TPC-H Q8 volume)"
+    synonyms:
+      - volume
+      - market revenue
+    format:
+      type: currency
+      currency_code: USD
+      abbreviation: compact
+  - name: Line Item Count
+    expr: COUNT(1)
+    comment: "Number of order lines in the market"
+
+materialization:
+  mode: relaxed
+  schedule: every 6 hours
+  materialized_views:
+    - name: volume_by_year_region_supplier_nation
+      type: aggregated
+      dimensions:
+        - Order Year
+        - Customer Region
+        - Supplier Nation
+      measures:
+        - "*"
+      refresh_policy: auto
+      cluster_by:
+        auto: true

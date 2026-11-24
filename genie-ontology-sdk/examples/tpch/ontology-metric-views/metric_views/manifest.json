@@ -1,0 +1,44 @@
+[
+  {
+    "name": "mv_tpch_supply_chain_fulfillment",
+    "yaml_path": "metric_views/tpch_supply_chain/mv_tpch_supply_chain_fulfillment.yml",
+    "domain": "tpch_supply_chain",
+    "subdomain": "fulfillment"
+  },
+  {
+    "name": "mv_tpch_supply_chain_market_share",
+    "yaml_path": "metric_views/tpch_supply_chain/mv_tpch_supply_chain_market_share.yml",
+    "domain": "tpch_supply_chain",
+    "subdomain": "sales"
+  },
+  {
+    "name": "mv_tpch_supply_chain_orders",
+    "yaml_path": "metric_views/tpch_supply_chain/mv_tpch_supply_chain_orders.yml",
+    "domain": "tpch_supply_chain",
+    "subdomain": "sales"
+  },
+  {
+    "name": "mv_tpch_supply_chain_profit",
+    "yaml_path": "metric_views/tpch_supply_chain/mv_tpch_supply_chain_profit.yml",
+    "domain": "tpch_supply_chain",
+    "subdomain": "procurement"
+  },
+  {
+    "name": "mv_tpch_supply_chain_returns",
+    "yaml_path": "metric_views/tpch_supply_chain/mv_tpch_supply_chain_returns.yml",
+    "domain": "tpch_supply_chain",
+    "subdomain": "fulfillment"
+  },
+  {
+    "name": "mv_tpch_supply_chain_revenue",
+    "yaml_path": "metric_views/tpch_supply_chain/mv_tpch_supply_chain_revenue.yml",
+    "domain": "tpch_supply_chain",
+    "subdomain": "sales"
+  },
+  {
+    "name": "mv_tpch_supply_chain_supply_cost",
+    "yaml_path": "metric_views/tpch_supply_chain/mv_tpch_supply_chain_supply_cost.yml",
+    "domain": "tpch_supply_chain",
+    "subdomain": "procurement"
+  }
+]

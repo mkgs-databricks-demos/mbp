@@ -1,0 +1,128 @@
+# subdomain: procurement
+# Line-item-grain profit metrics (TPC-H Q9). Supply cost is read per line through the
+# composite lineitem -> partsupp join (many_to_one), so partsupp measures are not fanned out.
+# KPIs: Profit (product type profit).
+version: 1.1
+comment: "Profit metrics at order-line grain: discounted revenue minus supply cost of goods (supply cost x quantity), by part type, brand, manufacturer, supplier nation and order year (TPC-H Q9 product type profit)."
+
+source: ${source_catalog}.${source_schema}.lineitem
+
+joins:
+  # verified: lineitem -> partsupp on l_partkey = ps_partkey, l_suppkey = ps_suppkey, orphan_rate 0.0
+  - name: partsupp
+    source: ${source_catalog}.${source_schema}.partsupp
+    on: source.l_partkey = partsupp.ps_partkey AND source.l_suppkey = partsupp.ps_suppkey
+    cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+  # verified: lineitem -> part on l_partkey = p_partkey, orphan_rate 0.0
+  - name: part
+    source: ${source_catalog}.${source_schema}.part
+    on: source.l_partkey = part.p_partkey
+    cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+  # verified: lineitem -> supplier on l_suppkey = s_suppkey, orphan_rate 0.0
+  - name: supplier
+    source: ${source_catalog}.${source_schema}.supplier
+    on: source.l_suppkey = supplier.s_suppkey
+    cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+    joins:
+      # verified: supplier -> nation on s_nationkey = n_nationkey, orphan_rate 0.0
+      - name: supplier_nation
+        source: ${source_catalog}.${source_schema}.nation
+        on: supplier.s_nationkey = supplier_nation.n_nationkey
+        cardinality: many_to_one
+        rely:
+          at_most_one_match: true
+  # verified: lineitem -> orders on l_orderkey = o_orderkey, orphan_rate 0.0
+  - name: orders
+    source: ${source_catalog}.${source_schema}.orders
+    on: source.l_orderkey = orders.o_orderkey
+    cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+
+dimensions:
+  - name: Order Year
+    expr: YEAR(orders.o_orderdate)
+    comment: "Calendar year the order was placed (Q9 reports profit by nation and year)"
+  - name: Part Type
+    expr: part.p_type
+    synonyms:
+      - product type
+  - name: Part Brand
+    expr: part.p_brand
+    synonyms:
+      - brand
+  - name: Manufacturer
+    expr: part.p_mfgr
+    synonyms:
+      - mfgr
+  - name: Part Name
+    expr: part.p_name
+    comment: "Part name; Q9 filters parts whose name contains a color word"
+  - name: Supplier Nation
+    expr: supplier.supplier_nation.n_name
+    comment: "Nation of the supplier that fulfilled the line"
+    synonyms:
+      - vendor country
+
+measures:
+  - name: Revenue
+    expr: SUM(source.l_extendedprice * (1 - source.l_discount))
+    comment: "Net revenue in USD: extended price after discount, before tax"
+    synonyms:
+      - net revenue
+    format:
+      type: currency
+      currency_code: USD
+      abbreviation: compact
+  - name: Cost of Goods Sold
+    expr: SUM(partsupp.ps_supplycost * source.l_quantity)
+    comment: "Supply cost in USD of the units sold: the supplier's unit supply cost for the part times line quantity"
+    synonyms:
+      - COGS
+      - supply cost of goods
+    format:
+      type: currency
+      currency_code: USD
+      abbreviation: compact
+  - name: Profit
+    expr: MEASURE(`Revenue`) - MEASURE(`Cost of Goods Sold`)
+    comment: "Net revenue minus cost of goods sold in USD (TPC-H Q9 amount)"
+    synonyms:
+      - product type profit
+      - gross profit
+    format:
+      type: currency
+      currency_code: USD
+      abbreviation: compact
+  - name: Profit Margin
+    expr: MEASURE(`Profit`) / MEASURE(`Revenue`)
+    comment: "Profit as a share of net revenue"
+    synonyms:
+      - margin
+    format:
+      type: percentage
+  - name: Quantity
+    expr: SUM(source.l_quantity)
+    comment: "Units sold"
+
+materialization:
+  mode: relaxed
+  schedule: every 6 hours
+  materialized_views:
+    - name: profit_by_year_nation_mfgr
+      type: aggregated
+      dimensions:
+        - Order Year
+        - Supplier Nation
+        - Manufacturer
+      measures:
+        - "*"
+      refresh_policy: auto
+      cluster_by:
+        auto: true

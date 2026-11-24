@@ -4,6 +4,7 @@ Sessions are listed in reverse chronological order.
 
 | Date | Session | Summary |
 |---|---|---|
+| 2026-11-24 | [W0-5 / 11 TPC-H Metric View Synthesis](2026-11-24_w0-5-11-tpch-mv-synthesis.md) | Wave 0-5, session 11, mode edit, status pass: 7 parameterized tpch_supply_chain metric view YAMLs + manifest.json (mv_yaml validate 0 errors) |
 | 2026-11-24 | [W0-4 / 10b TPC-H Deep EDA](2026-11-24_w0-4-10b-tpch-deep-eda.md) | Wave 0-4, session 10b, mode edit, status pass: 8 samples.tpch table profiles and data_model_summary.md (10 joins verified many_to_one, orphan_rate 0.0) |
 | 2026-11-24 | [W0-4 / 10a TPC-H Domain Research & Glossary](2026-11-24_w0-4-10a-tpch-domain-research.md) | Wave 0-4, session 10a, mode edit, status pass: research docs 01-05 (incl. domain/subdomain proposal), 23 glossary term files |
 | 2026-11-24 | [W0-3 / 09 Init Tool & TPC-H Dogfood Scaffold](2026-11-24_w0-3-09-init-and-tpch-scaffold.md) | Wave 0-3, session 09, mode edit, status pass: scaffold.py, init_ontology_project notebook, test_scaffold.py, examples/tpch scaffold (both dogfood bundles, run kit, sdk_config.json) |
