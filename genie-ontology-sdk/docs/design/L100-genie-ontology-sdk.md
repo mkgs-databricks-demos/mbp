@@ -5,7 +5,7 @@ Version: 0.1-draft | Date: 2026-11-24 | Status: Design Phase 1
 
 ## Executive Summary
 
-The **Genie Ontology SDK** is a developer toolkit that automates the end-to-end standup of modeled knowledge for Genie Ontology — from raw Unity Catalog assets and supplemental business context through to registered metric views, UC Pages, curated Genie Agents, and an initial tuning plan. It codifies the **Rapid Ontology Standup** methodology into a repeatable, metadata-driven pipeline orchestrated by **Genie Build Waves** workflows deployed as **Databricks Asset Bundles (DABs)**.
+The **Genie Ontology SDK** is a developer toolkit that automates the end-to-end standup of modeled knowledge for Genie Ontology — from raw Unity Catalog assets and supplemental business context through to registered metric views, UC Pages, curated Genie Agents, and an initial tuning plan. It codifies the **Rapid Ontology Standup** methodology into a repeatable, metadata-driven pipeline orchestrated by **Genie Build Waves** workflows deployed as **Declarative Automation Bundles (DABs)**.
 
 **Core value proposition:** What currently takes an experienced FDE 2–5 days of interactive Genie Code sessions becomes a parameterized, CI/CD-ready pipeline that any SA, FDE, or customer data engineer can execute against their own Unity Catalog assets.
 
@@ -118,7 +118,7 @@ Owns the Genie Agent definitions (`.geniespace.json` files) and deployment. Uses
 |---|---|---|---|
 | 1 | Pages deployment | Include — full automation | Pages are core to Genie Ontology. Wave 5.5 added. |
 | 2 | Domain/Subdomain | Hybrid — generate proposal, opt-in creation | Domain taxonomy is an enterprise governance decision. |
-| 3 | Materialization | Include — auto-generate blocks | Wave 3 EDA feeds Wave 4 synthesis. Carelon $60K/yr proof point. |
+| 3 | Materialization | Include — auto-generate blocks | Wave 3 EDA feeds Wave 4 synthesis. Field deployments have shown material annual compute savings from materializing heavy metric views. |
 | 4 | SGT App integration | Defer — separate products | No coupling between codebases. |
 | 5 | Observability | Defer — separate concern | Wait for native Genie Agent tracing. |
 | 6 | Incremental re-runs | Full regeneration | Idempotent via `CREATE OR REPLACE VIEW`. |
@@ -165,8 +165,10 @@ Only `target_catalog`, `source_catalog`, `warehouse_id`, and `workspace.host` ch
 
 | Asset | Relationship |
 |---|---|
-| Rapid Ontology Standup | The SDK automates L200-A (MV Standup) and L200-B (Agent Standup) |
-| mbp/genie-build-waves | Orchestration engine |
-| mbp/genie-production-readiness | Deployed agents should meet the 9 requirements |
-| Frictionless Analyst Deployments | SDK is the data engineer counterpart |
-| Lattice | Produces the Genie Ontology that Lattice consumes |
+| [genie-build-waves](../../../genie-build-waves) | Orchestration engine (in this repo) |
+| [developer-user-isolation-in-uc](../../../developer-user-isolation-in-uc) | UC naming convention and zero-hardcoding rule (in this repo) |
+| [sdlc-best-practices](../../../sdlc-best-practices) | Bundle deployment patterns and CI/CD (in this repo) |
+| Rapid Ontology Standup (external methodology) | The SDK automates its metric view standup and agent standup phases |
+| Genie production readiness (external guidance) | Deployed agents should meet its requirements |
+
+Build status: the original L300 pipeline-run plans are kept as reference in [l300-pipeline/](l300-pipeline/); the active build plans are in [docs/plans/](../plans/INDEX.md).

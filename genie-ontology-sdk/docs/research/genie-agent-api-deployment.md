@@ -5,7 +5,7 @@ Version: 1.0 | Date: 2026-11-24
 
 ## Summary
 
-Genie Agents (formerly Genie Spaces) can be created, configured, and deployed programmatically via the Management API and natively through Databricks Asset Bundles. This document captures the deployment patterns for CI/CD.
+Genie Agents (formerly Genie Spaces) can be created, configured, and deployed programmatically via the Management API and natively through Declarative Automation Bundles. This document captures the deployment patterns for CI/CD.
 
 ## Management API
 

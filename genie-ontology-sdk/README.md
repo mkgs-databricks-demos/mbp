@@ -2,7 +2,7 @@
 
 A developer toolkit that automates the end-to-end standup of modeled knowledge for Genie Ontology — from raw Unity Catalog assets and supplemental business context through to registered metric views, UC Pages, curated Genie Agents, and an initial tuning plan.
 
-Codifies the [Rapid Ontology Standup](../genie-build-waves) methodology into a repeatable, metadata-driven pipeline orchestrated by [Genie Build Waves](../genie-build-waves) workflows deployed as Databricks Asset Bundles (DABs).
+Codifies the Rapid Ontology Standup methodology into a repeatable, metadata-driven pipeline orchestrated by [Genie Build Waves](../genie-build-waves) workflows deployed as Declarative Automation Bundles (DABs).
 
 ## Documents
 
@@ -37,7 +37,6 @@ Codifies the [Rapid Ontology Standup](../genie-build-waves) methodology into a r
 | Document | Description |
 |---|---|
 | [SDK Overview (HTML)](docs/pitch/genie-ontology-sdk-overview.html) | Customer-facing standalone HTML presentation — Databricks branded, 4 sections (Overview, How It Works, What You Get, Why It Matters) |
-| [SDK Overview (Genie Artifact)](genie_artifacts/Genie%20Ontology%20Modeled%20Knowledge%20SDK.ga) | Interactive Genie artifact version with tabbed navigation — same content, viewable in Genie One side panel |
 
 ## Diagrams
 
@@ -59,28 +58,36 @@ Codifies the [Rapid Ontology Standup](../genie-build-waves) methodology into a r
 | [Sample Genie Agent Config](examples/agents/) | Example `.geniespace.json` |
 
 
-## Plans (L300 — Genie Code Session Documents)
+## Build Plans (genie-build-waves)
 
-| Plan | Wave | Session | Mode | Effort |
-|---|---|---|---|---|
-| [waves.json](docs/plans/waves.json) | — | Manifest | — | — |
-| [INDEX](docs/plans/INDEX.md) | — | Session map & dependency graph | — | — |
-| [01 Input Validation](docs/plans/01_input_validation_scaffolding.md) | 0 | Init & scaffold | execute | Light |
-| [02 Domain Research](docs/plans/02_domain_research.md) | 1 | Web search, KPIs, glossary | execute | Medium |
-| [03 Supplemental Context](docs/plans/03_supplemental_context.md) | 2 | File parsing, dashboard extraction | execute | Medium |
-| [04 Deep EDA](docs/plans/04_deep_eda.md) | 3 | Table profiling, relationships | execute | Heavy |
-| [05 MV Synthesis](docs/plans/05_metric_view_synthesis.md) | 4 | YAML generation, materialization | edit | Heavy |
-| [06 MV Registration](docs/plans/06_metric_view_registration.md) | 5 | forEach CREATE OR REPLACE VIEW | execute | Medium |
-| [07 Pages Registration](docs/plans/07_pages_registration.md) | 5.5 | UC Pages via Pages API | execute | Light |
-| [08 Agent Curation](docs/plans/08_genie_agent_curation.md) | 6 | .geniespace.json generation | edit | Heavy |
-| [09 Agent Deployment](docs/plans/09_genie_agent_deployment.md) | 7 | Deploy via Genie API | execute | Medium |
-| [10 Tuning](docs/plans/10_tuning_engine.md) | 8 | Benchmark, diagnose, fix MVs | execute | Heavy |
+Build-0 builds the SDK, then dogfoods it on `samples.tpch` (`examples/tpch/`). See the [plan index](docs/plans/INDEX.md) for the wave map, contracts and dependency graph.
+
+| Wave | Sessions | Delivers |
+|---|---|---|
+| 0-0 | [01](docs/plans/build-0/01_sdk_foundation.md) | Package skeleton, input contract (`config.py`), pytest scaffold |
+| 0-1 | [02](docs/plans/build-0/02_mv_yaml_library.md), [03](docs/plans/build-0/03_geniespace_builder.md), [04](docs/plans/build-0/04_pages_and_benchmark.md), [05a](docs/plans/build-0/05a_discovery_skills.md), [05b](docs/plans/build-0/05b_synthesis_skills.md) | MV YAML library, Genie Agent builder, Pages + benchmark helpers, six pipeline skills |
+| 0-2 | [06](docs/plans/build-0/06_mv_bundle_template.md), [07](docs/plans/build-0/07_agent_bundle_template.md), [08](docs/plans/build-0/08_run_kit.md) | Two bundle templates, pipeline-run kit |
+| 0-3 | [09](docs/plans/build-0/09_init_and_tpch_scaffold.md) | Init notebook + scaffold, TPC-H project |
+| 0-4 | [10a](docs/plans/build-0/10a_tpch_domain_research.md), [10b](docs/plans/build-0/10b_tpch_deep_eda.md) | TPC-H research, glossary, data profiles |
+| 0-5 | [11](docs/plans/build-0/11_tpch_mv_synthesis.md) | TPC-H metric view YAMLs |
+| 0-6 | [12](docs/plans/build-0/12_tpch_mv_registration.md) | Registered TPC-H metric views (dev) |
+| 0-7 | [13](docs/plans/build-0/13_tpch_uc_pages.md), [14](docs/plans/build-0/14_tpch_agent_curation.md) | UC Pages, Genie Agent config |
+| 0-8 | [15](docs/plans/build-0/15_tpch_agent_deployment.md) | Deployed TPC-H Genie Agent (dev) |
+| 0-9 | [16](docs/plans/build-0/16_tpch_tuning.md) | Benchmark + MV-first tuning |
+| 0-10 | [17](docs/plans/build-0/17_build0_docs.md) | Docs and build-0 observations |
+
+Manifest: [docs/plans/waves.json](docs/plans/waves.json). The original pipeline-run plans (Waves 0-8 of the L100 design) are kept as reference in [docs/design/l300-pipeline/](docs/design/l300-pipeline/README.md).
+
+## Project Memory
+
+[PROJECT_MEMORY.md](PROJECT_MEMORY.md): status, decisions, conventions and open items. Read it before any session.
 
 ## Sessions
 
 | Session | Description |
 |---|---|
-| [2026-11-24 — Initial Design](docs/sessions/2026-11-24_initial-design.md) | L100 design, open question resolution, file creation |
+| [2026-11-24 — Build-0 Planning](docs/sessions/2026-11-24_build-0-planning.md) | Fresh build-0 plan set, manifest, original plans moved to reference |
+| [2026-11-24 — Initial Design](docs/sessions/2026-11-24_initial-design.md) | L100 design, open question resolution, file creation, design review |
 
 ## Cross-References
 

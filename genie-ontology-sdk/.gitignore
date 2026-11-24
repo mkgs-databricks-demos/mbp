@@ -1,0 +1,15 @@
+# genie-build-waves status and gate files (never committed)
+.build-status/
+
+# Bundle local state and variable-overrides.json (workspace-specific values)
+.databricks/
+**/.databricks/
+
+# Rendered Genie Agent files (resolved catalog/schema names)
+**/.rendered/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/

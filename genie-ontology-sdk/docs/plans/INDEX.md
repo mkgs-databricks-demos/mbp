@@ -1,134 +1,179 @@
-# Genie Ontology SDK — Session Plan Index
+# Build Plan Index — Genie Ontology SDK
 
-**Project:** Genie Ontology SDK
-**Created:** 2026-11-24
-**Workflow mode:** hybrid
+## Overview
 
----
+**Build-0** builds the reusable Genie Ontology SDK:
+* a Python library
+* Genie Code skills for each pipeline stage
+* two bundle templates
+* a pipeline-run kit
+* an init notebook
 
-## Session Order
+Then it dogfoods the SDK end to end on the public `samples.tpch` data, into `examples/tpch/`.
 
-| # | Session | Produces | Depends On | Est. Effort |
-|---|---------|----------|------------|-------------|
-| 01 | [Input Validation & Scaffolding](01_input_validation_scaffolding.md) | sdk_config.json, folder structure, feature branch | Nothing | Light |
-| 02 | [Domain Research](02_domain_research.md) | docs/research/*.md, docs/semantics/*.md | 01 | Medium |
-| 03 | [Supplemental Context](03_supplemental_context.md) | docs/context/*.md, additional semantics | 01 | Medium |
-| 04 | [Deep EDA](04_deep_eda.md) | docs/data_profiles/*.md, data_model_summary.md | 01 | Heavy |
-| 05 | [Metric View Synthesis](05_metric_view_synthesis.md) | metric_views/*.yml, manifest.json | 02, 03, 04 | Heavy |
-| 06 | [MV Registration](06_metric_view_registration.md) | Registered metric views in UC | 05 | Medium |
-| 07 | [Pages Registration](07_pages_registration.md) | Registered UC Pages | 06 | Light |
-| 08 | [Agent Curation](08_genie_agent_curation.md) | agents/*.geniespace.json, domain_manifest.yml | 06, 07 | Heavy |
-| 09 | [Agent Deployment](09_genie_agent_deployment.md) | Deployed Genie Agents | 08 | Medium |
-| 10 | [Tuning](10_tuning_engine.md) | tuning_plan.md, benchmark_results.md, updated YAMLs | 09 | Heavy |
+* Manifest: [waves.json](waves.json) (genie-build-waves, `hybrid` workflow, `build: "0"`, waves `0-0` .. `0-10`).
+* Plans: [build-0/](build-0/).
+* `build_root` = this SDK folder; the build branch is a job parameter. Sessions never run Git; the integrator is the only committer.
+* Design inputs: [L100](../design/L100-genie-ontology-sdk.md), L200-A..H, and the original pipeline-run plans in [l300-pipeline/](../design/l300-pipeline/README.md) (reference only).
+* Workspace-specific values (catalog, warehouse, ids) never go in committed files outside `docs/sessions/`. Dogfood bundles read them from gitignored `.databricks/bundle/dev/variable-overrides.json` files.
 
----
+## Wave Map
 
-## Build Waves
+### Wave 0-0: Foundation
+| Session | Title | Mode | Depends On |
+|---|---|---|---|
+| [01](build-0/01_sdk_foundation.md) | SDK foundation & input contract | edit | — |
 
-### Wave 0 — Initialization (serial)
+### Wave 0-1: Core libraries + skills
+| Session | Title | Mode | Depends On |
+|---|---|---|---|
+| [02](build-0/02_mv_yaml_library.md) | Metric view YAML library & manifest | edit | 01 |
+| [03](build-0/03_geniespace_builder.md) | Genie Agent config builder | edit | 01 |
+| [04](build-0/04_pages_and_benchmark.md) | UC Pages & benchmark helpers | edit | 01 |
+| [05a](build-0/05a_discovery_skills.md) | Discovery skills (research, context, EDA) | edit | 01 |
+| [05b](build-0/05b_synthesis_skills.md) | Synthesis skills (MV synthesis, curation, tuning) | edit | 01 |
 
-| Session | Notes |
-|---|---|
-| **01 Input Validation & Scaffolding** | Creates working environment. Must pass before any other work. |
+### Wave 0-2: Templates + run kit
+| Session | Title | Mode | Depends On |
+|---|---|---|---|
+| [06](build-0/06_mv_bundle_template.md) | Metric view bundle template (DAB 1) | edit | 02 |
+| [07](build-0/07_agent_bundle_template.md) | Genie Agent bundle template (DAB 2) | edit | 03 |
+| [08](build-0/08_run_kit.md) | Pipeline-run kit | edit | 05a, 05b |
 
-**Gate:** Feature branch exists, all inputs accessible, sdk_config.json written.
+### Wave 0-3: Init tool (manual prerequisite: overrides files)
+| Session | Title | Mode | Depends On |
+|---|---|---|---|
+| [09](build-0/09_init_and_tpch_scaffold.md) | Init tool & TPC-H scaffold | edit (allow_execute) | 06, 07, 08 |
 
-### Wave 1 — Domain Research (serial)
+### Wave 0-4: Dogfood discovery
+| Session | Title | Mode | Depends On |
+|---|---|---|---|
+| [10a](build-0/10a_tpch_domain_research.md) | TPC-H domain research & glossary | edit (allow_execute) | 09 |
+| [10b](build-0/10b_tpch_deep_eda.md) | TPC-H deep EDA | edit (allow_execute) | 09 |
 
-| Session | Notes |
-|---|---|
-| **02 Domain Research** | Web search for terminology, KPIs, regulatory context. |
+### Wave 0-5: Dogfood synthesis
+| Session | Title | Mode | Depends On |
+|---|---|---|---|
+| [11](build-0/11_tpch_mv_synthesis.md) | TPC-H metric view synthesis | edit (allow_execute) | 10a, 10b |
 
-**Gate:** At least 3 research docs, glossary candidates, domain/subdomain proposal.
+### Wave 0-6: Dogfood registration
+| Session | Title | Mode | Depends On |
+|---|---|---|---|
+| [12](build-0/12_tpch_mv_registration.md) | TPC-H metric view registration | edit (allow_execute, allow_deploy) | 11 |
 
-### Wave 2 — Supplemental Context (serial, parallel with Wave 1 after Wave 0)
+### Wave 0-7: UC Pages + agent curation
+| Session | Title | Mode | Depends On |
+|---|---|---|---|
+| [13](build-0/13_tpch_uc_pages.md) | TPC-H UC Pages registration | edit (allow_execute) | 10a, 12 |
+| [14](build-0/14_tpch_agent_curation.md) | TPC-H Genie Agent curation | edit (allow_execute) | 12 |
 
-| Session | Notes |
-|---|---|
-| **03 Supplemental Context** | Parse volume files and dashboard inputs. |
+### Wave 0-8: Agent deployment
+| Session | Title | Mode | Depends On |
+|---|---|---|---|
+| [15](build-0/15_tpch_agent_deployment.md) | TPC-H Genie Agent deployment | edit (allow_execute, allow_deploy) | 14 |
 
-**Gate:** Context docs for all supplemental sources, additional glossary candidates.
+### Wave 0-9: Tuning
+| Session | Title | Mode | Depends On |
+|---|---|---|---|
+| [16](build-0/16_tpch_tuning.md) | TPC-H benchmark & tuning | edit (allow_execute, allow_deploy) | 15 |
 
-### Wave 3 — Deep EDA (serial, parallel with Waves 1-2 after Wave 0)
+### Wave 0-10: Docs
+| Session | Title | Mode | Depends On |
+|---|---|---|---|
+| [17](build-0/17_build0_docs.md) | Build-0 documentation & observations | edit | 16 |
 
-| Session | Notes |
-|---|---|
-| **04 Deep EDA** | Profile every source table. May need continuation. |
+Dogfood sessions use `edit` mode with `allow_execute`, not `execute`. They write files the integrator must credit and commit, and only `edit`/`converge` sessions have enforced `owned_paths`.
 
-**Gate:** One profile per table, data_model_summary.md, join keys with cardinality.
+## Shared Files
 
-### Wave 4 — Metric View Synthesis (serial, depends on Waves 1-3)
+| File | Owner | Readers |
+|---|---|---|
+| `pyproject.toml`, `tests/conftest.py` | 01 | all code sessions (add tests in their own files; ask 01's summary for changes) |
+| `src/genie_ontology_sdk/__init__.py` | 01 | all |
+| `docs/design/sdk-layout.md` | 01 | all |
+| `templates/ontology-metric-views/**` | 06 | 09 (copies), 12 (reports template fixes) |
+| `templates/ontology-genie-agents/**` | 07 | 09, 14, 15 |
+| `templates/run/**` | 08 | 09 |
+| `examples/tpch/ontology-metric-views/metric_views/**` | 11, then 16 | 12, 14 |
+| `examples/tpch/ontology-metric-views/**` (rest) | 09, then 12 | 16 |
+| `examples/tpch/ontology-genie-agents/agents/**` | 14, then 16 | 15 |
+| `examples/tpch/ontology-genie-agents/**` (rest) | 09, then 14 (resources), 15 | 16 |
+| `README.md`, `PROJECT_MEMORY.md`, L100 | 17 (build-time); planner before the build | all |
+| `examples/tpch/*/.databricks/bundle/dev/variable-overrides.json` | **owner** (manual, gitignored) | 09, 12, 14, 15, 16 |
 
-| Session | Notes |
-|---|---|
-| **05 MV Synthesis** | Synthesize all context into parameterized YAMLs. May need continuation. |
+## Cross-Session Contracts
 
-**Gate:** YAMLs parameterized, joins annotated, materialization blocks, manifest.json valid.
+### Package and modules (`src/genie_ontology_sdk/`)
 
-### Wave 5 — Metric View Registration (serial)
+| Module | Public API | Owner |
+|---|---|---|
+| `config` | `SdkConfig`, `load_config(path)`, `config_from_dict(d)`, `validate_config(d) -> list[str]`, `check_access(cfg, ws) -> list[str]`, `expand_tables(cfg, ws) -> list[str]` | 01 |
+| `mv_yaml` | `load_mv(path)`, `substitute(text, params)`, `validate_mv(doc, name=) -> list[Finding]`, `render_ddl(doc_text, fq_name, params)`, CLI `python -m genie_ontology_sdk.mv_yaml validate <dir>` | 02 |
+| `manifest` | `build_manifest(metric_views_dir)`, `write_manifest(...)`, `validate_manifest_json(list)` | 02 |
+| `geniespace` | `plan_agents(mvs, max_per_agent=50)`, `build_space(plan, ...)`, `validate_space(doc)`, `write_domain_manifest(plans, path)`, `render_space_file(src, dst, params)`, CLI `python -m genie_ontology_sdk.geniespace render <src> <dst> --params <json>` | 03 |
+| `pages` | `parse_glossary(dir)`, `to_page_payload(term, domain_id=None)`, `upsert_pages(terms, client, dry_run=True)`, `PagesClient`, `RestPagesClient(ws)` | 04 |
+| `benchmark` | `load_questions(path)`, `run_benchmark(space_id, questions, ws, timeout_s=120)`, `score(results)`, `write_results_md(summary, results, path)` | 04 |
+| `scaffold` | `scaffold_project(cfg, target_dir, sdk_root, force=False) -> ScaffoldReport` | 09 |
 
-| Session | Notes |
-|---|---|
-| **06 MV Registration** | CREATE OR REPLACE VIEW for each MV. Smoke tests. |
+### Metric view YAML parameters
+`${source_catalog}`, `${source_schema}`, `${target_catalog}`, `${target_schema}`, substituted by `mv_yaml.substitute` at registration. Literal catalogs in `source:` are rule MV004 errors.
 
-**Gate:** All MVs registered, smoke tests pass, cardinality tests pass.
+### `manifest.json` (forEach input)
+```json
+[{"name": "mv_tpch_revenue", "yaml_path": "metric_views/tpch_supply_chain/mv_tpch_revenue.yml", "domain": "tpch_supply_chain", "subdomain": "sales"}]
+```
+`yaml_path` is relative to the metric-views bundle root, and entries are sorted by `name`.
 
-### Wave 5.5 — UC Pages Registration (serial)
+### Glossary term file (`docs/semantics/<term>.md`)
+Front matter: `term`, `synonyms` (list), `domain`, `subdomain`, `related_terms` (list), `sources` (list of URLs). The body has sections Definition, Business context, Data usage.
 
-| Session | Notes |
-|---|---|
-| **07 Pages Registration** | Register glossary candidates as UC Pages. |
+### Benchmark questions (`docs/tuning/benchmark_questions.yml`)
+List of `{id, question, expected_sql?, expected_answer?, tags}`.
 
-**Gate:** All Pages registered, domain associations set.
+### Data profile join table (`docs/data_profiles/data_model_summary.md`)
+Columns: `left`, `right`, `keys`, `verified_cardinality` (`many_to_one` / `one_to_one` / `many_to_many`), `orphan_rate`, `query_used`.
 
-### Wave 6 — Genie Agent Curation (serial)
+### Run project layout (what `scaffold_project` creates, and the dogfood `examples/tpch/`)
+```
+<project>/
+├── sdk_config.json
+├── PROJECT_MEMORY.md
+├── ontology-metric-views/      # from templates/ontology-metric-views (+ src/genie_ontology_sdk_vendored/)
+│   └── metric_views/<domain>/*.yml, manifest.json
+├── ontology-genie-agents/      # from templates/ontology-genie-agents
+│   └── agents/*.geniespace.json
+└── docs/
+    ├── plans/ (run kit: waves.json, INDEX.md, plans)
+    ├── research/  semantics/  context/  data_profiles/
+    ├── registration/  pages/  deployment/  tuning/
+    └── domain_manifest.yml
+```
 
-| Session | Notes |
-|---|---|
-| **08 Agent Curation** | Determine organization, generate .geniespace.json. May need continuation. |
-
-**Gate:** At least one agent config, 50 MV threshold respected, domain manifest exists.
-
-### Wave 7 — Genie Agent Deployment (serial)
-
-| Session | Notes |
-|---|---|
-| **09 Agent Deployment** | Deploy agents, validate accessibility. |
-
-**Gate:** All agents deployed, each responds to sample question.
-
-### Wave 8 — Tuning (serial, multiple continuation passes)
-
-| Session | Notes |
-|---|---|
-| **10 Tuning** | Benchmark, diagnose, fix MVs first, re-test. |
-
-**Gate:** Tuning plan documented, benchmark accuracy >= 70%.
-
----
+### TPC-H dogfood config (example values)
+`domain_name: tpch_supply_chain`; `source_tables`: `samples.tpch.{customer,orders,lineitem,part,partsupp,supplier,nation,region}`; `target_catalog: main`, `target_schema: ontology_tpch` (documented placeholders; the real dev catalog comes from overrides); `max_metric_views_per_agent: 50`.
 
 ## Dependency Graph
 
 ```
-Wave 0: [01]
-           |
-     +-----+-----+
-     |     |      |
-Wave 1: [02]  Wave 2: [03]  Wave 3: [04]
-     |     |      |
-     +-----+------+
-           |
-Wave 4: [05]
-           |
-Wave 5: [06]
-           |
-Wave 5.5: [07]
-           |
-Wave 6: [08]
-           |
-Wave 7: [09]
-           |
-Wave 8: [10]
+0-0  [01]
+       |
+0-1  [02] [03] [04] [05a] [05b]
+       |    |          \   /
+0-2  [06] [07]          [08]
+        \   |           /
+0-3        [09]  <- manual prereq: overrides files
+           /  \
+0-4    [10a]  [10b]
+           \  /
+0-5        [11]
+            |
+0-6        [12]  (deploy MV bundle)
+           /  \
+0-7     [13]  [14]
+               |
+0-8           [15]  (deploy agent bundle)
+               |
+0-9           [16]  (tune + re-register)
+               |
+0-10          [17]
 ```
-
-Note: Waves 1, 2, and 3 can run in parallel after Wave 0 (they all depend only on session 01). Wave 4 waits for all three to complete.

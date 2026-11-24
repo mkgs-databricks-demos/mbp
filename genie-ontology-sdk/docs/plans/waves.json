@@ -1,13 +1,16 @@
 {
   "version": 1,
-  "description": "Genie Ontology SDK \u2014 automated standup of metric views, UC Pages, and Genie Agents from Unity Catalog source assets and supplemental business context.",
+  "description": "Genie Ontology SDK build-0: build the reusable SDK (library, skills, bundle templates, run kit, init tool), then dogfood it end to end on samples.tpch into examples/tpch/.",
   "workflow": {
     "mode": "hybrid"
   },
+  "bundle_target": "dev",
   "status_dir": ".build-status",
   "plans_dir": "docs/plans",
   "sessions_dir": "docs/sessions",
   "context_files": [
+    "PROJECT_MEMORY.md",
+    "docs/plans/INDEX.md",
     "docs/design/L100-genie-ontology-sdk.md",
     "docs/research/metric-view-cicd-best-practices.md",
     "docs/research/genie-agent-api-deployment.md",
@@ -16,264 +19,465 @@
   ],
   "waves": [
     {
-      "wave_id": "0",
-      "name": "Initialization",
-      "concurrency": 1,
+      "wave_id": "0-0",
+      "build": "0",
+      "name": "Foundation",
       "gate": [
-        "Feature branch exists and is checked out",
-        "All input catalogs/schemas/tables are accessible",
-        "Repo folder structure is scaffolded",
-        "sdk_config.json is written with all input parameters"
+        "All session status files have status pass",
+        "pytest: copy build_root to /tmp (cp -r <build_root> /tmp/gos-gate && cd /tmp/gos-gate && pip install -q pyyaml jsonschema pytest && python -m pytest -q); report as check 'pytest'",
+        "PYTHONPATH=src python -c 'import genie_ontology_sdk.config' exits 0"
       ],
+      "required_checks": ["pytest"],
       "sessions": [
         {
           "session_id": "01",
-          "title": "Input Validation & Repo Scaffolding",
-          "plan_file": "01_input_validation_scaffolding.md",
-          "mode": "execute",
-          "scope": "Validate all SDK inputs, create feature branch, scaffold folder structure, write sdk_config.json.",
-          "owned_assets": [
-            "sdk_config.json",
-            "ontology-metric-views/**",
-            "ontology-genie-agents/**",
-            "docs/**"
+          "title": "SDK Foundation & Input Contract",
+          "plan_file": "build-0/01_sdk_foundation.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-0/01: pyproject.toml, src/genie_ontology_sdk/ package with config.py and schemas/sdk_config.schema.json, tests/conftest.py + tests/test_config.py, docs/design/sdk-layout.md. No Git commands.",
+          "owned_paths": [
+            "pyproject.toml",
+            "src/genie_ontology_sdk/__init__.py",
+            "src/genie_ontology_sdk/config.py",
+            "src/genie_ontology_sdk/schemas/**",
+            "tests/conftest.py",
+            "tests/test_config.py",
+            "docs/design/sdk-layout.md"
           ],
           "depends_on": []
         }
       ]
     },
     {
-      "wave_id": "1",
-      "name": "Domain Research",
-      "concurrency": 1,
+      "wave_id": "0-1",
+      "build": "0",
+      "name": "Core Libraries & Skills",
       "gate": [
-        "docs/research/ contains at least 3 research documents",
-        "docs/semantics/ contains glossary candidates",
-        "docs/research/05_domain_subdomain_proposal.md exists"
+        "All session status files have status pass",
+        "pytest from a /tmp copy of build_root passes (same command as wave 0-0); report as check 'pytest'",
+        "Six skills exist: skills/ontology-{domain-research,context-extraction,deep-eda,mv-synthesis,agent-curation,tuning}/SKILL.md, each with front matter name equal to its folder name",
+        "PYTHONPATH=src python -m genie_ontology_sdk.mv_yaml validate tests/fixtures/metric_views/good exits 0"
       ],
+      "required_checks": ["pytest"],
       "sessions": [
         {
           "session_id": "02",
-          "title": "Domain Research \u2014 Industry & Terminology",
-          "plan_file": "02_domain_research.md",
-          "mode": "execute",
-          "scope": "Web search for domain terminology, KPIs, industry trends, regulatory context. Write research docs and glossary candidates.",
-          "owned_assets": [
-            "docs/research/**",
-            "docs/semantics/**"
+          "title": "Metric View YAML Library & Manifest",
+          "plan_file": "build-0/02_mv_yaml_library.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-0/02: mv_yaml.py (load, substitute, validate rules MV001-MV007, render_ddl, validate CLI) and manifest.py, with tests and fixtures.",
+          "owned_paths": [
+            "src/genie_ontology_sdk/mv_yaml.py",
+            "src/genie_ontology_sdk/manifest.py",
+            "tests/test_mv_yaml.py",
+            "tests/test_manifest.py",
+            "tests/fixtures/metric_views/**"
           ],
-          "depends_on": [
-            "01"
-          ]
-        }
-      ]
-    },
-    {
-      "wave_id": "2",
-      "name": "Supplemental Context Extraction",
-      "concurrency": 1,
-      "gate": [
-        "docs/context/ contains extracted context from all supplemental sources",
-        "docs/semantics/ updated with additional glossary candidates from business materials"
-      ],
-      "sessions": [
+          "depends_on": ["01"]
+        },
         {
           "session_id": "03",
-          "title": "Supplemental Context Parser",
-          "plan_file": "03_supplemental_context.md",
-          "mode": "execute",
-          "scope": "Read supplemental volume directories and dashboard inputs. Extract business rules, KPI definitions, join criteria. Write context docs and additional glossary candidates.",
-          "owned_assets": [
-            "docs/context/**"
+          "title": "Genie Agent Config Builder",
+          "plan_file": "build-0/03_geniespace_builder.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-0/03: geniespace.py (plan_agents with the 50-MV rule, build_space, validate_space, write_domain_manifest, render_space_file + render CLI), with tests.",
+          "owned_paths": [
+            "src/genie_ontology_sdk/geniespace.py",
+            "tests/test_geniespace.py",
+            "tests/fixtures/geniespace/**"
           ],
-          "depends_on": [
-            "01"
-          ]
-        }
-      ]
-    },
-    {
-      "wave_id": "3",
-      "name": "Deep Exploratory Data Analysis",
-      "concurrency": 1,
-      "continuation_passes": 2,
-      "gate": [
-        "docs/data_profiles/ contains one profile per source table",
-        "docs/data_profiles/data_model_summary.md exists with cross-table analysis",
-        "Join key candidates are identified with cardinality verification"
-      ],
-      "sessions": [
+          "depends_on": ["01"]
+        },
         {
           "session_id": "04",
-          "title": "Deep EDA \u2014 Table Profiling & Relationship Detection",
-          "plan_file": "04_deep_eda.md",
-          "mode": "execute",
-          "scope": "Profile every source table: structure, integrity, quality, lineage, usage, grain, keys, cardinality, volume. Detect cross-table relationships. Write data profiles.",
-          "owned_assets": [
-            "docs/data_profiles/**"
-          ],
-          "depends_on": [
-            "01"
-          ]
-        }
-      ]
-    },
-    {
-      "wave_id": "4",
-      "name": "Metric View Synthesis",
-      "concurrency": 1,
-      "continuation_passes": 2,
-      "gate": [
-        "ontology-metric-views/metric_views/ contains at least one YAML per identified domain",
-        "ontology-metric-views/metric_views/manifest.json exists and is valid JSON array",
-        "Every YAML has parameterized source references (no hardcoded catalogs)",
-        "Every join has rely annotation matching Wave 3 cardinality verification",
-        "Materialization blocks present on MVs meeting threshold criteria"
-      ],
-      "sessions": [
-        {
-          "session_id": "05",
-          "title": "Metric View YAML Synthesis",
-          "plan_file": "05_metric_view_synthesis.md",
+          "title": "UC Pages & Benchmark Helpers",
+          "plan_file": "build-0/04_pages_and_benchmark.md",
           "mode": "edit",
-          "scope": "Synthesize all context (research + supplemental + EDA) into parameterized metric view YAMLs. Generate manifest.json. Include materialization blocks where appropriate.",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-0/04: pages.py and benchmark.py with mocked tests. No live API writes.",
           "owned_paths": [
-            "ontology-metric-views/metric_views/**"
+            "src/genie_ontology_sdk/pages.py",
+            "src/genie_ontology_sdk/benchmark.py",
+            "tests/test_pages.py",
+            "tests/test_benchmark.py",
+            "tests/fixtures/glossary/**",
+            "tests/fixtures/benchmark/**"
           ],
-          "depends_on": [
-            "02",
-            "03",
-            "04"
-          ]
+          "depends_on": ["01"]
+        },
+        {
+          "session_id": "05a",
+          "title": "Discovery Skills (Research, Context, EDA)",
+          "plan_file": "build-0/05a_discovery_skills.md",
+          "mode": "edit",
+          "scope": "All tasks in plan build-0/05a: SKILL.md files for ontology-domain-research, ontology-context-extraction, ontology-deep-eda.",
+          "owned_paths": [
+            "skills/ontology-domain-research/**",
+            "skills/ontology-context-extraction/**",
+            "skills/ontology-deep-eda/**"
+          ],
+          "depends_on": ["01"]
+        },
+        {
+          "session_id": "05b",
+          "title": "Synthesis Skills (MV Synthesis, Curation, Tuning)",
+          "plan_file": "build-0/05b_synthesis_skills.md",
+          "mode": "edit",
+          "scope": "All tasks in plan build-0/05b: SKILL.md files for ontology-mv-synthesis, ontology-agent-curation, ontology-tuning.",
+          "owned_paths": [
+            "skills/ontology-mv-synthesis/**",
+            "skills/ontology-agent-curation/**",
+            "skills/ontology-tuning/**"
+          ],
+          "depends_on": ["01"]
         }
       ]
     },
     {
-      "wave_id": "5",
-      "name": "Metric View Registration",
-      "concurrency": 1,
+      "wave_id": "0-2",
+      "build": "0",
+      "name": "Bundle Templates & Run Kit",
       "gate": [
-        "All metric views registered in target_catalog.target_schema",
-        "Smoke test passes: every MV queryable with MEASURE() syntax",
-        "Join cardinality tests pass"
+        "All session status files have status pass",
+        "pytest from a /tmp copy of build_root passes; report as check 'pytest'",
+        "tests/test_run_kit.py ran (not skipped) and validate_manifest on the rendered templates/run/waves.json returned 0 errors; report as check 'run_kit_validate'",
+        "templates/ontology-genie-agents passes bundle validate --strict --target dev after the steps its README documents (scratch overrides under its gitignored .databricks/ folder)"
       ],
+      "validate_bundles": [
+        {"root": "templates/ontology-metric-views", "target": "dev"}
+      ],
+      "required_checks": ["pytest", "run_kit_validate"],
       "sessions": [
         {
           "session_id": "06",
-          "title": "Metric View Registration & Smoke Tests",
-          "plan_file": "06_metric_view_registration.md",
-          "mode": "execute",
-          "scope": "Execute CREATE OR REPLACE VIEW WITH METRICS for each metric view YAML. Run smoke tests and cardinality tests.",
-          "owned_assets": [
-            "${var.target_catalog}.${var.target_schema}.*"
+          "title": "Metric View Bundle Template (DAB 1)",
+          "plan_file": "build-0/06_mv_bundle_template.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-0/06: templates/ontology-metric-views bundle (schema resource, forEach registration job, smoke + cardinality notebooks) passing bundle validate --strict; tests/test_template_mv_bundle.py. No deploy.",
+          "owned_paths": [
+            "templates/ontology-metric-views/**",
+            "tests/test_template_mv_bundle.py"
           ],
-          "depends_on": [
-            "05"
-          ]
-        }
-      ]
-    },
-    {
-      "wave_id": "5.5",
-      "name": "UC Pages Registration",
-      "concurrency": 1,
-      "gate": [
-        "UC Pages registered for all glossary candidates",
-        "Pages associated with appropriate domain/subdomain"
-      ],
-      "sessions": [
+          "depends_on": ["02"]
+        },
         {
           "session_id": "07",
-          "title": "UC Pages Registration",
-          "plan_file": "07_pages_registration.md",
-          "mode": "execute",
-          "scope": "Register UC Pages from docs/semantics/ glossary candidates via the Pages API. Associate with domains/subdomains.",
-          "owned_assets": [
-            "UC Pages in target catalog"
+          "title": "Genie Agent Bundle Template (DAB 2)",
+          "plan_file": "build-0/07_agent_bundle_template.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-0/07: interpolation experiment, templates/ontology-genie-agents bundle (genie_spaces, engine direct) passing bundle validate --strict; tests/test_template_agent_bundle.py. No deploy.",
+          "owned_paths": [
+            "templates/ontology-genie-agents/**",
+            "tests/test_template_agent_bundle.py"
           ],
-          "depends_on": [
-            "06"
-          ]
-        }
-      ]
-    },
-    {
-      "wave_id": "6",
-      "name": "Genie Agent Curation",
-      "concurrency": 1,
-      "continuation_passes": 2,
-      "gate": [
-        "ontology-genie-agents/agents/ contains at least one .geniespace.json",
-        "Agent organization follows 50 MV threshold rule",
-        "Each agent references only registered metric views",
-        "docs/domain_manifest.yml exists with proposed domain structure"
-      ],
-      "sessions": [
+          "depends_on": ["03"]
+        },
         {
           "session_id": "08",
-          "title": "Genie Agent Curation & Configuration",
-          "plan_file": "08_genie_agent_curation.md",
+          "title": "Pipeline-Run Kit",
+          "plan_file": "build-0/08_run_kit.md",
           "mode": "edit",
-          "scope": "Determine agent organization (single vs split by subdomain). Generate .geniespace.json for each agent. Generate domain manifest.",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-0/08: templates/run (run waves.json, INDEX, plans, PROJECT_MEMORY starter, README) and tests/test_run_kit.py validating it with genie-build-waves validate_manifest.",
           "owned_paths": [
-            "ontology-genie-agents/agents/**",
-            "docs/domain_manifest.yml"
+            "templates/run/**",
+            "tests/test_run_kit.py"
           ],
-          "depends_on": [
-            "06",
-            "07"
-          ]
+          "depends_on": ["05a", "05b"]
         }
       ]
     },
     {
-      "wave_id": "7",
-      "name": "Genie Agent Deployment",
-      "concurrency": 1,
-      "gate": [
-        "All Genie Agents deployed and accessible",
-        "Each agent responds to at least one sample question"
+      "wave_id": "0-3",
+      "build": "0",
+      "name": "Init Tool & TPC-H Scaffold",
+      "manual_prereqs": [
+        {
+          "session_id": "P1",
+          "title": "Owner writes the gitignored dev overrides for both dogfood bundles: examples/tpch/ontology-metric-views/.databricks/bundle/dev/variable-overrides.json (catalog, warehouse_id) and examples/tpch/ontology-genie-agents/.databricks/bundle/dev/variable-overrides.json (catalog, schema = dev-prefixed metric view schema, warehouse_id, curator_group)",
+          "plan_file": "build-0/09_init_and_tpch_scaffold.md",
+          "done_when": "Both variable-overrides.json files exist in the build_root Git folder, parse as JSON with the listed keys, and are untracked (git check-ignore succeeds). They are never on the branch."
+        }
       ],
+      "gate": [
+        "All session status files have status pass",
+        "pytest from a /tmp copy of build_root passes; report as check 'pytest'",
+        "examples/tpch/sdk_config.json passes genie_ontology_sdk.config.validate_config with 0 errors",
+        "examples/tpch/ontology-genie-agents passes bundle validate --strict --target dev after the render step from its README, if any",
+        "git status shows no tracked or staged variable-overrides.json"
+      ],
+      "validate_bundles": [
+        {"root": "examples/tpch/ontology-metric-views", "target": "dev"}
+      ],
+      "required_checks": ["pytest"],
       "sessions": [
         {
           "session_id": "09",
-          "title": "Genie Agent Deployment & Validation",
-          "plan_file": "09_genie_agent_deployment.md",
-          "mode": "execute",
-          "scope": "Deploy DAB 2 with generated .geniespace.json files. Validate each agent is accessible and responds to sample questions.",
-          "owned_assets": [
-            "Genie Agents in target workspace"
+          "title": "Init Tool & TPC-H Dogfood Scaffold",
+          "plan_file": "build-0/09_init_and_tpch_scaffold.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-0/09: scaffold.py, notebooks/init_ontology_project.ipynb, tests/test_scaffold.py, then scaffold examples/tpch/ for samples.tpch. Never overwrite or print variable-overrides.json values.",
+          "owned_paths": [
+            "src/genie_ontology_sdk/scaffold.py",
+            "notebooks/init_ontology_project.ipynb",
+            "tests/test_scaffold.py",
+            "examples/tpch/**"
           ],
-          "depends_on": [
-            "08"
-          ]
+          "exclude_paths": [
+            "examples/tpch/**/.databricks/**"
+          ],
+          "depends_on": ["06", "07", "08"]
         }
       ]
     },
     {
-      "wave_id": "8",
-      "name": "Tuning",
-      "concurrency": 1,
-      "continuation_passes": 3,
+      "wave_id": "0-4",
+      "build": "0",
+      "name": "Dogfood Discovery",
       "gate": [
-        "docs/tuning/tuning_plan.md exists",
-        "docs/tuning/benchmark_results.md exists with accuracy scores",
-        "Benchmark accuracy >= 70% across all agents"
+        "All session status files have status pass",
+        "examples/tpch/docs/research/ has at least 3 docs plus 05_domain_subdomain_proposal.md, each with at least one URL",
+        "examples/tpch/docs/semantics/ has at least 15 term files and genie_ontology_sdk.pages.parse_glossary parses all of them",
+        "examples/tpch/docs/data_profiles/ has 8 table profiles and data_model_summary.md, whose join table has a verified_cardinality for every expected relationship listed in plan 10b"
       ],
       "sessions": [
         {
-          "session_id": "10",
-          "title": "Tuning Plan & Benchmark Execution",
-          "plan_file": "10_tuning_engine.md",
-          "mode": "execute",
-          "scope": "Generate tuning plan. Run benchmark questions. Iterate on MV definitions (not agent instructions) for failures. Update YAMLs and re-register as needed.",
-          "owned_assets": [
-            "docs/tuning/**",
-            "ontology-metric-views/metric_views/**"
+          "session_id": "10a",
+          "title": "TPC-H Domain Research & Glossary",
+          "plan_file": "build-0/10a_tpch_domain_research.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-0/10a using skills/ontology-domain-research: research docs, glossary term files, domain/subdomain proposal for TPC-H. Record skill gaps.",
+          "owned_paths": [
+            "examples/tpch/docs/research/**",
+            "examples/tpch/docs/semantics/**"
           ],
-          "depends_on": [
-            "09"
-          ]
+          "depends_on": ["09"]
+        },
+        {
+          "session_id": "10b",
+          "title": "TPC-H Deep EDA",
+          "plan_file": "build-0/10b_tpch_deep_eda.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-0/10b using skills/ontology-deep-eda: 8 table profiles and data_model_summary.md with verified join cardinalities. Read-only SQL on samples.tpch. Record skill gaps.",
+          "owned_paths": [
+            "examples/tpch/docs/data_profiles/**"
+          ],
+          "depends_on": ["09"]
+        }
+      ]
+    },
+    {
+      "wave_id": "0-5",
+      "build": "0",
+      "name": "Dogfood Metric View Synthesis",
+      "gate": [
+        "All session status files have status pass",
+        "PYTHONPATH=src python -m genie_ontology_sdk.mv_yaml validate examples/tpch/ontology-metric-views/metric_views exits 0; report as check 'mv_validate'",
+        "examples/tpch/ontology-metric-views/metric_views/manifest.json has one entry per YAML and passes manifest.validate_manifest_json",
+        "grep -r 'samples.tpch' examples/tpch/ontology-metric-views/metric_views returns nothing"
+      ],
+      "validate_bundles": [
+        {"root": "examples/tpch/ontology-metric-views", "target": "dev"}
+      ],
+      "required_checks": ["mv_validate"],
+      "sessions": [
+        {
+          "session_id": "11",
+          "title": "TPC-H Metric View Synthesis",
+          "plan_file": "build-0/11_tpch_mv_synthesis.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-0/11 using skills/ontology-mv-synthesis: parameterized TPC-H metric view YAMLs + manifest.json, validated with mv_yaml. Read-only SQL only; create nothing.",
+          "owned_paths": [
+            "examples/tpch/ontology-metric-views/metric_views/**"
+          ],
+          "depends_on": ["10a", "10b"]
+        }
+      ]
+    },
+    {
+      "wave_id": "0-6",
+      "build": "0",
+      "name": "Dogfood Metric View Registration",
+      "timeout_minutes": 120,
+      "gate": [
+        "All session status files have status pass",
+        "The dogfood register_metric_views job (examples/tpch/ontology-metric-views, target dev; find it with bundle summary) has a run that started after this build run started and ended SUCCESS; report as check 'registration_job'",
+        "examples/tpch/docs/registration/registration_results.md lists every manifest.json entry as registered with smoke pass and cardinality pass; report as check 'mv_smoke'"
+      ],
+      "validate_bundles": [
+        {"root": "examples/tpch/ontology-metric-views", "target": "dev"}
+      ],
+      "required_checks": ["registration_job", "mv_smoke"],
+      "sessions": [
+        {
+          "session_id": "12",
+          "title": "TPC-H Metric View Registration",
+          "plan_file": "build-0/12_tpch_mv_registration.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "scope": "All tasks in plan build-0/12: deploy examples/tpch/ontology-metric-views to dev, run register_metric_views, fix until all metric views register and pass smoke + cardinality tests (max 4 attempts). Deploy only this bundle.",
+          "owned_paths": [
+            "examples/tpch/ontology-metric-views/**",
+            "examples/tpch/docs/registration/**"
+          ],
+          "exclude_paths": [
+            "examples/tpch/**/.databricks/**"
+          ],
+          "owned_assets": [
+            "dev deployment of the dogfood ontology-metric-views bundle (job, schema, metric views)"
+          ],
+          "depends_on": ["11"]
+        }
+      ]
+    },
+    {
+      "wave_id": "0-7",
+      "build": "0",
+      "name": "Dogfood UC Pages & Agent Curation",
+      "gate": [
+        "Session 14 has status pass; session 13 has status pass, or blocked only because UC Pages writes were refused to the job task (the refusal and the owner command are in its summary)",
+        "examples/tpch/docs/pages/pages_registration.md has a row per glossary term",
+        "Every examples/tpch/ontology-genie-agents/agents/*.geniespace.json passes genie_ontology_sdk.geniespace.validate_space and contains no resolved catalog/schema names",
+        "examples/tpch/ontology-genie-agents passes bundle validate --strict --target dev after the render step from its README, if any"
+      ],
+      "sessions": [
+        {
+          "session_id": "13",
+          "title": "TPC-H UC Pages Registration",
+          "plan_file": "build-0/13_tpch_uc_pages.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-0/13: register the TPC-H glossary as UC Pages with genie_ontology_sdk.pages (dry run, upsert, idempotency check). Do not create domains.",
+          "owned_paths": [
+            "examples/tpch/docs/pages/**"
+          ],
+          "owned_assets": [
+            "UC Pages for the TPC-H glossary terms"
+          ],
+          "depends_on": ["10a", "12"]
+        },
+        {
+          "session_id": "14",
+          "title": "TPC-H Genie Agent Curation",
+          "plan_file": "build-0/14_tpch_agent_curation.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-0/14 using skills/ontology-agent-curation: tokenized .geniespace.json files, resources/genie_agents.yml, docs/domain_manifest.yml; render + bundle validate. No deploy.",
+          "owned_paths": [
+            "examples/tpch/ontology-genie-agents/agents/**",
+            "examples/tpch/ontology-genie-agents/resources/**",
+            "examples/tpch/docs/domain_manifest.yml"
+          ],
+          "depends_on": ["12"]
+        }
+      ]
+    },
+    {
+      "wave_id": "0-8",
+      "build": "0",
+      "name": "Dogfood Genie Agent Deployment",
+      "timeout_minutes": 120,
+      "gate": [
+        "All session status files have status pass",
+        "examples/tpch/docs/deployment/agent_validation.md shows 3 of 3 probe questions with SQL generated and statement SUCCEEDED; report as check 'agent_probe'",
+        "examples/tpch/ontology-genie-agents passes bundle validate --strict --target dev after the render step from its README, if any"
+      ],
+      "required_checks": ["agent_probe"],
+      "sessions": [
+        {
+          "session_id": "15",
+          "title": "TPC-H Genie Agent Deployment",
+          "plan_file": "build-0/15_tpch_agent_deployment.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "scope": "All tasks in plan build-0/15: deploy examples/tpch/ontology-genie-agents to dev, verify the agent, run 3 probe questions (max 4 deploy attempts). Deploy only this bundle.",
+          "owned_paths": [
+            "examples/tpch/ontology-genie-agents/**",
+            "examples/tpch/docs/deployment/**"
+          ],
+          "exclude_paths": [
+            "examples/tpch/**/.databricks/**"
+          ],
+          "owned_assets": [
+            "dev deployment of the dogfood ontology-genie-agents bundle (Genie Agents)"
+          ],
+          "depends_on": ["14"]
+        }
+      ]
+    },
+    {
+      "wave_id": "0-9",
+      "build": "0",
+      "name": "Dogfood Benchmark & Tuning",
+      "timeout_minutes": 150,
+      "gate": [
+        "All session status files have status pass",
+        "examples/tpch/docs/tuning/benchmark_results.md exists with at least 10 questions and an accuracy score per iteration; report as check 'benchmark_results'. Accuracy below 70% is recorded as a build-1 backlog item, not a failure.",
+        "examples/tpch/docs/tuning/tuning_plan.md exists",
+        "If any metric view YAML changed in this wave, the register_metric_views job has a SUCCESS run that started after the change (run id in the session summary)"
+      ],
+      "validate_bundles": [
+        {"root": "examples/tpch/ontology-metric-views", "target": "dev"}
+      ],
+      "required_checks": ["benchmark_results"],
+      "sessions": [
+        {
+          "session_id": "16",
+          "title": "TPC-H Benchmark & Tuning",
+          "plan_file": "build-0/16_tpch_tuning.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "scope": "All tasks in plan build-0/16 using skills/ontology-tuning: 10-20 benchmark questions, baseline + up to 2 MV-first tuning iterations with re-registration, tuning_plan.md + benchmark_results.md.",
+          "owned_paths": [
+            "examples/tpch/docs/tuning/**",
+            "examples/tpch/ontology-metric-views/metric_views/**",
+            "examples/tpch/ontology-genie-agents/agents/**"
+          ],
+          "owned_assets": [
+            "dev dogfood metric views and Genie Agent"
+          ],
+          "depends_on": ["15"]
+        }
+      ]
+    },
+    {
+      "wave_id": "0-10",
+      "build": "0",
+      "name": "Build-0 Documentation",
+      "gate": [
+        "All session status files have status pass",
+        "Every relative link in README.md and docs/usage.md resolves to an existing file; report as check 'link_check'",
+        "docs/build-0-observations.md exists with one row per skill gap / template fix reported in the session summaries for sessions 10a-16",
+        "No committed file outside docs/sessions/ contains a workspace host, a user home folder path or a resolved dev schema name (grep)"
+      ],
+      "required_checks": ["link_check"],
+      "sessions": [
+        {
+          "session_id": "17",
+          "title": "Build-0 Documentation & Observations",
+          "plan_file": "build-0/17_build0_docs.md",
+          "mode": "edit",
+          "scope": "All tasks in plan build-0/17: README, docs/usage.md, docs/build-0-observations.md, PROJECT_MEMORY.md and the L100 build status.",
+          "owned_paths": [
+            "README.md",
+            "PROJECT_MEMORY.md",
+            "docs/usage.md",
+            "docs/build-0-observations.md",
+            "docs/design/L100-genie-ontology-sdk.md"
+          ],
+          "depends_on": ["16"]
         }
       ]
     }
