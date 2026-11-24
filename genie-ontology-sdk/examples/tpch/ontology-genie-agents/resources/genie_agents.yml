@@ -5,12 +5,13 @@
 # file_path takes precedence over serialized_space and is relative to THIS file (resources/).
 resources:
   genie_spaces:
-    ontology_agent:
-      title: Ontology Agent
-      description: Genie Agent over the domain metric views registered by the ontology-metric-views bundle.
+    # One agent: the domain has 7 registered metric views (<= max_metric_views_per_agent = 50).
+    tpch_supply_chain_agent:
+      title: TPC-H Supply Chain Agent
+      description: Genie Agent over the TPC-H supply chain metric views (sales, fulfillment, procurement) registered by the ontology-metric-views bundle.
       warehouse_id: ${var.warehouse_id}
       parent_path: ${var.genie_parent_path}
-      file_path: ../.rendered/ontology_agent.geniespace.json
+      file_path: ../.rendered/tpch_supply_chain_agent.geniespace.json
       permissions:
         - level: CAN_RUN
           group_name: ${var.consumer_group}
