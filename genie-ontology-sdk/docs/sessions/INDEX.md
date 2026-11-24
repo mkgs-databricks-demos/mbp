@@ -4,7 +4,7 @@ Sessions are listed in reverse chronological order.
 
 | Date | Session | Summary |
 |---|---|---|
-| 2026-11-24 | [W0-6 / 12 TPC-H Metric View Registration](2026-11-24_w0-6-12-tpch-mv-registration.md) | Wave 0-6, session 12, mode edit, status blocked: dogfood ontology-metric-views validated and deployed to dev (job 1000154254892119); register_metric_views job run not authorized, so registration, smoke and cardinality tests did not run |
+| 2026-11-24 | [W0-6 / 12 TPC-H Metric View Registration](2026-11-24_w0-6-12-tpch-mv-registration.md) | Wave 0-6, session 12, mode edit, status pass: dogfood ontology-metric-views deployed to dev; register_metric_views run 151387126659064 SUCCESS, all 7 metric views registered with smoke + cardinality pass (registration_results.md) |
 | 2026-11-24 | [W0-5 / 11 TPC-H Metric View Synthesis](2026-11-24_w0-5-11-tpch-mv-synthesis.md) | Wave 0-5, session 11, mode edit, status pass: 7 parameterized tpch_supply_chain metric view YAMLs + manifest.json (mv_yaml validate 0 errors) |
 | 2026-11-24 | [W0-4 / 10b TPC-H Deep EDA](2026-11-24_w0-4-10b-tpch-deep-eda.md) | Wave 0-4, session 10b, mode edit, status pass: 8 samples.tpch table profiles and data_model_summary.md (10 joins verified many_to_one, orphan_rate 0.0) |
 | 2026-11-24 | [W0-4 / 10a TPC-H Domain Research & Glossary](2026-11-24_w0-4-10a-tpch-domain-research.md) | Wave 0-4, session 10a, mode edit, status pass: research docs 01-05 (incl. domain/subdomain proposal), 23 glossary term files |
