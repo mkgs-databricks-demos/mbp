@@ -1,0 +1,17 @@
+# Benchmark question fixture for tests/test_benchmark.py
+- id: q01
+  question: What is total net revenue?
+  expected_answer: 1000.5
+  tags: [revenue]
+- id: q02
+  question: How many orders are there per order priority?
+  expected_answer:
+    - [1-URGENT, 3]
+    - [2-HIGH, 2]
+  tags: [orders, priority]
+- id: q03
+  question: Which region has the most customers?
+  expected_sql: SELECT r_name, COUNT(*) FROM customer GROUP BY r_name ORDER BY 2 DESC LIMIT 1
+  tags: region
+- id: q04
+  question: Describe the supplier table.

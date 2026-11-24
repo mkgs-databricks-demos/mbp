@@ -1,0 +1,22 @@
+# Bad fixture for MV007: a materialized view without `refresh_policy`.
+version: 1.1
+source: ${source_catalog}.${source_schema}.orders
+
+dimensions:
+  - name: Order Priority
+    expr: source.o_orderpriority
+
+measures:
+  - name: Order Count
+    expr: COUNT(1)
+    comment: "Number of orders"
+
+materialization:
+  mode: relaxed
+  materialized_views:
+    - name: orders_by_priority
+      type: aggregated
+      dimensions:
+        - Order Priority
+      measures:
+        - Order Count

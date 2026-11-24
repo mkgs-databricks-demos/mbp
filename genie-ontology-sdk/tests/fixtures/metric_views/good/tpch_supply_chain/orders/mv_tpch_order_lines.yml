@@ -1,0 +1,60 @@
+# TPC-H line item revenue. Good fixture: nested (snowflake) joins, the `fields`
+# alias, a `verified_cardinality` field (stripped by render_ddl) and a
+# `# verified:` comment on the nested join. Subdomain comes from the folder.
+
+version: 1.1
+comment: "TPC-H line item revenue with order and customer context"
+
+source: ${source_catalog}.${source_schema}.lineitem
+
+joins:
+  - name: orders
+    source: ${source_catalog}.${source_schema}.orders
+    on: source.l_orderkey = orders.o_orderkey
+    verified_cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+    joins:
+      - name: customer
+        source: ${source_catalog}.${source_schema}.customer
+        on: orders.o_custkey = customer.c_custkey
+        # verified: many_to_one on o_custkey, 0 orphans (data_model_summary.md)
+        rely:
+          at_most_one_match: true
+
+fields:
+  - name: Order Month
+    expr: DATE_TRUNC('MONTH', orders.o_orderdate)
+    comment: "Month the order was placed"
+
+  - name: Market Segment
+    expr: orders.customer.c_mktsegment
+    comment: "Customer market segment"
+
+  - name: Ship Mode
+    expr: source.l_shipmode
+
+measures:
+  - name: Gross Revenue
+    expr: SUM(source.l_extendedprice)
+    comment: "Extended price before discount"
+
+  - name: Net Revenue
+    expr: SUM(source.l_extendedprice * (1 - source.l_discount))
+    comment: "Extended price after discount"
+
+materialization:
+  mode: relaxed
+  materialized_views:
+    - name: revenue_by_month_segment
+      type: aggregated
+      dimensions:
+        - Order Month
+        - Market Segment
+        - Ship Mode
+      measures:
+        - Gross Revenue
+        - Net Revenue
+      refresh_policy: auto
+      cluster_by:
+        auto: true

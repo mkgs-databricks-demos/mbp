@@ -1,0 +1,46 @@
+# Returned order lines. Good fixture: SQL source with parameterized table refs,
+# a CTE, and a `using` join without rely (no verification needed).
+# subdomain: returns
+
+version: 1.1
+comment: "Returned order lines by channel and product category"
+
+source: |-
+  WITH recent_returns AS (
+    SELECT return_id, order_id, product_id, return_amount, return_date
+    FROM ${source_catalog}.${source_schema}.returns
+    WHERE return_date >= '2020-01-01'
+  )
+  SELECT r.return_id, r.order_id, r.product_id, r.return_amount, r.return_date, o.channel
+  FROM recent_returns r
+  JOIN ${source_catalog}.${source_schema}.orders o ON r.order_id = o.order_id
+
+joins:
+  - name: product
+    source: ${source_catalog}.${source_schema}.dim_products
+    using:
+      - product_id
+
+dimensions:
+  - name: Return Month
+    expr: DATE_TRUNC('MONTH', source.return_date)
+    comment: "Month the return was recorded"
+
+  - name: Channel
+    expr: source.channel
+    comment: "Sales channel of the original order"
+
+  - name: Product Category
+    expr: product.category
+
+measures:
+  - name: Return Count
+    expr: COUNT(1)
+    comment: "Number of returned order lines"
+
+  - name: Return Amount
+    expr: SUM(source.return_amount)
+    comment: "Refunded amount in USD"
+    format:
+      type: currency
+      currency_code: USD

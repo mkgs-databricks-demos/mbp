@@ -1,0 +1,16 @@
+# Bad fixture for MV005: a join with neither `on` nor `using`.
+version: 1.1
+source: ${source_catalog}.${source_schema}.orders
+
+joins:
+  - name: customer
+    source: ${source_catalog}.${source_schema}.customer
+
+dimensions:
+  - name: Market Segment
+    expr: customer.c_mktsegment
+
+measures:
+  - name: Order Count
+    expr: COUNT(1)
+    comment: "Number of orders"

@@ -1,0 +1,6 @@
+{
+  "catalog": "main",
+  "schema": "ontology_tpch",
+  "warehouse_id": "0123456789abcdef",
+  "curator_group": "ontology-curators"
+}
