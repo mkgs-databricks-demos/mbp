@@ -1,0 +1,39 @@
+{
+  "grants": [
+    {
+      "session": "12",
+      "action": "jobs.run_now",
+      "target": "dev deployment of the dogfood ontology-metric-views bundle (job, schema, metric views)",
+      "reason": "plan 12: bundle run register_metric_views -t dev on examples/tpch/ontology-metric-views (registration and smoke tests)",
+      "evidence": "Run 701596191246320 wave 0-6, session 12: \"Job run of register_metric_views is not approved (only bundle.deploy is).\" Summary docs/sessions/2026-11-24_w0-6-12-tpch-mv-registration.md: \"The owner authorizations for this session list only `bundle.deploy` on this bundle (target dev). A job run (`bundle run register_metric_views -t dev`) is not on that list.\""
+    },
+    {
+      "session": "12",
+      "action": "bundle.deploy",
+      "target": "dev deployment of the dogfood ontology-metric-views bundle (job, schema, metric views)",
+      "reason": "plan 12: bundle deploy -t dev of examples/tpch/ontology-metric-views",
+      "evidence": "Run 701596191246320 wave 0-6, session 12: \"Job run of register_metric_views is not approved (only bundle.deploy is).\" Summary docs/sessions/2026-11-24_w0-6-12-tpch-mv-registration.md: \"The owner authorizations for this session list only `bundle.deploy` on this bundle (target dev). A job run (`bundle run register_metric_views -t dev`) is not on that list.\""
+    },
+    {
+      "session": "15",
+      "action": "bundle.deploy",
+      "target": "dev deployment of the dogfood ontology-genie-agents bundle (Genie Agents)",
+      "reason": "plan 15: bundle deploy -t dev of examples/tpch/ontology-genie-agents (rendered tier-1 deploy names only the bundle at build_root)",
+      "evidence": "Run 701596191246320 wave 0-6, session 12: \"Job run of register_metric_views is not approved (only bundle.deploy is).\" Summary docs/sessions/2026-11-24_w0-6-12-tpch-mv-registration.md: \"The owner authorizations for this session list only `bundle.deploy` on this bundle (target dev). A job run (`bundle run register_metric_views -t dev`) is not on that list.\""
+    },
+    {
+      "session": "16",
+      "action": "jobs.run_now",
+      "target": "dev dogfood metric views and Genie Agent",
+      "reason": "plan 16: re-register metric views with bundle run register_metric_views -t dev on examples/tpch/ontology-metric-views",
+      "evidence": "Run 701596191246320 wave 0-6, session 12: \"Job run of register_metric_views is not approved (only bundle.deploy is).\" Summary docs/sessions/2026-11-24_w0-6-12-tpch-mv-registration.md: \"The owner authorizations for this session list only `bundle.deploy` on this bundle (target dev). A job run (`bundle run register_metric_views -t dev`) is not on that list.\""
+    },
+    {
+      "session": "16",
+      "action": "bundle.deploy",
+      "target": "dev dogfood metric views and Genie Agent",
+      "reason": "plan 16: bundle deploy -t dev of examples/tpch/ontology-metric-views and, if justified, examples/tpch/ontology-genie-agents",
+      "evidence": "Run 701596191246320 wave 0-6, session 12: \"Job run of register_metric_views is not approved (only bundle.deploy is).\" Summary docs/sessions/2026-11-24_w0-6-12-tpch-mv-registration.md: \"The owner authorizations for this session list only `bundle.deploy` on this bundle (target dev). A job run (`bundle run register_metric_views -t dev`) is not on that list.\""
+    }
+  ]
+}
