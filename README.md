@@ -9,4 +9,6 @@ Matt's Best Practices for Working with Databricks
 | [genie-build-waves](genie-build-waves) | Bundle for orchestrating parallel build waves |
 | [unity-gateway](unity-gateway/README.md) | Registering and governing external MCP servers in Unity Gateway: auth options, permissions, invocation, pitfalls. Includes a Robinhood MCP example (proxy app for providers that only accept a loopback OAuth redirect) |
 
+| [genie-ontology-sdk](genie-ontology-sdk) | SDK for automating Genie Ontology standup: metric view synthesis, forEach registration, Genie Agent curation, UC Pages, tuning — all via Genie Build Waves DABs |
+
 Suggested reading order: workspace architecture, then UC naming, then SDLC best practices.

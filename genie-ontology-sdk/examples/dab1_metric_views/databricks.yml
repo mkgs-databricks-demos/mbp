@@ -1,0 +1,62 @@
+# yaml-language-server: $schema=bundle_config_schema.json
+bundle:
+  name: ontology-metric-views
+
+include:
+  - resources/*.yml
+
+variables:
+  source_catalog:
+    description: Catalog where source tables live
+  source_schema:
+    description: Schema where source tables live
+  target_catalog:
+    description: Catalog for metric view registration
+  target_schema:
+    description: Schema for metric view registration
+    default: semantic
+  warehouse_id:
+    description: SQL warehouse for DDL execution
+
+targets:
+  dev:
+    mode: development
+    default: true
+    variables:
+      source_catalog: sales_dev
+      source_schema: silver
+      target_catalog: sales_dev
+      warehouse_id: ${var.dev_warehouse_id}
+    workspace:
+      host: ${var.dev_workspace_host}
+
+  tst:
+    variables:
+      source_catalog: sales_tst
+      source_schema: silver
+      target_catalog: sales_tst
+      warehouse_id: ${var.tst_warehouse_id}
+    workspace:
+      host: ${var.tst_workspace_host}
+
+  uat:
+    variables:
+      source_catalog: sales_uat
+      source_schema: silver
+      target_catalog: sales_uat
+      warehouse_id: ${var.uat_warehouse_id}
+    workspace:
+      host: ${var.uat_workspace_host}
+
+  prd:
+    mode: production
+    variables:
+      source_catalog: sales
+      source_schema: silver
+      target_catalog: sales
+      warehouse_id: ${var.prd_warehouse_id}
+    workspace:
+      host: ${var.prd_workspace_host}
+    permissions:
+      - user_name: deployer@company.com
+        level: CAN_MANAGE

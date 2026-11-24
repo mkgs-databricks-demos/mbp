@@ -1,0 +1,13 @@
+resources:
+  genie_spaces:
+    domain_agent:
+      title: "${var.domain_name} Analytics"
+      description: "Certified Genie Agent for ${var.domain_name} domain"
+      warehouse_id: ${var.warehouse_id}
+      parent_path: /Workspace/Shared/Genie/${var.domain_name}
+      file_path: ./agents/${var.domain_name}_agent.geniespace.json
+      permissions:
+        - level: CAN_RUN
+          group_name: ${var.consumer_group}
+        - level: CAN_EDIT
+          group_name: ${var.curator_group}

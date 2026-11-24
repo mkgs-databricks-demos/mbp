@@ -1,0 +1,37 @@
+resources:
+  jobs:
+    register-metric-views:
+      name: ${bundle.target}-register-metric-views
+      tasks:
+        - task_key: generate-manifest
+          notebook_task:
+            notebook_path: ./notebooks/generate_manifest.py
+            base_parameters:
+              metric_views_dir: ${workspace.root_path}/files/metric_views
+          # Outputs task value: metric_view_list (JSON array)
+
+        - task_key: register-each-mv
+          depends_on:
+            - task_key: generate-manifest
+          for_each_task:
+            inputs: "{{tasks.generate-manifest.values.metric_view_list}}"
+            concurrency: 4
+            task:
+              task_key: register-single-mv
+              notebook_task:
+                notebook_path: ./notebooks/register_single_mv.py
+                base_parameters:
+                  yaml_path: "{{input.yaml_path}}"
+                  mv_name: "{{input.name}}"
+                  source_catalog: ${var.source_catalog}
+                  source_schema: ${var.source_schema}
+                  target_catalog: ${var.target_catalog}
+                  target_schema: ${var.target_schema}
+
+        - task_key: smoke-test
+          depends_on:
+            - task_key: register-each-mv
+          sql_task:
+            file:
+              path: ./tests/test_metric_view_smoke.sql
+            warehouse_id: ${var.warehouse_id}

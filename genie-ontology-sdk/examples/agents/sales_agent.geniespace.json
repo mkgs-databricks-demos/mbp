@@ -1,0 +1,66 @@
+{
+  "version": 2,
+  "config": {
+    "sample_questions": [
+      {
+        "id": "a1b2c3d4e5f6000000000000000000a1",
+        "question": [
+          "What was total revenue last month?"
+        ]
+      },
+      {
+        "id": "a1b2c3d4e5f6000000000000000000a2",
+        "question": [
+          "Show top 10 customers by revenue"
+        ]
+      },
+      {
+        "id": "a1b2c3d4e5f6000000000000000000a3",
+        "question": [
+          "Compare revenue by region for Q1 vs Q2"
+        ]
+      }
+    ]
+  },
+  "data_sources": {
+    "tables": [
+      {
+        "identifier": "sales.semantic.mv_sales_revenue",
+        "description": [
+          "Sales revenue metrics with customer segmentation"
+        ]
+      }
+    ]
+  },
+  "instructions": {
+    "text_instructions": [
+      {
+        "id": "01f0b37c378e1c91000000000000b001",
+        "content": [
+          "When calculating revenue, use the Revenue measure from mv_sales_revenue.",
+          "When asked about 'last month', use the previous calendar month (not the last 30 days).",
+          "Round all monetary values to 2 decimal places.",
+          "When asked about 'top customers', order by Revenue descending."
+        ]
+      }
+    ],
+    "example_question_sqls": [
+      {
+        "id": "01f0821116d912db000000000000c001",
+        "question": [
+          "Show top 10 customers by revenue"
+        ],
+        "sql": [
+          "SELECT `Customer Segment`, `Region`,\n",
+          "  MEASURE(`Revenue`) AS revenue,\n",
+          "  MEASURE(`Order Count`) AS order_count,\n",
+          "  MEASURE(`Average Order Value`) AS aov\n",
+          "FROM sales.semantic.mv_sales_revenue\n",
+          "GROUP BY ALL\n",
+          "ORDER BY revenue DESC\n",
+          "LIMIT 10"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genie Ontology Modeled Knowledge SDK — Databricks Field Engineering</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1B2028; color: #e0e4ea; line-height: 1.6; }
+  .container { max-width: 900px; margin: 0 auto; padding: 48px 40px; }
+  .badge { display: inline-flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .badge-icon { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #FF3621, #FF6F00); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .badge-text { font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #FF3621; }
+  h1 { font-size: 32px; font-weight: 700; line-height: 1.2; color: #fff; margin-bottom: 12px; }
+  .subtitle { font-size: 16px; color: #9ca3b0; max-width: 680px; margin-bottom: 32px; }
+  .subtitle strong { color: #e0e4ea; }
+  .cards { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 40px; }
+  .card { flex: 1; min-width: 220px; padding: 20px; background: #232A33; border: 1px solid #2F3A45; border-radius: 12px; }
+  .card-value { font-size: 28px; font-weight: 700; color: #FF3621; margin-bottom: 4px; }
+  .card-desc { font-size: 13px; color: #9ca3b0; }
+  h2 { font-size: 22px; font-weight: 600; color: #fff; margin: 32px 0 16px 0; }
+  h3 { font-size: 16px; font-weight: 600; color: #fff; margin: 24px 0 12px 0; }
+  p { font-size: 14px; color: #9ca3b0; line-height: 1.7; margin-bottom: 16px; }
+  .section { margin-bottom: 40px; }
+  .wave { display: flex; gap: 16px; margin-bottom: 16px; align-items: flex-start; }
+  .wave-num { min-width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .wave-body { flex: 1; padding: 16px; background: #232A33; border: 1px solid #2F3A45; border-radius: 8px; }
+  .wave-title { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .wave-desc { font-size: 13px; color: #9ca3b0; line-height: 1.6; }
+  .deliverable { padding: 16px; background: #232A33; border: 1px solid #2F3A45; border-radius: 8px; margin-bottom: 12px; }
+  .deliverable-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .deliverable-icon { font-size: 18px; }
+  .deliverable-title { font-size: 15px; font-weight: 600; color: #fff; }
+  .deliverable-desc { font-size: 13px; color: #9ca3b0; line-height: 1.6; }
+  .callout { padding: 20px; background: linear-gradient(135deg, #232A33, #1B2D35); border: 1px solid rgba(255, 54, 33, 0.25); border-radius: 12px; margin-top: 24px; }
+  .callout-title { font-size: 15px; font-weight: 600; color: #FF3621; margin-bottom: 8px; }
+  .callout-desc { font-size: 13px; color: #9ca3b0; line-height: 1.6; }
+  .principle { padding: 16px; background: #232A33; border: 1px solid #2F3A45; border-radius: 8px; margin-bottom: 12px; }
+  .principle-title { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+  .principle-desc { font-size: 13px; color: #9ca3b0; line-height: 1.6; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .grid-item { padding: 16px; background: #232A33; border: 1px solid #2F3A45; border-radius: 8px; }
+  .grid-title { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+  .grid-desc { font-size: 13px; color: #9ca3b0; }
+  .footer { padding: 32px 0; margin-top: 16px; border-top: 1px solid #2F3A45; text-align: center; font-size: 12px; color: #5f6775; }
+  .divider { height: 1px; background: #2F3A45; margin: 40px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Hero -->
+  <div class="badge">
+    <div class="badge-icon">&#x1F9EC;</div>
+    <div class="badge-text">Databricks Field Engineering</div>
+  </div>
+  <h1>Genie Ontology<br>Modeled Knowledge SDK</h1>
+  <p class="subtitle">
+    An automated toolkit that transforms your existing Unity Catalog data assets into a governed, CI/CD-ready
+    <strong>Genie Ontology</strong> &mdash; certified metric views, UC Pages, and domain Genie Agents &mdash;
+    in a fraction of the time it takes to build manually.
+  </p>
+
+  <!-- Value Props -->
+  <div class="cards">
+    <div class="card"><div class="card-value">Days &rarr; Hours</div><div class="card-desc">What takes an experienced team 2&ndash;5 days of manual work becomes a parameterized pipeline that runs in hours</div></div>
+    <div class="card"><div class="card-value">CI/CD Ready</div><div class="card-desc">Every artifact is parameterized and version-controlled &mdash; the same definitions deploy to dev, test, UAT, and production</div></div>
+    <div class="card"><div class="card-value">Context First</div><div class="card-desc">Industry research, business requirements, and deep data profiling ground every metric in real-world business language</div></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- The Challenge -->
+  <div class="section">
+    <h2>The Challenge</h2>
+    <p>Organizations invest heavily in data platforms, but the gap between <em>having data</em> and <em>having trusted, consistent answers</em> remains wide. Business users ask the same questions in different ways, get different answers from different tools, and lose confidence in the data. The root cause is not the data itself &mdash; it is the absence of a governed semantic layer that encodes what the data means, how metrics are calculated, and how tables relate to each other.</p>
+
+    <h2>What Is Genie Ontology?</h2>
+    <p><strong style="color:#e0e4ea">Genie Ontology</strong> is the combination of Unity Catalog Semantics &mdash; metric views, Pages, domains, descriptions, and certification &mdash; with certified domain Genie Agents. Together, they form a governed knowledge layer that makes Genie One, Genie Code, dashboards, and downstream applications accurate and trustworthy.</p>
+    <p>The SDK automates the creation of this entire layer from your existing Unity Catalog assets.</p>
+
+    <h2>What You Provide</h2>
+    <div class="grid">
+      <div class="grid-item"><div class="grid-title">&#x1F4CA; Your Data Assets</div><div class="grid-desc">Unity Catalog catalogs, schemas, or specific tables you want to model</div></div>
+      <div class="grid-item"><div class="grid-title">&#x1F4C4; Business Context</div><div class="grid-desc">Requirements docs, data dictionaries, PowerBI or Tableau exports &mdash; any supplemental materials</div></div>
+      <div class="grid-item"><div class="grid-title">&#x1F3AF; Domain Description</div><div class="grid-desc">A description of the business domain or use case you are modeling</div></div>
+      <div class="grid-item"><div class="grid-title">&#x1F527; A Workspace Repo</div><div class="grid-desc">A Git-connected workspace folder where the SDK writes all artifacts</div></div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- How It Works -->
+  <div class="section">
+    <h2>10 Automated Waves</h2>
+    <p>The SDK executes through a series of orchestrated waves &mdash; each producing versioned artifacts in your repository. Every wave builds on the outputs of previous waves, creating a complete, auditable trail from raw data to deployed agents.</p>
+
+    <div class="wave"><div class="wave-num" style="background:#3B4A56">0</div><div class="wave-body"><div class="wave-title">Initialization</div><div class="wave-desc">Validates your inputs, creates a feature branch, and scaffolds the project structure.</div></div></div>
+    <div class="wave"><div class="wave-num" style="background:#077A9D">1</div><div class="wave-body"><div class="wave-title">Domain Research</div><div class="wave-desc">Researches your domain &mdash; industry terminology, standard KPIs, regulatory context, benchmarks &mdash; and proposes a domain and subdomain structure.</div></div></div>
+    <div class="wave"><div class="wave-num" style="background:#077A9D">2</div><div class="wave-body"><div class="wave-title">Context Extraction</div><div class="wave-desc">Parses your supplemental materials &mdash; business requirements, data dictionaries, PowerBI and Tableau exports &mdash; extracting measure definitions, join relationships, and business rules.</div></div></div>
+    <div class="wave"><div class="wave-num" style="background:#077A9D">3</div><div class="wave-body"><div class="wave-title">Deep Data Analysis</div><div class="wave-desc">Profiles every source table: structure, integrity, quality, lineage, usage patterns, grain, primary and foreign keys, cardinality, and volume.</div></div></div>
+    <div class="wave"><div class="wave-num" style="background:#FF3621">4</div><div class="wave-body"><div class="wave-title">Metric View Synthesis</div><div class="wave-desc">Synthesizes all context into parameterized metric view YAML definitions with semantic metadata, verified joins, and auto-detected materialization for cost optimization.</div></div></div>
+    <div class="wave"><div class="wave-num" style="background:#00A972">5</div><div class="wave-body"><div class="wave-title">Metric View Registration</div><div class="wave-desc">Registers every metric view in Unity Catalog using an idempotent forEach pipeline. Runs smoke tests and join cardinality validation.</div></div></div>
+    <div class="wave"><div class="wave-num" style="background:#00A972">5.5</div><div class="wave-body"><div class="wave-title">UC Pages Registration</div><div class="wave-desc">Registers glossary terms as UC Pages &mdash; the governed business definitions that make your ontology discoverable and self-documenting.</div></div></div>
+    <div class="wave"><div class="wave-num" style="background:#FF6F00">6</div><div class="wave-body"><div class="wave-title">Genie Agent Curation</div><div class="wave-desc">Organizes metric views into certified domain Genie Agents &mdash; splitting by subdomain when needed to maximize accuracy and minimize ambiguity.</div></div></div>
+    <div class="wave"><div class="wave-num" style="background:#FF6F00">7</div><div class="wave-body"><div class="wave-title">Agent Deployment</div><div class="wave-desc">Deploys each Genie Agent and validates it can respond to business questions with correct, governed SQL.</div></div></div>
+    <div class="wave"><div class="wave-num" style="background:#FF3621">8</div><div class="wave-body"><div class="wave-title">Tuning &amp; Benchmarking</div><div class="wave-desc">Generates benchmark questions, runs accuracy tests, and iterates on metric view definitions &mdash; tuning the semantic layer first, not the agent, to avoid overfitting.</div></div></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- What You Get -->
+  <div class="section">
+    <h2>Delivered Artifacts</h2>
+    <div class="deliverable"><div class="deliverable-header"><div class="deliverable-icon">&#x1F4D0;</div><div class="deliverable-title">Parameterized Metric View YAMLs</div></div><div class="deliverable-desc">Fully parameterized metric view definitions with semantic metadata (synonyms, comments, display names, formats), verified join annotations, and auto-detected materialization blocks. Each YAML deploys to any environment by changing only the target catalog.</div></div>
+    <div class="deliverable"><div class="deliverable-header"><div class="deliverable-icon">&#x1F4D6;</div><div class="deliverable-title">UC Pages (Business Glossary)</div></div><div class="deliverable-desc">Governed glossary terms registered as UC Pages &mdash; each with a definition, business context, data usage, related terms, and source. These make your ontology self-documenting and discoverable across the organization.</div></div>
+    <div class="deliverable"><div class="deliverable-header"><div class="deliverable-icon">&#x1F916;</div><div class="deliverable-title">Certified Domain Genie Agents</div></div><div class="deliverable-desc">Production-ready Genie Agents organized by domain and subdomain, with curated instructions, example SQL, join specifications, and sample questions. Minimal instructions by design &mdash; the semantic layer does the heavy lifting.</div></div>
+    <div class="deliverable"><div class="deliverable-header"><div class="deliverable-icon">&#x1F4CA;</div><div class="deliverable-title">Deep Data Profiles</div></div><div class="deliverable-desc">Comprehensive profiles of every source table: structure, quality, lineage, usage, grain, keys, cardinality, and volume. These become the foundation for ongoing data governance.</div></div>
+    <div class="deliverable"><div class="deliverable-header"><div class="deliverable-icon">&#x1F52C;</div><div class="deliverable-title">Domain Research &amp; Benchmarks</div></div><div class="deliverable-desc">Industry-standard KPI definitions, regulatory context, competitive benchmarks, and a proposed domain/subdomain organizational structure &mdash; all documented and cited.</div></div>
+    <div class="deliverable"><div class="deliverable-header"><div class="deliverable-icon">&#x1F3AF;</div><div class="deliverable-title">Tuning Plan &amp; Benchmark Results</div></div><div class="deliverable-desc">A documented tuning plan with benchmark question results, accuracy scores, and the specific changes made to improve Genie Agent accuracy.</div></div>
+    <div class="deliverable"><div class="deliverable-header"><div class="deliverable-icon">&#x1F680;</div><div class="deliverable-title">Two CI/CD-Ready DAB Bundles</div></div><div class="deliverable-desc">One bundle for metric view registration (with a forEach pipeline), one for Genie Agent deployment. Both are parameterized with dev, test, UAT, and production targets.</div></div>
+
+    <div class="callout">
+      <div class="callout-title">Complete CI/CD Portability</div>
+      <div class="callout-desc">Every artifact is fully parameterized &mdash; nothing is hardcoded. The same metric view YAML, the same agent configuration, and the same registration pipeline deploy to development, test, UAT, and production by changing only the target catalog and workspace. The catalog is the environment discriminator.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Design Principles -->
+  <div class="section">
+    <h2>Design Principles</h2>
+    <div class="principle"><div class="principle-title">Metric Views Are Governed Enterprise Assets</div><div class="principle-desc">Metric views are not just context for AI tools &mdash; they are versioned, testable, deterministic business logic that lives in Git and deploys only through CI/CD. They can be used and tested outside any AI agent or chat interface.</div></div>
+    <div class="principle"><div class="principle-title">Tune the Semantic Layer First, Not the Agent</div><div class="principle-desc">Adding too many specific instructions or example SQL queries to a Genie Agent is like overfitting a machine learning model. The SDK prioritizes metric view synonyms, comments, and measures as the first lever for accuracy. Agent-specific instructions are a last resort.</div></div>
+    <div class="principle"><div class="principle-title">Context First</div><div class="principle-desc">Business requirements, existing validated reports, industry research, and deep data profiling all feed into the metric view definitions before a single line of YAML is written. The ontology is grounded in real-world business language, not just column names.</div></div>
+    <div class="principle"><div class="principle-title">Zero Hardcoding</div><div class="principle-desc">Nothing in the pipeline is hardcoded &mdash; catalog names, schema names, table references, everything is parameterized. The catalog is the environment discriminator. The same commit promotes across environments with only target configuration changing.</div></div>
+    <div class="principle"><div class="principle-title">Materialization for Cost Optimization</div><div class="principle-desc">The SDK auto-detects metric views that would benefit from materialization based on source table volume, join complexity, and estimated query frequency. The first deployment is already cost-optimized.</div></div>
+    <div class="principle"><div class="principle-title">Full Regeneration Is Safe</div><div class="principle-desc">The pipeline is idempotent. Re-running it converges on the desired state without outage windows or manual cleanup. This makes ongoing maintenance straightforward &mdash; update the inputs and re-run.</div></div>
+
+    <div class="callout" style="border-color: #2F3A45;">
+      <h3>Getting Started</h3>
+      <p style="margin:0">The SDK is delivered as a co-development engagement. Your Databricks team configures the inputs &mdash; your catalogs, supplemental materials, and domain context &mdash; and the pipeline produces a complete, governed Genie Ontology ready for business validation and production deployment. The result is yours: version-controlled in your repository, deployed through your CI/CD, and maintained by your team.</p>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">Matthew Giglia | Databricks Field Engineering</div>
+</div>
+</body>
+</html>
