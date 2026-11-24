@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://genie-ontology-sdk/schemas/sdk_config.schema.json",
+  "title": "Genie Ontology SDK configuration (sdk_config.json)",
+  "description": "Input contract for a Genie Ontology SDK run (L100 Inputs & Interface Contract). Name-shape checks (3-part table names, 2-part schema names) are done in config.validate_config.",
+  "type": "object",
+  "required": ["target_catalog", "target_schema", "domain_name", "domain_context"],
+  "anyOf": [
+    {"required": ["source_catalogs"], "properties": {"source_catalogs": {"minItems": 1}}},
+    {"required": ["source_schemas"], "properties": {"source_schemas": {"minItems": 1}}},
+    {"required": ["source_tables"], "properties": {"source_tables": {"minItems": 1}}}
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"type": "string"},
+    "target_catalog": {
+      "type": "string", "minLength": 1,
+      "description": "Catalog where metric views are registered; the environment discriminator."
+    },
+    "target_schema": {
+      "type": "string", "minLength": 1,
+      "description": "Schema where metric views are registered."
+    },
+    "domain_name": {
+      "type": "string", "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "snake_case domain identifier, e.g. tpch_supply_chain."
+    },
+    "domain_context": {
+      "type": "string", "minLength": 1,
+      "description": "Free-text description of the domain / use case being modeled."
+    },
+    "source_catalogs": {
+      "type": "array", "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1},
+      "description": "UC catalogs to evaluate."
+    },
+    "source_schemas": {
+      "type": "array", "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1},
+      "description": "UC schemas to evaluate, 2-part names catalog.schema."
+    },
+    "source_tables": {
+      "type": "array", "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1},
+      "description": "Specific UC tables, 3-part names catalog.schema.table."
+    },
+    "supplemental_volume_dirs": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^/Volumes/"},
+      "description": "UC Volume directories with supplemental context."
+    },
+    "dashboard_inputs": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^/Volumes/"},
+      "description": "Volume paths to Power BI / Tableau / dashboard exports."
+    },
+    "source_catalog_for_reads": {
+      "type": "string", "minLength": 1,
+      "description": "Source catalog override for metric view YAML source: references."
+    },
+    "source_schema_for_reads": {
+      "type": "string", "minLength": 1,
+      "description": "Source schema override for metric view YAML source: references."
+    },
+    "warehouse_id": {
+      "type": "string", "minLength": 1,
+      "description": "SQL warehouse for registration and deployment."
+    },
+    "max_metric_views_per_agent": {
+      "type": "integer", "minimum": 1, "default": 50,
+      "description": "Threshold for splitting Genie Agents by subdomain."
+    },
+    "project_root": {
+      "type": "string", "minLength": 1,
+      "description": "Workspace path of the run project (where scaffold_project writes)."
+    },
+    "repo_path": {
+      "type": "string", "minLength": 1,
+      "description": "Workspace Git folder path the developer can write to (L100)."
+    }
+  }
+}
