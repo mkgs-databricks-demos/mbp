@@ -1,0 +1,17 @@
+{
+  "target_catalog": "main",
+  "target_schema": "ontology_tpch",
+  "domain_name": "tpch_supply_chain",
+  "domain_context": "TPC-H supply chain: customers place orders for parts supplied by suppliers across nations and regions.",
+  "source_tables": [
+    "samples.tpch.customer",
+    "samples.tpch.orders",
+    "samples.tpch.lineitem",
+    "samples.tpch.part",
+    "samples.tpch.partsupp",
+    "samples.tpch.supplier",
+    "samples.tpch.nation",
+    "samples.tpch.region"
+  ],
+  "max_metric_views_per_agent": 50
+}

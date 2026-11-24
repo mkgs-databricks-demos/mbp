@@ -1,0 +1,5 @@
+# Bundle state and variable-overrides.json (workspace-specific values)
+.databricks/
+
+# Rendered Genie Agent files (resolved catalog/schema names)
+.rendered/
