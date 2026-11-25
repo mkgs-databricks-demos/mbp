@@ -75,7 +75,7 @@ Commit the scaffolded files on the feature branch, then follow the [run kit READ
    * `branch` = the feature branch
 2. Make the SDK skills loadable by build sessions: copy `skills/ontology-*` into the run-as user's workspace skills folder, or use `skills` overrides in the manifest. Publishing them to Unity Catalog is build-1 request R1.
 3. Run setup and check that `validate_manifest` reports 0 errors. Review the rendered session authorizations. Deploying sessions need `bundle.deploy` on their bundle, and the registration and tuning sessions also need a run of `register_metric_views` (in build-0, deploy approval alone was not enough).
-4. UC Pages need an existing Discover domain. If there is none, the pages session stops blocked by design; create or choose a domain first, or publish pages later from the owner cell in `docs/pages/pages_registration.md`.
+4. UC Pages need an existing Discover domain. If there is none, the pages session ends `blocked` and **its wave gate fails**, which stops the build: later waves do not run until a domain exists, or the owner defers publishing (marks the session `pass` with a note and repairs the wave from its integrate task). Create or choose a domain before the build, or plan to defer and publish later from the owner cell in `docs/pages/pages_registration.md`. Build-1 request [R3 item 3](plans/build-1/REQUESTS.md#r3-fix-the-run-kit) adds a domain prerequisite and a deferred path so the wave passes.
 5. Start the build job and watch each wave gate. Review and merge the feature branch PR yourself; sessions never push to `main`.
 
 To redo part of a run, start the job with `only` set to the wave task keys you need (for example the deployment and tuning waves after a metric view fix).

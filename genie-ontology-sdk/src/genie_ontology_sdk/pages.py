@@ -288,12 +288,38 @@ def _page_id(page: str) -> str:
     return page.split("/", 1)[1] if page.startswith("pages/") else page
 
 
+# Words ending in "." that do not end a sentence (compared lowercase, without the final dot).
+_ABBREVIATIONS = frozenset({
+    # Only unambiguous abbreviations: a word that also ends sentences ("max", "no") would make
+    # a real sentence end run on.
+    "e.g", "i.e", "etc", "vs", "approx", "incl", "excl", "cf", "mr", "mrs", "dr", "inc", "ltd",
+    "corp", "dept", "jan", "feb", "apr", "jun", "jul", "aug", "sept", "oct", "nov", "dec", "u.s", "u.k",
+})
+_SENTENCE_END = re.compile(r"[.!?](?=\s|$)")
+
+
 def _first_sentence(text: str) -> str:
+    """First sentence of `text`, truncated to MAX_DESCRIPTION.
+
+    A `.` ends the sentence only when it follows a word that is not a known abbreviation
+    ("e.g.", "i.e.", "etc.", "approx.") and the next word does not start in lower case, so
+    "Rate per e.g. order." is kept whole.
+    """
     flat = " ".join(text.split())
     if not flat:
         return ""
-    m = re.match(r"(.+?[.!?])(\s|$)", flat)
-    sentence = m.group(1) if m else flat
+    sentence = flat
+    for m in _SENTENCE_END.finditer(flat):
+        end = m.end()
+        if flat[m.start()] == ".":
+            word = flat[:m.start()].rsplit(" ", 1)[-1].lower().lstrip("(\"'")
+            if word in _ABBREVIATIONS:
+                continue
+            nxt = flat[end:].lstrip()[:1]
+            if nxt and nxt.islower():
+                continue
+        sentence = flat[:end]
+        break
     if len(sentence) > MAX_DESCRIPTION:
         sentence = sentence[: MAX_DESCRIPTION - 3].rstrip() + "..."
     return sentence

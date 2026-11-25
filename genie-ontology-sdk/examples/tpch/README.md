@@ -22,7 +22,17 @@ This folder is a Genie Ontology run project for the public `samples.tpch` data s
 | `ontology-metric-views/` | `templates/ontology-metric-views` + vendored `src/genie_ontology_sdk_vendored/{mv_yaml,manifest,geniespace}.py` |
 | `ontology-genie-agents/` | `templates/ontology-genie-agents` |
 | `docs/plans/` | run kit: `waves.json`, `INDEX.md`, `README.md`, `plans/` |
-| `docs/{research,semantics,context,data_profiles,registration,pages,deployment,tuning,sessions}/` | empty folders (`.gitkeep`), filled by later build-0 sessions |
+| `docs/research/` | domain research and KPI definitions (build-0 session 10a) |
+| `docs/semantics/` | glossary term files, 23 terms (session 10a) |
+| `docs/context/` | business rules and join criteria from supplemental context; empty here (the example has no supplemental documents) |
+| `docs/data_profiles/` | one profile per source table plus `data_model_summary.md` with verified joins (session 10b) |
+| `docs/registration/` | metric view registration and smoke / cardinality test results (session 12) |
+| `docs/pages/` | UC Pages dry-run results and the owner publish cell, `pages_registration.md` (session 13; publishing deferred to build 1) |
+| `docs/deployment/` | Genie Agent deployment and probe results, `agent_validation.md` (session 15) |
+| `docs/tuning/` | benchmark questions, results and tuning plan (session 16) |
+| `docs/sessions/` | the run project's own session summaries; empty here (build-0 wrote its summaries in the SDK's `docs/sessions/`) |
+
+The scaffold creates these folders empty (`.gitkeep`); in this example the build-0 sessions above filled them. Session 14 also wrote `docs/domain_manifest.yml`.
 
 ## Reproduce
 

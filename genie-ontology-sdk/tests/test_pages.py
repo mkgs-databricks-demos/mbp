@@ -254,3 +254,19 @@ def test_rest_client_requests():
     assert api.calls[2] == (
         "PATCH", "/api/2.0/knowledge/pages/abc", {"update_mask": "body,synonyms"}, {"body": "b", "synonyms": ["s"]},
     )
+
+
+@pytest.mark.parametrize("text, expected", [
+    ("Rate per e.g. order. Second sentence.", "Rate per e.g. order."),
+    ("Share of orders, i.e. the fraction shipped late. More.", "Share of orders, i.e. the fraction shipped late."),
+    ("Sum of costs (approx. 10%) per part. More.", "Sum of costs (approx. 10%) per part."),
+    ("Revenue after discounts. Before tax.", "Revenue after discounts."),
+    ("Is it late? Yes when shipped after commit.", "Is it late?"),
+    ("Version 1.5 of the metric applies. More.", "Version 1.5 of the metric applies."),
+    ("No terminal punctuation", "No terminal punctuation"),
+    ("Ends at the end.", "Ends at the end."),
+])
+def test_first_sentence_skips_abbreviations(text, expected):
+    from genie_ontology_sdk.pages import _first_sentence
+
+    assert _first_sentence(text) == expected

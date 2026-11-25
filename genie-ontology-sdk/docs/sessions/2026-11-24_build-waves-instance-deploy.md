@@ -42,6 +42,11 @@ All three have `deployment.metadata_file_path` = `/Workspace/Users/matthew.gigli
 * **Owner decision (2026-11-25): defer UC Pages to build 1.** On the owner's instruction Genie Code set `.build-status/1082430844509839/13.json` to `pass` with an `owner_decision` note (old blocking text kept). Devin repaired from `w0-7_integrate` (repair `461529330422462`, 2 of 8): wave 0-7 PASS, commit `9916891`.
 * **Wave 0-8 FAIL** (same repair): session 15 blocked before deploying. The agents bundle's `variable-overrides.json` `schema` (`dev_matthew_giglia_ontology_tpch`, chosen by Genie Code when writing the overrides) does not exist; the metric views are in `hls_fde_dev.dev_matthew_giglia_ontology` (template `schema_name` default is `ontology`). `agent_probe` failed; waves 0-9..0-10 excluded. Root cause: my overrides value. Pending owner decision.
 
+## Build-0 passed (2026-11-25)
+* Devin started fresh run `440901917884797` from `w0-8_sync` (3 of 8; a repair from `w0-8_sessions` would have kept session 15's SUCCESS iteration). Waves 0-8, 0-9, 0-10 PASS (commits `8ace27c`, `d6cce7d`, `cfbb4d0`); verdict `BUILD_PASSED` at 08:24 UTC. Benchmark 93.3% (no tuning iteration); 3/3 agent probes ran.
+* Devin's read-only review of `cfbb4d0` (272 SDK tests passed): 1 medium (usage.md / README said the Pages session "stops blocked by design"; in fact the wave gate failed), 4 low (`pages._first_sentence` split at abbreviations; "0-0..0-9" status lines; stale `examples/tpch/README.md` folder row; folder link in PROJECT_MEMORY). All fixed on the build branch after the build (280 tests pass, links resolve).
+* Two framework items Devin found were added to the genie-build-waves backlog (cross-run build verdict; `docs/prompts/repair-failed-wave.md` still says rerun `w<w>_sessions`).
+
 ## SDK code review
 * Read-only review written to [docs/reviews/2026-11-25_build-0-sdk-review.md](../reviews/2026-11-25_build-0-sdk-review.md) (pytest not run).
 * Owner accepted the review's 9 improvements in priority order; documented as build-1 requests R1-R9 in [docs/plans/build-1/REQUESTS.md](../plans/build-1/REQUESTS.md). Session 17: link it from `docs/build-0-observations.md`.

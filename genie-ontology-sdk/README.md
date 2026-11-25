@@ -4,7 +4,7 @@ A developer toolkit that automates the end-to-end standup of modeled knowledge f
 
 Codifies the Rapid Ontology Standup methodology into a repeatable, metadata-driven pipeline orchestrated by [genie-build-waves](../genie-build-waves/README.md) Lakeflow Jobs and deployed as Declarative Automation Bundles.
 
-**Status: build-0 complete** (waves 0-0 to 0-9 passed their gates; wave 0-10 wrote these docs). The library, six skills, two bundle templates, the run kit and the init tool exist, and the SDK was dogfooded end to end on `samples.tpch` (7 metric views registered, 1 Genie Agent deployed, 93.3% baseline benchmark accuracy). UC Pages were dry-run only (no Discover domain). Gaps for build 1: [build-0 observations](docs/build-0-observations.md) and [build-1 requests](docs/plans/build-1/REQUESTS.md).
+**Status: build-0 complete** (waves 0-0 to 0-10 passed their gates; wave 0-10 wrote these docs). The library, six skills, two bundle templates, the run kit and the init tool exist, and the SDK was dogfooded end to end on `samples.tpch` (7 metric views registered, 1 Genie Agent deployed, 93.3% baseline benchmark accuracy). UC Pages were dry-run only (no Discover domain). Gaps for build 1: [build-0 observations](docs/build-0-observations.md) and [build-1 requests](docs/plans/build-1/REQUESTS.md).
 
 ## Quickstart
 
@@ -133,7 +133,7 @@ The older hand-written examples (`examples/dab1_metric_views/`, `examples/dab2_g
 
 ## Plans
 
-Build-0 built the SDK, then dogfooded it on `samples.tpch` (`examples/tpch/`). See the [build-0 plan index](docs/plans/INDEX.md) for the wave map, contracts and dependency graph. Waves 0-0 to 0-9 passed their gates (wave 0-7 with session 13 blocked by design on the missing Discover domain); wave 0-10 is this documentation pass.
+Build-0 built the SDK, then dogfooded it on `samples.tpch` (`examples/tpch/`). See the [build-0 plan index](docs/plans/INDEX.md) for the wave map, contracts and dependency graph. Waves 0-0 to 0-10 passed their gates; wave 0-10 is this documentation pass. Wave 0-7 failed its gate at first, because the UC Pages session (13) was blocked on the missing Discover domain, and passed after the owner deferred publishing to build 1 (see [build-1 request R3 item 3](docs/plans/build-1/REQUESTS.md#r3-fix-the-run-kit)).
 
 | Wave | Sessions | Delivers |
 |---|---|---|
