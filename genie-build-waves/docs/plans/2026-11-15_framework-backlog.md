@@ -21,6 +21,8 @@ State on `main` is as of the date above.
 | 9 | Tooling versions (CLI, Node) | Partly | Defer | Only for JS projects |
 | 10 | Owner decisions recorded in Git (added 2026-11-25) | Open | Adopt (design) | No |
 | 11 | Machine-checked wave preconditions (added 2026-11-25) | Open | Adopt (design) | No |
+| 12 | No build-level verdict across runs (added 2026-11-25) | Open | Adopt | No |
+| 13 | Repair guide still says a repair reruns a failed session (added 2026-11-25) | Open | Adopt (small, docs) | Yes: it contradicts the monitor skill |
 
 ## 1. Freshness is measured from the run start
 
@@ -119,6 +121,29 @@ Proposed:
 * A `w<w>_preconditions` notebook task between `w<w>_synced` and `w<w>_sessions` (like the sync task: never raises, writes `wave_<w>_preconditions.json`, sets a task value). A failed check excludes the wave's sessions and `build_verdict` reports `PRECONDITION_FAILED: <name>: <hint>` within seconds.
 * The monitor's decision table gets a row: a failed precondition is an owner step (escalate with the hint), or, when the owner then fixes it, a repair from `w<w>_preconditions` (no session ran, so a repair is enough).
 * Values that must not be committed (catalog names, schema names) are read from the files the check names, so manifests stay workspace-neutral.
+
+## 12. No build-level verdict across runs
+
+`build_verdict` judges only the waves in its own run. A build that needs a fresh run reports, at the end, something like `BUILD_PASSED: 3 wave gate(s) passed (8 disabled wave(s) skipped: 0-0 ... 0-7)`: it is true for that run, but nothing states that the build as a whole passed, or which run passed which wave. In a 2026-11-25 consumer build the 11 waves passed across three runs and one repair, and the monitor had to assemble the build-level answer from each run's gate files by hand.
+
+Proposed:
+
+* A build ledger in Git or the status root (for example `<status_dir>/build_<build>.json`), keyed by manifest `build`: for each runnable wave, the latest gate result, the run and repair that produced it, the wave commit, and the time. Each `w<w>_gate_check` (or `build_verdict`) updates it; a wave's newer result replaces the older one.
+* `build_verdict` reports two lines: the run verdict (today's) and a build verdict over the ledger: `BUILD_COMPLETE` when every runnable wave of the build has a latest `pass`, otherwise `BUILD_INCOMPLETE: waves <ids> not passed` (with the run that last tried each).
+* Waves marked `archived` are excluded; a manifest change that adds or renumbers waves resets their entries.
+* The monitor's final report and the PR description quote the build verdict, not a single run's.
+* Edge cases to decide: a wave that passed in an earlier run but whose later rerun failed (latest wins, so the build is incomplete); ledger location in `workspace` mode; concurrent repairs (one run at a time already).
+
+## 13. Repair guide still says a repair reruns a failed session
+
+`docs/prompts/repair-failed-wave.md`, "Which tasks to rerun", row "A session (code, plan, or manifest fixed)", says to repair with `rerun_tasks` `w<w>_sessions`, `w<w>_integrate`, `w<w>_gate`. A session's `for_each` iteration ends SUCCESS even when its status is `blocked` or `fail` (item 7), and a repair keeps SUCCESS iterations, so that repair reruns no session: the integrator and gate re-read the same status and the wave fails again, using a repair. The monitor skill (section 5 note, section 8 step 4, section 4 owner-fix row) already says to start a fresh run from `w<w>_sync` instead; following the repair guide, an owner gave exactly this instruction in a 2026-11-25 consumer build and the monitor had to stop and ask.
+
+Proposed (docs only; adopt now, before item 7 changes the behavior):
+
+* Split the row: "A session that ended `fail` / `blocked` and must run again" -> start a **fresh run** with `only` = that wave's tasks from `w<w>_sync`, every later wave's tasks and `build_verdict` (link the "Fresh runs" section; counts like a repair for a monitor); "A session that ended `error` or timed out (its iteration failed)" -> the existing repair from `w<w>_sessions`.
+* Add the owner-decision case: a status file set to `pass` by the owner (no session needs to run again) -> repair from `w<w>_integrate`.
+* Point to the monitor skill's "Goal over mechanism" rule so owners describe the outcome they want.
+* When item 7 ships (failed iterations fail), switch the first row back to a plain repair and update the monitor skill in the same change.
 
 ## Done when
 
