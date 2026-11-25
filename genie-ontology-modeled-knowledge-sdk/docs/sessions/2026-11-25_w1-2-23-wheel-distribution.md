@@ -49,12 +49,38 @@ Checks run in this pass (from a /tmp copy):
 
 Still open: task 7 (init notebook guarded fallback and install cell; template notebook install cells still `%pip install --upgrade databricks-sdk pyyaml`), task 8 (CI), task 9 (README "Getting the SDK", `docs/distribution/README.md` with CLI version and keys), the installed-wheel test-suite run from a directory without `src/`, and the placeholder artifact_path problem.
 
+## Run 915597908860318 (re-run of wave 1-2, continuation 0)
+
+Branch `mg-genie-ontology-build-1-plan` at `2b9152f` (checked read-only through the repos API). The changes from run `109257611554257` were still uncommitted in the working tree, so this run kept them and built on them. Owner commit `2b9152f` had already fixed `tests/test_config.py::test_version`, ignored `dist/` and `build/`, fixed the run-kit import wording, and switched gate check `sdk_bundle_validate` to the real dev overrides.
+
+Done in this run:
+
+* **Installed-wheel suite fixes.** `scaffold._package_dir(sdk_root)` returns `<sdk_root>/src/<pkg>` in an SDK checkout and the installed package otherwise. `_plan` now requires only `templates/` from `sdk_root`, and `vendored_modules` / vendoring read module files from `_package_dir`. `tests/test_scaffold.py` and `tests/test_template_mv_bundle.py::test_vendored_loader_imports_sdk` compare against the package under test instead of a hard-coded `src/`. This fixed the 15 scaffold fixture errors and 4 of the 5 owned failures from the gate.
+* **Task 7, init notebook.** A new "Install the SDK wheel" cell installs the `sdk_wheel` widget path (`%pip install --upgrade databricks-sdk <wheel>`, then `dbutils.library.restartPython()`). The load cell imports the installed package first. It adds `<sdk_root>/src` only if the package is missing and the notebook sits in an SDK checkout, and prints that it did. New `vendor` widget, passed to `scaffold_project`. The overview no longer says "vendored library".
+* **Task 8, CI.** New `wheel` job (matrix: databricks-sdk floor 0.45.0 and latest). It builds with `pip wheel`, installs into a clean venv, checks all 7 `gos-*` `--help`, and runs pytest from a copy without `src/`. It asserts that `__file__` is under site-packages and uploads the wheel artifact. `bundle-validate` now validates the SDK bundle only on `dev` with real values from the repository variables `GOS_SDK_CATALOG`, `GOS_SDK_CONSUMER_GROUP` and `GOS_WAREHOUSE_ID`. That step is skipped when they are not set. The placeholder validation of `prod` / `prod_existing_schema` was removed.
+* **Task 9, docs.** `README.md` has a new "Getting the SDK" section (wheel default, vendored opt-in, editable) with the console scripts. `docs/distribution/README.md` covers the artifact keys (CLI v1.27.0), why `pip wheel` is used, `artifact_path` from the resource reference, why validate needs the volume, the volume contract (`.internal` sub-path still to be confirmed by 23b) and grants. The template README gained the `sdk_*` variables and an "SDK wheel" section.
+* **Decision:** the template notebooks keep `%pip install --upgrade databricks-sdk pyyaml`. The wheel is installed by the job environment on every task (task 5), so a notebook-level wheel install would duplicate it, and notebooks have no access to `${var.sdk_wheel}`.
+
+Checks (this run, /tmp copies):
+
+| Check | Result |
+|---|---|
+| pytest, source tree | pass: 420 passed |
+| wheel build + 7 `gos-*` `--help` | pass: `genie_ontology_modeled_knowledge_sdk-0.1.0-py3-none-any.whl`; installed with `pip install --target` (no clean venv available here) |
+| installed_wheel_tests (copy without `src/`, PYTHONPATH = installed site only) | **fail (1, not owned):** 415 passed, 4 skipped, 1 failed: `tests/test_mv_yaml.py::test_cli_module_entry_point` sets `PYTHONPATH=<repo>/src`, which replaces the installed path. `__file__` is under the install dir, `__version__` 0.1.0 |
+| vendor_modes (`-k vendor` from the installed copy) | pass: 3 passed |
+| no_vendored_paths | pass: the only `sys.path` edit in `notebooks/`/`templates/` is the guarded init fallback; no `PYTHONPATH=...vendored` in `skills/`/`templates/` |
+| `bundle validate --strict -t dev`, SDK bundle (real overrides) | pass |
+| `bundle validate --strict -t dev`, metric-views template (`--var consumer_group=ci_placeholder`) | pass |
+
 ## Requests
 
-* Owner (or the owner of `tests/test_config.py`): change `test_version` to expect `0.1.0`, or remove it in favour of `tests/test_version.py`.
+* Owner of `tests/test_mv_yaml.py` (high): in `test_cli_module_entry_point`, add `REPO/src` in front of the existing `PYTHONPATH` (`os.pathsep.join([str(REPO / "src"), os.environ.get("PYTHONPATH", "")])`) instead of replacing it. Otherwise the test cannot pass when the installed wheel is on `PYTHONPATH` and `src/` is absent (gate check `installed_wheel_tests`).
 
-* Owner: add `dist/` and `build/` to `.gitignore` (bundle sync honours it; the explicit excludes cannot be used before the first build under `--strict`).
+* (Resolved by owner commit `2b9152f`) Owner (or the owner of `tests/test_config.py`): change `test_version` to expect `0.1.0`, or remove it in favour of `tests/test_version.py`.
+
+* (Resolved by owner commit `2b9152f`) Owner: add `dist/` and `build/` to `.gitignore` (bundle sync honours it; the explicit excludes cannot be used before the first build under `--strict`).
 
 ## Files modified
 
-`pyproject.toml`, `CHANGELOG.md`, `databricks.yml`, `resources/sdk_smoke.job.yml`, `notebooks/sdk_smoke.ipynb`, `src/genie_ontology_modeled_knowledge_sdk/__init__.py`, `src/genie_ontology_modeled_knowledge_sdk/scaffold.py`, `templates/ontology-metric-views/databricks.yml`, `templates/ontology-metric-views/resources/register_metric_views.job.yml`, `tests/test_scaffold.py`, `tests/test_template_mv_bundle.py`, `tests/test_sdk_bundle.py`, `tests/test_version.py`, `tests/test_wheel.py`.
+`pyproject.toml`, `CHANGELOG.md`, `databricks.yml`, `resources/sdk_smoke.job.yml`, `notebooks/sdk_smoke.ipynb`, `src/genie_ontology_modeled_knowledge_sdk/__init__.py`, `src/genie_ontology_modeled_knowledge_sdk/scaffold.py`, `templates/ontology-metric-views/databricks.yml`, `templates/ontology-metric-views/resources/register_metric_views.job.yml`, `tests/test_scaffold.py`, `tests/test_template_mv_bundle.py`, `tests/test_sdk_bundle.py`, `tests/test_version.py`, `tests/test_wheel.py`. Run 915597908860318 added: `README.md`, `docs/distribution/README.md`, `notebooks/init_ontology_project.ipynb`, `ci/github/workflows/genie-ontology-modeled-knowledge-sdk-ci.yml`, `templates/ontology-metric-views/README.md`.

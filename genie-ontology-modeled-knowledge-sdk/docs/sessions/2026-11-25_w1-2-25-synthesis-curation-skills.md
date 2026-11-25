@@ -75,3 +75,13 @@ Not checked: the import-API snippet in the curation skill (`w.workspace.import_`
 * `skills/ontology-mv-synthesis/references/yaml-patterns.md`
 * `skills/ontology-agent-curation/SKILL.md`
 * `docs/research/platform-pattern-checks.md` (new)
+
+## Re-run 915597908860318 (already completed)
+
+The wave was re-run after the owner fixes commit `2b9152f`. Session 25's work from run `109257611554257` is committed in `6949575` (`wave(1-2): 24, 25, 26`), and `git diff` shows no uncommitted change in the owned paths. Nothing was edited and no DDL was run in this re-run. Re-validation (branch `mg-genie-ontology-build-1-plan`, read-only):
+
+* Front matter `name` equals folder and the description names the SDK stage, for both skills: pass.
+* grep `PYTHONPATH|_vendored|sys.path` in both skills: none (pass).
+* Curation split rule: only `min(max_metric_views_per_agent, 30)`. The single `50` is the documented config default (pass).
+* `verified C1/C4/C6/C7` in `yaml-patterns.md` all have rows in `platform-pattern-checks.md` (C1-C8 present): pass.
+* SDK schema from `bundle summary -t dev`: `hls_fde_dev.dev_matthew_giglia_ontology_sdk`. `information_schema.tables` lists exactly the five `scratch_*` views (all `METRIC_VIEW`): pass. The owner cleanup request still stands.

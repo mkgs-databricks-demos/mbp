@@ -57,3 +57,9 @@ Descriptions now say "Load only in an SDK run project (sdk_config.json at the pr
 
 * To 26: add the overlap table above to `skills/README.md`.
 * To owner: optionally add `values_from_eda` as a `Term` field in `pages.py` if a front matter key is preferred over the section.
+
+## Re-run 915597908860318 (already completed)
+
+* The wave 1-2 gate of run `109257611554257` failed on session 23 only; session 24 was `complete`. This run found the Git folder on `mg-genie-ontology-build-1-plan` (head `2b9152fdd09c`, synced up to date) and the three SKILL.md files unchanged from that pass.
+* Re-validated by reading all three files: front matter `name` equals folder; each description names the Genie Ontology Modeled Knowledge SDK and its stage (research wave 1, context extraction wave 2, deep EDA wave 3); no `PYTHONPATH`, `sys.path` or `_vendored` text; observations 1-15 present at the sections listed above (shared dimensions + tie-break, business-meaning subdomain rule, 05 `## Sources`, `## Values from EDA`, proxy KPIs, schema-scoped `information_schema.columns`, spec versions, `pages.write_terms`, pattern F word-boundary regex, pattern E counts only, pattern D2, usage-diversity skip, `ceil(n / 4)`, sensitive-column rule, pattern H).
+* No files changed in this run. Request to 26 (overlap table for `skills/README.md`) still stands.

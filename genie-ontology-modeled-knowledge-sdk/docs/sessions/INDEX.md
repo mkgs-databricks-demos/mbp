@@ -6,6 +6,10 @@ Sessions are listed in reverse chronological order.
 
 | Date | Session | Summary |
 |---|---|---|
+| 2026-11-25 | [W1-2 / 26 Exhaustive Tuning Protocol Skill & Skills Index (R8)](2026-11-25_w1-2-26-tuning-skill.md) | Wave 1-2, session 26, mode edit, status pass: re-validated, README platform-skill column refreshed (run 915597908860318) |
+| 2026-11-25 | [W1-2 / 25 Synthesis & Curation Skills: Reconcile, Verify Patterns on the Platform (R8)](2026-11-25_w1-2-25-synthesis-curation-skills.md) | Wave 1-2, session 25, mode edit, status pass: already completed in run 109257611554257, re-validated (run 915597908860318) |
+| 2026-11-25 | [W1-2 / 24 Discovery Skills: Reconcile & Close Gaps (R8)](2026-11-25_w1-2-24-discovery-skills.md) | Wave 1-2, session 24, mode edit, status pass: already completed in run 109257611554257, re-validated (run 915597908860318) |
+| 2026-11-25 | [W1-2 / 23 Wheel Distribution: Versioning, SDK Bundle Artifacts, Wheel-First Templates, Opt-in Vendoring (R2, R7a)](2026-11-25_w1-2-23-wheel-distribution.md) | Wave 1-2, session 23, mode edit, status blocked: installed_wheel_tests owner request on tests/test_mv_yaml.py; code left uncommitted for the repair run (run 915597908860318) |
 | 2026-11-25 | [W1-2 / 26 Exhaustive Tuning Protocol Skill & Skills Index (R8)](2026-11-25_w1-2-26-tuning-skill.md) | Wave 1-2, session 26, mode edit, status pass (run 109257611554257) |
 | 2026-11-25 | [W1-2 / 25 Synthesis & Curation Skills: Reconcile, Verify Patterns on the Platform (R8)](2026-11-25_w1-2-25-synthesis-curation-skills.md) | Wave 1-2, session 25, mode edit, status pass (run 109257611554257) |
 | 2026-11-25 | [W1-2 / 24 Discovery Skills: Reconcile & Close Gaps (R8)](2026-11-25_w1-2-24-discovery-skills.md) | Wave 1-2, session 24, mode edit, status pass (run 109257611554257) |
