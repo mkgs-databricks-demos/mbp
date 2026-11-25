@@ -84,3 +84,20 @@ Checks (this run, /tmp copies):
 ## Files modified
 
 `pyproject.toml`, `CHANGELOG.md`, `databricks.yml`, `resources/sdk_smoke.job.yml`, `notebooks/sdk_smoke.ipynb`, `src/genie_ontology_modeled_knowledge_sdk/__init__.py`, `src/genie_ontology_modeled_knowledge_sdk/scaffold.py`, `templates/ontology-metric-views/databricks.yml`, `templates/ontology-metric-views/resources/register_metric_views.job.yml`, `tests/test_scaffold.py`, `tests/test_template_mv_bundle.py`, `tests/test_sdk_bundle.py`, `tests/test_version.py`, `tests/test_wheel.py`. Run 915597908860318 added: `README.md`, `docs/distribution/README.md`, `notebooks/init_ontology_project.ipynb`, `ci/github/workflows/genie-ontology-modeled-knowledge-sdk-ci.yml`, `templates/ontology-metric-views/README.md`.
+
+## Run 288268071022101 (third run of wave 1-2, continuation 0)
+
+Branch `mg-genie-ontology-build-1-plan` at `22d5f01` (read-only check; wave sync up to date). Owner commit `22d5f01` fixed the one remaining blocker (`tests/test_mv_yaml.py::test_cli_module_entry_point` now prepends `src/` to `PYTHONPATH`) and narrowed `no_vendored_paths` to exclude `templates/run/**`. The uncommitted work from runs `109257611554257` and `915597908860318` was still in the working tree and is inherited unchanged. **No file edits in this run**; it re-validated everything. Status: **pass**.
+
+| Check | Result |
+|---|---|
+| pytest (`/tmp/gos-gate-1-2`, source tree) | pass: 419 passed, 1 skipped (`test_run_kit.py`: genie-build-waves not next to the SDK in /tmp) |
+| wheel | pass: `pip wheel --no-deps -w dist .` builds `genie_ontology_modeled_knowledge_sdk-0.1.0-py3-none-any.whl`; all 7 `gos-*` `--help` exit 0 from the installed wheel |
+| installed_wheel_tests | pass: copy without `src/`, wheel installed with `pip install --target` (`python -m venv` lacks ensurepip on this compute), 415 passed, 5 skipped (4 `test_wheel.py` build tests skip because the copy has no `src/` to build; 1 run-kit); `__file__` under the install dir, `__version__` 0.1.0; `tests/test_version.py` 4 passed |
+| vendor_modes | pass: `test_default_scaffold_vendors_nothing`, `test_default_notebooks_resolve_installed_package`, `test_vendored_closure`, `test_vendored_files_identical` against the installed package |
+| no_vendored_paths | pass: only `sys.path` edit outside `templates/run/` is the guarded fallback in `notebooks/init_ontology_project.ipynb`; no `PYTHONPATH=...vendored` in `skills/` or `templates/` |
+| sdk_bundle_validate | pass: `bundle validate --strict --target dev` at build_root with gitignored dev overrides |
+| template validate | pass: `templates/ontology-metric-views` `bundle validate --strict --target dev --var consumer_group=ci_placeholder` |
+| skills_reconciled | skipped: `skills/` owned by sessions 24-26 |
+
+No open requests from this session.

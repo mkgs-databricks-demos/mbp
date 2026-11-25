@@ -28,6 +28,21 @@ variables:
   consumer_group:
     # No default on purpose: the owner must name the group that may read the metric views.
     description: Required. Group granted USE_SCHEMA and SELECT on the ontology schema (no default; name a group in variable-overrides.json or --var consumer_group=...)
+  # SDK wheel installed by every job task through the job environment (see
+  # README.md "SDK wheel"). The scaffold renders sdk_version from the SDK.
+  sdk_version:
+    description: Genie Ontology Modeled Knowledge SDK version to install (rendered by the scaffold from the SDK version)
+    default: 0.1.0
+  sdk_volume_path:
+    # No default on purpose: the /Volumes/<catalog>/<schema>/sdk_wheels path of
+    # the SDK bundle's volume differs per workspace.
+    description: Required. /Volumes path of the SDK bundle's sdk_wheels volume (set it in variable-overrides.json)
+  sdk_wheel_subpath:
+    description: Sub-path under sdk_volume_path where the SDK bundle publishes the wheel (confirmed by the SDK publish step)
+    default: .internal
+  sdk_wheel:
+    description: Full path of the SDK wheel the job environment installs
+    default: ${var.sdk_volume_path}/${var.sdk_wheel_subpath}/genie_ontology_modeled_knowledge_sdk-${var.sdk_version}-py3-none-any.whl
 
 targets:
   dev:
@@ -40,6 +55,7 @@ targets:
       catalog: main
       source_catalog: samples
       source_schema: tpch
+      sdk_volume_path: /Volumes/main/ontology_sdk/sdk_wheels
 
   prd:
     mode: production

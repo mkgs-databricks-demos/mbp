@@ -22,6 +22,18 @@ python -m pytest -q
 PYTHONPATH=src python -m genie_ontology_modeled_knowledge_sdk.mv_yaml validate <project>/ontology-metric-views/metric_views
 ```
 
+## Getting the SDK
+
+The SDK is a pure-Python wheel, `genie_ontology_modeled_knowledge_sdk-<version>-py3-none-any.whl` (version in `pyproject.toml`, history in [CHANGELOG.md](CHANGELOG.md)). Three ways to use it:
+
+| Way | When | How |
+|---|---|---|
+| **Wheel (default)** | Every project | The SDK bundle at this folder's root builds the wheel on `bundle deploy` and uploads it to its `sdk_wheels` volume ([docs/distribution/README.md](docs/distribution/README.md)). Project bundles install it through a job environment (`sdk_volume_path`, `sdk_wheel_subpath`, `sdk_version`, `sdk_wheel` in `templates/ontology-metric-views`). Notebooks: `%pip install --upgrade databricks-sdk <wheel path>` then `dbutils.library.restartPython()` |
+| **Vendored (opt-in)** | Workspaces without package egress or that cannot read the volume | `scaffold_project(..., vendor=True)` / `gos-scaffold --vendor` copies the import closure of the SDK modules the project notebooks use into `ontology-metric-views/src/genie_ontology_modeled_knowledge_sdk_vendored/` with a `VENDORED_VERSION` file |
+| **Editable (SDK development)** | Working on the SDK itself | `pip install -e ".[dev]"` from this folder |
+
+Console scripts installed with the wheel: `gos-check-config`, `gos-validate-mv`, `gos-build-manifest`, `gos-render-agents`, `gos-scaffold`, `gos-resolve-target`, `gos-benchmark`. `python -m genie_ontology_modeled_knowledge_sdk.<module>` keeps working.
+
 ## Layout
 
 | Path | Contents |

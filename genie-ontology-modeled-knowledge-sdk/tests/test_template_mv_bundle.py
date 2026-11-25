@@ -19,8 +19,9 @@ TEMPLATE = Path(__file__).resolve().parents[1] / "templates" / "ontology-metric-
 SCHEMA_RESOURCE = TEMPLATE / "resources" / "ontology_schema.yml"
 SCHEMA_REF = "${resources.schemas.ontology_schema.name}"
 CATALOG_REF = "${resources.schemas.ontology_schema.catalog_name}"
-REQUIRED_VARS = {"catalog", "source_catalog", "source_schema", "consumer_group"}
-DEV_PLACEHOLDER_VARS = {"catalog", "source_catalog", "source_schema"}
+REQUIRED_VARS = {"catalog", "source_catalog", "source_schema", "consumer_group", "sdk_volume_path"}
+DEV_PLACEHOLDER_VARS = {"catalog", "source_catalog", "source_schema", "sdk_volume_path"}
+SDK_VARS = {"sdk_version", "sdk_wheel_subpath", "sdk_wheel"}
 TASK_KEYS = ["generate_manifest", "register_each_mv", "smoke_test", "cardinality_test"]
 
 
@@ -118,7 +119,7 @@ def test_bundle_includes_resources(bundle):
 
 def test_variables(bundle):
     variables = bundle["variables"]
-    assert set(variables) == REQUIRED_VARS | {"schema_name", "warehouse_id"}
+    assert set(variables) == REQUIRED_VARS | SDK_VARS | {"schema_name", "warehouse_id"}
     for name in REQUIRED_VARS:
         assert "default" not in variables[name], f"{name} must be required (no default)"
         assert variables[name].get("description")
@@ -223,12 +224,34 @@ def test_tests_use_schema_resource(job):
 
 
 def test_all_tasks_serverless(job):
-    compute_keys = {"job_cluster_key", "new_cluster", "existing_cluster_id", "environment_key"}
+    compute_keys = {"job_cluster_key", "new_cluster", "existing_cluster_id"}
     assert "job_clusters" not in job
     for t in job["tasks"]:
         for task in (t, t.get("for_each_task", {}).get("task", {})):
             assert not compute_keys & set(task), f"{task.get('task_key')} sets a cluster"
             assert "sql_task" not in task or "warehouse_id" in task["sql_task"]
+
+
+def test_sdk_wheel_variables(bundle):
+    v = bundle["variables"]
+    from genie_ontology_modeled_knowledge_sdk import __version__
+
+    assert str(v["sdk_version"]["default"]) == __version__
+    assert "default" not in v["sdk_volume_path"]
+    assert v["sdk_wheel"]["default"] == (
+        "${var.sdk_volume_path}/${var.sdk_wheel_subpath}/"
+        "genie_ontology_modeled_knowledge_sdk-${var.sdk_version}-py3-none-any.whl"
+    )
+
+
+def test_job_environment_installs_wheel(job):
+    envs = {e["environment_key"]: e for e in job["environments"]}
+    assert envs["sdk"]["spec"]["dependencies"] == ["${var.sdk_wheel}"]
+    for t in job["tasks"]:
+        task = t.get("for_each_task", {}).get("task") or t
+        assert task.get("environment_key") == "sdk", task["task_key"]
+    text = (TEMPLATE / "resources" / "register_metric_views.job.yml").read_text()
+    assert "#     - whl: ${var.sdk_wheel}" in text  # classic-compute alternative documented
 
 
 def test_notebook_paths_exist_with_extension(resources):
@@ -297,7 +320,10 @@ def test_vendored_loader_imports_sdk(tmp_path):
     import shutil
     import sys
 
-    src_pkg = Path(__file__).resolve().parents[1] / "src" / "genie_ontology_modeled_knowledge_sdk"
+    import genie_ontology_modeled_knowledge_sdk as _sdk_pkg
+
+    # The package under test: <sdk>/src/... in a source tree, site-packages for the installed wheel.
+    src_pkg = Path(_sdk_pkg.__file__).resolve().parent
     vendored = tmp_path / "src" / "genie_ontology_modeled_knowledge_sdk_vendored"
     vendored.mkdir(parents=True)
     for mod in ("mv_yaml.py", "manifest.py"):

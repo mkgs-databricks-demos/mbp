@@ -5,14 +5,26 @@
 #
 # All tasks are serverless notebook tasks (no cluster spec). Paths in the
 # manifest are relative to the bundle root, passed as ${workspace.file_path}.
+#
+# Every task installs the pinned SDK wheel through the job environment "sdk"
+# (environment_key). For classic compute, drop environment_key and add instead:
+#   libraries:
+#     - whl: ${var.sdk_wheel}
 resources:
   jobs:
     register_metric_views:
       name: register_metric_views
       description: Register Genie Ontology metric views (CREATE OR REPLACE VIEW ... WITH METRICS LANGUAGE YAML), then smoke and cardinality test them
       max_concurrent_runs: 1
+      environments:
+        - environment_key: sdk
+          spec:
+            environment_version: "2"
+            dependencies:
+              - ${var.sdk_wheel}
       tasks:
         - task_key: generate_manifest
+          environment_key: sdk
           notebook_task:
             notebook_path: ../notebooks/generate_manifest.ipynb
             base_parameters:
@@ -28,6 +40,7 @@ resources:
             concurrency: 4
             task:
               task_key: register_single_mv
+              environment_key: sdk
               notebook_task:
                 notebook_path: ../notebooks/register_single_mv.ipynb
                 base_parameters:
@@ -40,6 +53,7 @@ resources:
                   target_schema: ${resources.schemas.ontology_schema.name}
 
         - task_key: smoke_test
+          environment_key: sdk
           depends_on:
             - task_key: register_each_mv
           notebook_task:
@@ -51,6 +65,7 @@ resources:
               target_schema: ${resources.schemas.ontology_schema.name}
 
         - task_key: cardinality_test
+          environment_key: sdk
           depends_on:
             - task_key: register_each_mv
           notebook_task:

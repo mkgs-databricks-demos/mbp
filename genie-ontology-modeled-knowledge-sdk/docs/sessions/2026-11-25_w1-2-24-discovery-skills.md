@@ -63,3 +63,11 @@ Descriptions now say "Load only in an SDK run project (sdk_config.json at the pr
 * The wave 1-2 gate of run `109257611554257` failed on session 23 only; session 24 was `complete`. This run found the Git folder on `mg-genie-ontology-build-1-plan` (head `2b9152fdd09c`, synced up to date) and the three SKILL.md files unchanged from that pass.
 * Re-validated by reading all three files: front matter `name` equals folder; each description names the Genie Ontology Modeled Knowledge SDK and its stage (research wave 1, context extraction wave 2, deep EDA wave 3); no `PYTHONPATH`, `sys.path` or `_vendored` text; observations 1-15 present at the sections listed above (shared dimensions + tie-break, business-meaning subdomain rule, 05 `## Sources`, `## Values from EDA`, proxy KPIs, schema-scoped `information_schema.columns`, spec versions, `pages.write_terms`, pattern F word-boundary regex, pattern E counts only, pattern D2, usage-diversity skip, `ceil(n / 4)`, sensitive-column rule, pattern H).
 * No files changed in this run. Request to 26 (overlap table for `skills/README.md`) still stands.
+
+## Re-run 288268071022101 (already completed)
+
+* Git folder on `mg-genie-ontology-build-1-plan` (head `22d5f011a5db`, sync up to date). `git diff ad6e637 HEAD -- skills/ docs/plans/build-1/24_discovery_skills.md` is empty and `git status` shows no changes under the three skill folders: the committed pass is intact.
+* Owner fix commits since the last pass (`2b9152f`, `22d5f01`) touched only `waves.json` (no_vendored_paths now excludes `templates/run/**`; new wave 1-4 check) and plan 28; neither changes session 24's scope or plan.
+* Re-validated: front matter `name` equals folder and each description names the Genie Ontology Modeled Knowledge SDK and its stage (waves 1, 2, 3); `grep PYTHONPATH|sys.path|_vendored` finds nothing in the three SKILL.md files.
+* Request to 26 is now met: `skills/README.md` lists all three discovery skills with stage, platform skills relied on and precedence.
+* No files changed in this run.

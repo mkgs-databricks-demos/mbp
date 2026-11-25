@@ -85,3 +85,14 @@ The wave was re-run after the owner fixes commit `2b9152f`. Session 25's work fr
 * Curation split rule: only `min(max_metric_views_per_agent, 30)`. The single `50` is the documented config default (pass).
 * `verified C1/C4/C6/C7` in `yaml-patterns.md` all have rows in `platform-pattern-checks.md` (C1-C8 present): pass.
 * SDK schema from `bundle summary -t dev`: `hls_fde_dev.dev_matthew_giglia_ontology_sdk`. `information_schema.tables` lists exactly the five `scratch_*` views (all `METRIC_VIEW`): pass. The owner cleanup request still stands.
+
+## Re-run 288268071022101 (already completed)
+
+Repair run of wave 1-2 (the 915597908860318 gate failed on session 23 and on `templates/run/**`, not on session 25). Branch `mg-genie-ontology-build-1-plan` at `22d5f01`, checked read-only. Nothing was edited and no DDL was run. Re-validation:
+
+* `git status --porcelain` on the three owned paths: clean. The last commit touching them is still `6949575`.
+* Front matter `name` equals folder and the description names the SDK stage, for both skills: pass.
+* grep `PYTHONPATH|_vendored|sys.path` in both skills: none (pass).
+* Curation split rule `min(max_metric_views_per_agent, 30)` present. The only `50` is the documented config default (pass).
+* `verified C1/C4/C6/C7` in `yaml-patterns.md` all have rows in `platform-pattern-checks.md` (C1-C8 present): pass.
+* `information_schema.tables` for `hls_fde_dev.dev_matthew_giglia_ontology_sdk` (schema as resolved in the earlier runs; `bundle summary` was not re-run) lists exactly the five `scratch_*` views, all `METRIC_VIEW`: pass. The owner cleanup request still stands.

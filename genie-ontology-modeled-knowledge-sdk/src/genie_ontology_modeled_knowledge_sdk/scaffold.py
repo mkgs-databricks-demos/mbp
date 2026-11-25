@@ -2,7 +2,8 @@
 
 Public API (cross-session contract, see ``docs/plans/INDEX.md``):
 
-* ``scaffold_project(cfg, target_dir, sdk_root, *, force=False) -> ScaffoldReport``
+* ``scaffold_project(cfg, target_dir, sdk_root, *, force=False, vendor=False) -> ScaffoldReport``
+* ``vendored_modules(sdk_root) -> tuple[str, ...]`` - import closure vendored with ``vendor=True``
 * ``ScaffoldReport`` - what was written, left unchanged, skipped or overwritten
 * CLI: ``python -m genie_ontology_modeled_knowledge_sdk.scaffold --config sdk_config.json --target <dir>``
 
@@ -12,7 +13,7 @@ What it creates (``docs/plans/INDEX.md`` "Run project layout")::
     ├── sdk_config.json
     ├── PROJECT_MEMORY.md                 # templates/run/PROJECT_MEMORY.md
     ├── ontology-metric-views/            # templates/ontology-metric-views
-    │   └── src/genie_ontology_modeled_knowledge_sdk_vendored/{mv_yaml,manifest,geniespace}.py
+    │   └── src/genie_ontology_modeled_knowledge_sdk_vendored/   # only with vendor=True
     ├── ontology-genie-agents/            # templates/ontology-genie-agents
     └── docs/
         ├── plans/                        # templates/run/{waves.json,INDEX.md,README.md,plans/}
@@ -35,7 +36,14 @@ Rules:
 * ``.databricks/`` (bundle state, ``variable-overrides.json``) and ``.rendered/``
   (rendered agent files) are never read from the templates nor written in the
   project, even with ``force``.
-* The vendored modules are byte-for-byte copies of ``src/genie_ontology_modeled_knowledge_sdk/``.
+* Wheel first: by default (``vendor=False``) nothing is vendored and the
+  template notebooks import the installed SDK wheel (the job environment
+  installs it). The template's ``src/genie_ontology_modeled_knowledge_sdk_vendored/``
+  folder is not copied.
+* ``vendor=True`` (opt-in, for workspaces without package egress) copies the
+  import closure of every SDK module the template notebooks import, byte for
+  byte from ``src/genie_ontology_modeled_knowledge_sdk/``, plus the folder's
+  README and a ``VENDORED_VERSION`` file with the SDK version.
 
 Pure Python: no Spark, no Databricks API calls.
 """
@@ -56,8 +64,10 @@ from genie_ontology_modeled_knowledge_sdk.config import SdkConfig, config_from_d
 __all__ = [
     "PLACEHOLDER_FILES",
     "RUN_TOKENS",
-    "VENDORED_MODULES",
+    "VENDORED_DIR",
+    "VENDORED_VERSION_FILE",
     "DOCS_DIRS",
+    "vendored_modules",
     "ScaffoldReport",
     "render_schema_name",
     "render_tokens",
@@ -68,8 +78,12 @@ __all__ = [
 RUN_TOKENS = ("project_name", "domain_name", "bundle_target")
 _TOKEN_RE = re.compile(r"\{\{\s*(" + "|".join(RUN_TOKENS) + r")\s*\}\}")
 
-VENDORED_MODULES = ("mv_yaml.py", "manifest.py", "geniespace.py")
 VENDORED_DIR = Path("ontology-metric-views/src/genie_ontology_modeled_knowledge_sdk_vendored")
+VENDORED_VERSION_FILE = "VENDORED_VERSION"
+_PKG = "genie_ontology_modeled_knowledge_sdk"
+# `genie_ontology_modeled_knowledge_sdk.<mod>` in imports, and `from genie_ontology_modeled_knowledge_sdk import a, b`.
+_SDK_DOTTED_RE = re.compile(r"\b" + _PKG + r"\.([A-Za-z_][A-Za-z0-9_]*)")
+_SDK_FROM_RE = re.compile(r"(?m)^\s*from\s+" + _PKG + r"\s+import\s+\(?([A-Za-z0-9_,\s]+)\)?")
 
 DOCS_DIRS = (
     "research",
@@ -148,6 +162,67 @@ def render_schema_name(text: str, schema_name: str) -> str:
     return new
 
 
+def _sdk_module_refs(text: str, pkg: Path) -> set[str]:
+    """SDK module file names (``x.py``) referenced in ``text`` that exist in ``pkg``."""
+    names = set(_SDK_DOTTED_RE.findall(text))
+    for group in _SDK_FROM_RE.findall(text):
+        names.update(n.strip() for n in group.split(",") if n.strip())
+    return {f"{n}.py" for n in names if (pkg / f"{n}.py").is_file()}
+
+
+def _notebook_code(path: Path) -> str:
+    nb = json.loads(path.read_text(encoding="utf-8"))
+    out = []
+    for cell in nb.get("cells", []):
+        if cell.get("cell_type") == "code":
+            src = cell.get("source", "")
+            out.append(src if isinstance(src, str) else "".join(src))
+    return "\n".join(out)
+
+
+def _package_dir(sdk_root: Path) -> Path:
+    """SDK package folder to vendor from: ``<sdk_root>/src/<pkg>`` in an SDK checkout,
+    else the installed package (wheel install, where ``sdk_root`` only provides templates)."""
+    src_pkg = sdk_root / "src" / _PKG
+    if src_pkg.is_dir():
+        return src_pkg
+    return Path(__file__).resolve().parent
+
+
+def vendored_modules(sdk_root: str | Path) -> tuple[str, ...]:
+    """Import closure of the SDK modules the metric-views template notebooks import.
+
+    Parses the template notebooks' code cells for ``genie_ontology_modeled_knowledge_sdk.*``
+    imports, then follows each module's own SDK imports. Sorted file names. Module
+    files come from ``<sdk_root>/src`` when present, else from the installed package.
+    """
+    sdk = Path(sdk_root)
+    pkg = _package_dir(sdk)
+    todo: set[str] = set()
+    for nb in sorted((sdk / "templates" / "ontology-metric-views" / "notebooks").glob("*.ipynb")):
+        todo |= _sdk_module_refs(_notebook_code(nb), pkg)
+    seen: set[str] = set()
+    while todo:
+        mod = todo.pop()
+        if mod in seen:
+            continue
+        seen.add(mod)
+        todo |= _sdk_module_refs((pkg / mod).read_text(encoding="utf-8"), pkg) - seen
+    return tuple(sorted(seen))
+
+
+def _sdk_version(sdk_root: Path) -> str:
+    """``[project] version`` from the SDK's pyproject.toml, else the installed ``__version__``."""
+    pyproject = sdk_root / "pyproject.toml"
+    if pyproject.is_file():
+        m = re.search(r'(?m)^version\s*=\s*"([^"]+)"', pyproject.read_text(encoding="utf-8"))
+        if m:
+            return m.group(1)
+    from genie_ontology_modeled_knowledge_sdk import __version__
+
+    return __version__
+
+
 def _render_bytes(data: bytes, values: dict[str, str]) -> bytes:
     try:
         text = data.decode("utf-8")
@@ -170,11 +245,11 @@ def _is_protected(rel: Path) -> bool:
     return any(part in PROTECTED_DIRS for part in rel.parts)
 
 
-def _plan(sdk_root: Path, cfg: SdkConfig, values: dict[str, str]) -> list[tuple[Path, bytes]]:
+def _plan(sdk_root: Path, cfg: SdkConfig, values: dict[str, str], vendor: bool = False) -> list[tuple[Path, bytes]]:
     """Return ``(relative destination, content)`` for every file to scaffold."""
     templates = sdk_root / "templates"
-    pkg = sdk_root / "src" / "genie_ontology_modeled_knowledge_sdk"
-    missing = [str(p) for p in (templates / "run", pkg) if not p.is_dir()]
+    pkg = _package_dir(sdk_root)
+    missing = [str(p) for p in (templates / "run",) if not p.is_dir()]
     missing += [str(templates / s) for s, _ in _BUNDLES if not (templates / s).is_dir()]
     if missing:
         raise FileNotFoundError(f"sdk_root '{sdk_root}' is missing: {', '.join(missing)}")
@@ -187,6 +262,8 @@ def _plan(sdk_root: Path, cfg: SdkConfig, values: dict[str, str]) -> list[tuple[
             rel = Path(dst_name) / f.relative_to(src)
             if rel in PLACEHOLDER_FILES:
                 continue
+            if not vendor and VENDORED_DIR in rel.parents:
+                continue  # wheel-first: no vendored folder at all
             content = _render_bytes(f.read_bytes(), values)
             if rel == _MV_BUNDLE_YML:
                 content = render_schema_name(content.decode("utf-8"), cfg.target_schema).encode("utf-8")
@@ -209,11 +286,10 @@ def _plan(sdk_root: Path, cfg: SdkConfig, values: dict[str, str]) -> list[tuple[
         raise FileNotFoundError(f"run kit file missing: {memory}")
     out.append((Path("PROJECT_MEMORY.md"), _render_bytes(memory.read_bytes(), values)))
 
-    for module in VENDORED_MODULES:
-        src = pkg / module
-        if not src.is_file():
-            raise FileNotFoundError(f"SDK module missing: {src}")
-        out.append((VENDORED_DIR / module, src.read_bytes()))  # verbatim, not rendered
+    if vendor:
+        for module in vendored_modules(sdk_root):
+            out.append((VENDORED_DIR / module, (pkg / module).read_bytes()))  # verbatim, not rendered
+        out.append((VENDORED_DIR / VENDORED_VERSION_FILE, (_sdk_version(sdk_root) + "\n").encode("utf-8")))
 
     config_text = json.dumps(cfg.to_dict(), indent=2) + "\n"
     out.append((Path("sdk_config.json"), config_text.encode("utf-8")))
@@ -238,13 +314,15 @@ def scaffold_project(
     force: bool = False,
     project_name: str | None = None,
     bundle_target: str = "dev",
+    vendor: bool = False,
 ) -> ScaffoldReport:
     """Create (or complete) a run project in ``target_dir`` from ``sdk_root``.
 
     ``cfg`` is validated first (``ValueError`` if invalid). ``project_name``
     defaults to the name of ``target_dir``; ``bundle_target`` to ``dev``.
     Existing files are kept unless ``force``; ``.databricks/`` and ``.rendered/``
-    are never touched.
+    are never touched. ``vendor=True`` copies the SDK modules the notebooks
+    import (opt-in; the default installs the SDK wheel instead).
     """
     c = cfg if isinstance(cfg, SdkConfig) else config_from_dict(cfg)
     target = Path(target_dir)
@@ -256,7 +334,7 @@ def scaffold_project(
     }
     report = ScaffoldReport(target_dir=str(target))
 
-    for rel, content in _plan(sdk, c, values):
+    for rel, content in _plan(sdk, c, values, vendor=vendor):
         if _is_protected(rel):  # defensive: the plan never yields these
             continue
         dst = target / rel
@@ -279,6 +357,7 @@ def scaffold_project(
 
 def _default_sdk_root() -> Path:
     # src/genie_ontology_modeled_knowledge_sdk/scaffold.py -> SDK root is two levels above the package.
+    # Installed from the wheel, there is no checkout: pass --sdk-root (templates live there).
     return Path(__file__).resolve().parents[2]
 
 
@@ -293,6 +372,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--project-name", default=None)
     parser.add_argument("--bundle-target", default="dev")
     parser.add_argument("--force", action="store_true", help="overwrite files that differ")
+    parser.add_argument(
+        "--vendor",
+        action="store_true",
+        help="copy the SDK modules the notebooks import into the project (opt-in; default installs the wheel)",
+    )
     args = parser.parse_args(argv)
     try:
         cfg = load_config(args.config)
@@ -303,6 +387,7 @@ def main(argv: list[str] | None = None) -> int:
             force=args.force,
             project_name=args.project_name,
             bundle_target=args.bundle_target,
+            vendor=args.vendor,
         )
     except (ValueError, FileNotFoundError) as e:
         print(f"scaffold: {e}", file=sys.stderr)

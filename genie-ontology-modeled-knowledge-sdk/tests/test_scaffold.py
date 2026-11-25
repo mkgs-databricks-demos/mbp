@@ -18,7 +18,7 @@ from genie_ontology_modeled_knowledge_sdk.scaffold import (
     DOCS_DIRS,
     RUN_TOKENS,
     VENDORED_DIR,
-    VENDORED_MODULES,
+    VENDORED_VERSION_FILE,
     ScaffoldReport,
     render_tokens,
     scaffold_project,
@@ -116,13 +116,72 @@ def test_jobs_references_preserved(project):
     assert "{{input.name}}" in (target / rel).read_text()
 
 
-def test_vendored_files_identical(project):
+@pytest.fixture()
+def vendored_project(tmp_path: Path) -> tuple[Path, ScaffoldReport]:
+    target = tmp_path / "tpch_vendored"
+    report = scaffold_project(CONFIG, target, SDK_ROOT, vendor=True)
+    return target, report
+
+
+def test_default_scaffold_vendors_nothing(project):
+    """Wheel first: vendor=False writes no vendored folder at all."""
+    target, report = project
+    assert not (target / VENDORED_DIR).exists()
+    assert not [p for p in report.written if "genie_ontology_modeled_knowledge_sdk_vendored" in p]
+
+
+def test_default_notebooks_resolve_installed_package(project):
+    """Without a vendored folder, the notebooks' load_sdk falls back to the installed package."""
+    import sys
+
     target, _ = project
-    for module in VENDORED_MODULES:
+    nb = json.loads((target / "ontology-metric-views" / "notebooks" / "register_single_mv.ipynb").read_text())
+
+    def _src(c):
+        return c["source"] if isinstance(c["source"], str) else "".join(c["source"])
+
+    def _title(c):
+        md = c.get("metadata") or {}
+        return md.get("title") or (md.get("application/vnd.databricks.v1+cell") or {}).get("title")
+
+    loader = next(c for c in nb["cells"] if _title(c) == "Load the vendored SDK library")
+    code = _src(loader).replace('load_sdk(args["bundle_root"])', "load_sdk(BUNDLE_ROOT)")
+    import genie_ontology_modeled_knowledge_sdk as pkg
+
+    saved = dict(sys.modules)
+    try:
+        ns = {"BUNDLE_ROOT": str(target / "ontology-metric-views")}
+        exec(compile(code, "load_sdk", "exec"), ns)
+        assert Path(ns["mv_yaml"].__file__).parent == Path(pkg.__file__).parent
+    finally:
+        sys.modules.clear()
+        sys.modules.update(saved)
+
+
+def test_vendored_closure():
+    mods = scaffold.vendored_modules(SDK_ROOT)
+    # the template notebooks import mv_yaml and manifest; manifest imports mv_yaml
+    assert {"mv_yaml.py", "manifest.py"} <= set(mods)
+    assert list(mods) == sorted(mods)
+
+
+def test_vendored_files_identical(vendored_project):
+    target, _ = vendored_project
+    mods = scaffold.vendored_modules(SDK_ROOT)
+    for module in mods:
         dst = target / VENDORED_DIR / module
-        assert dst.read_bytes() == (SDK_ROOT / "src" / "genie_ontology_modeled_knowledge_sdk" / module).read_bytes()
+        # source tree: <sdk>/src/<pkg>; installed wheel (no src/): the installed package
+        assert dst.read_bytes() == (scaffold._package_dir(SDK_ROOT) / module).read_bytes()
     # the template README stays next to the vendored copies
     assert (target / VENDORED_DIR / "README.md").is_file()
+    from genie_ontology_modeled_knowledge_sdk import __version__
+
+    assert (target / VENDORED_DIR / VENDORED_VERSION_FILE).read_text().strip() == __version__
+    # the copies cover their own SDK imports (closed under import)
+    pkg_dir = scaffold._package_dir(SDK_ROOT)
+    for module in mods:
+        refs = scaffold._sdk_module_refs((pkg_dir / module).read_text(), pkg_dir)
+        assert refs <= set(mods), module
 
 
 def test_sdk_config_valid(project):

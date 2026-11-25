@@ -49,6 +49,14 @@ Metric view YAML rules: file name = view name; `source:` and `joins[].source` us
 | `consumer_group` | yes | - | Group granted `USE_SCHEMA` + `SELECT`. No default on purpose: name the group that may read the metric views. `bundle validate` fails with `no value assigned to required variable consumer_group` until you set it |
 | `warehouse_id` | no | `""` | Optional SQL warehouse. Nothing in the job uses it (every task runs on serverless); set it only for ad hoc SQL checks, and it is copied into `resolved_target.json` for the Genie Agent bundle |
 | `schema_name` | no | `ontology` | Ontology schema name. `scaffold_project` replaces the default with `sdk_config.target_schema` |
+| `sdk_volume_path` | yes | - | `/Volumes/<sdk_catalog>/<sdk_schema>/sdk_wheels` of the SDK bundle (set it in `variable-overrides.json`) |
+| `sdk_version` | no | `0.1.0` | SDK version to install (rendered by the scaffold from the SDK) |
+| `sdk_wheel_subpath` | no | `.internal` | Sub-folder of the volume where the SDK bundle publishes the wheel |
+| `sdk_wheel` | no | composed from the three above | Full wheel path the job environment installs |
+
+## SDK wheel
+
+Every job task runs with `environment_key: sdk`; the job environment `sdk` installs `${var.sdk_wheel}` (the SDK wheel published by the SDK bundle, see the SDK's `docs/distribution/README.md`). For classic compute, use the commented `libraries: [{whl: ${var.sdk_wheel}}]` block in `resources/register_metric_views.job.yml` instead. The notebooks' `load_sdk()` prefers a vendored copy under `src/genie_ontology_modeled_knowledge_sdk_vendored/` (only present when the project was scaffolded with `vendor=True`), else imports the installed package.
 
 ## Targets
 

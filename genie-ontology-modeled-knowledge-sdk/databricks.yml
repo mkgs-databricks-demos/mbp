@@ -1,8 +1,9 @@
 # Genie Ontology Modeled Knowledge SDK - SDK bundle.
 #
-# Owns the SDK's own Unity Catalog schema and the sdk_wheels volume. Later
-# builds add the wheel artifact (workspace.artifact_path points at the volume),
-# the published skills and build-only scratch_* views, all in this one schema.
+# Owns the SDK's own Unity Catalog schema, the sdk_wheels volume, the SDK wheel
+# artifact (built on deploy, uploaded to the volume through
+# workspace.artifact_path) and the sdk_smoke job. Later builds add the published
+# skills and build-only scratch_* views, all in this one schema.
 #
 # SDK setup asks three questions: which catalog (sdk_catalog), which schema
 # (sdk_schema; a NEW schema the bundle creates is recommended) and which group
@@ -23,14 +24,26 @@ bundle:
 include:
   - resources/*.yml
 
-# Sync only the bundle's own files (the SDK package and its metadata).
+# Pure-Python wheel, built on `bundle deploy` from pyproject.toml (static version,
+# no dynamic versioning). `pip wheel` is used because the `build` module is not
+# always installed where deploys run (see docs/distribution/README.md).
+artifacts:
+  sdk_wheel:
+    type: whl
+    path: .
+    build: python -m pip wheel --no-deps --no-build-isolation -w dist .
+
+# Sync only the bundle's own files (the SDK package, its metadata and the
+# sdk_smoke notebook). The built wheel is uploaded as an artifact; dist/ and
+# build/ are left to .gitignore (strict validate rejects exclude patterns that
+# match no files before the first build).
 sync:
   exclude:
     - "Genie Code Start Session - DO NOT EDIT.ipynb"
     - ci/**
     - docs/**
     - examples/**
-    - notebooks/**
+    - notebooks/init_ontology_project.ipynb
     - skills/**
     - templates/**
     - tests/**
@@ -59,6 +72,9 @@ targets:
   dev:
     mode: development
     default: true
+    workspace:
+      # Wheels go to the bundle's own sdk_wheels volume (no DBFS).
+      artifact_path: ${resources.volumes.sdk_wheels.volume_path}
     presets:
       tags:
         project: ${var.tags_project}
@@ -70,6 +86,7 @@ targets:
     mode: production
     workspace:
       root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}
+      artifact_path: ${resources.volumes.sdk_wheels.volume_path}
     presets:
       tags:
         project: ${var.tags_project}
@@ -81,6 +98,7 @@ targets:
     mode: production
     workspace:
       root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}
+      artifact_path: ${resources.volumes.sdk_wheels.volume_path}
     presets:
       tags:
         project: ${var.tags_project}

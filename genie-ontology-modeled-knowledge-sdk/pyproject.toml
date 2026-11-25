@@ -4,7 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "genie-ontology-modeled-knowledge-sdk"
-version = "0.0.1"
+# Single source of the SDK version: __version__ reads it from the installed wheel's
+# metadata (or from this file in a source tree); see CHANGELOG.md.
+version = "0.1.0"
 description = "Automates the standup of modeled knowledge for Genie Ontology: UC sources -> metric views -> UC Pages -> Genie Agents -> tuning plan."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -18,6 +20,16 @@ dependencies = [
 [project.optional-dependencies]
 test = ["pytest>=7.4"]
 dev = ["pytest>=7.4", "ruff>=0.6", "mypy>=1.10", "types-PyYAML"]
+
+# Console scripts (R2 item 2). `python -m genie_ontology_modeled_knowledge_sdk.<module>` keeps working.
+[project.scripts]
+gos-check-config = "genie_ontology_modeled_knowledge_sdk:check_config_main"
+gos-validate-mv = "genie_ontology_modeled_knowledge_sdk.mv_yaml:main"
+gos-build-manifest = "genie_ontology_modeled_knowledge_sdk.manifest:main"
+gos-render-agents = "genie_ontology_modeled_knowledge_sdk.geniespace:main"
+gos-scaffold = "genie_ontology_modeled_knowledge_sdk.scaffold:main"
+gos-resolve-target = "genie_ontology_modeled_knowledge_sdk.targets:main"
+gos-benchmark = "genie_ontology_modeled_knowledge_sdk.benchmark:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -14,6 +14,9 @@ NEW_SCHEMA_TARGETS = ("dev", "prod")
 EXISTING_SCHEMA_TARGET = "prod_existing_schema"
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
 HEX_ID = re.compile(r"\b[0-9a-f]{16}\b")
+# Schema and volume files are target-scoped (schema modes differ per target);
+# job files are top-level resources shared by every target.
+TOP_LEVEL_RESOURCE_FILES = ("sdk_smoke.job.yml",)
 
 
 @pytest.fixture(scope="module")
@@ -26,12 +29,43 @@ def target_resources() -> dict[str, dict]:
     """Merged ``targets.<t>.resources`` from every resources/*.yml file."""
     merged: dict[str, dict] = {}
     for path in sorted(RESOURCES.glob("*.yml")):
+        if path.name in TOP_LEVEL_RESOURCE_FILES:
+            continue
         doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         assert "resources" not in doc, f"{path.name}: resources are target-scoped (schema modes differ per target)"
         for target, spec in (doc.get("targets") or {}).items():
             for kind, items in (spec.get("resources") or {}).items():
                 merged.setdefault(target, {}).setdefault(kind, {}).update(items)
     return merged
+
+
+def test_wheel_artifact(bundle):
+    art = bundle["artifacts"]["sdk_wheel"]
+    assert art["type"] == "whl" and art["path"] == "."
+    assert "wheel" in art["build"] and "dynamic_version" not in art
+
+
+def test_artifact_path_is_sdk_volume(bundle):
+    for name, target in bundle["targets"].items():
+        assert target["workspace"]["artifact_path"] == "${resources.volumes.sdk_wheels.volume_path}", name
+
+
+def test_smoke_job_environment_references_wheel():
+    doc = yaml.safe_load((RESOURCES / "sdk_smoke.job.yml").read_text(encoding="utf-8"))
+    job = doc["resources"]["jobs"]["sdk_smoke"]
+    envs = {e["environment_key"]: e for e in job["environments"]}
+    assert envs["sdk"]["spec"]["dependencies"] == ["../dist/*.whl"]
+    (task,) = job["tasks"]
+    assert task["environment_key"] == "sdk"
+    nb = task["notebook_task"]["notebook_path"]
+    assert (RESOURCES / nb).resolve().is_file(), nb
+
+
+def test_sync_is_limited(bundle):
+    excludes = set(bundle["sync"]["exclude"])
+    for pattern in ("docs/**", "examples/**", "skills/**", "templates/**", "tests/**", "ci/**"):
+        assert pattern in excludes, pattern
+    assert "notebooks/**" not in excludes  # sdk_smoke.ipynb must sync
 
 
 def test_bundle_basics(bundle):
