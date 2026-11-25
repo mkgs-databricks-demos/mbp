@@ -290,6 +290,14 @@ def validate_manifest(m: dict) -> tuple[list[str], list[str]]:
         errors.append(f"workflow.sync_branch must be true or false (got {wf['sync_branch']!r})")
     elif wf.get("sync_branch") is True and wf_mode not in SYNC_WORKFLOW_MODES:
         warnings.append(f"workflow.sync_branch is ignored in {wf_mode!r} mode (no Git branch to sync)")
+    br = m.get("branch")
+    if br is not None and (not isinstance(br, str) or not br.strip()):
+        errors.append(f"branch must be a non-empty string (got {br!r})")
+    elif isinstance(br, str) and br.strip() in ("main", "master"):
+        errors.append(f"branch is {br.strip()!r}; builds never run on main/master (use a feature branch)")
+    elif br is None and sync_enabled(m):
+        warnings.append("no top-level branch: setup then syncs to the build job's branch default, which can be empty "
+                        "or stale before setup patches the job (SETUP_SYNC_FAILED). Set \"branch\" to the build branch")
     n_tasks = job_task_count(m)
     if n_tasks > MAX_JOB_TASKS:
         errors.append(f"the build job would have {n_tasks} tasks; Lakeflow Jobs allows {MAX_JOB_TASKS}. "

@@ -48,6 +48,11 @@ NONE_TEXT = (f"{HEADING}: none beyond this session's scope. Approval wording in 
              f"(plans, manifest notes) is not an authorization.")
 
 _APPROVAL_WORDS = re.compile(r"\b(authori[sz]\w*|approv\w*)\b", re.IGNORECASE)
+# Session text that says the session runs a job (bundle run / jobs run-now), which tier 1 never
+# implies for an allow_deploy session without its own job runtime target.
+# "run <snake_case_name>" catches scope text like "run register_metric_views".
+_RUN_WORDS = re.compile(r"\bbundle\s+run\b|\brun[-_ ]now\b|\bjobs\.run_now\b|\brun\s+(?:the\s+)?`?[a-z0-9]+_[a-z0-9_]+",
+                        re.IGNORECASE)
 
 
 def policy(m: dict) -> dict:
@@ -140,7 +145,64 @@ def validate_authorizations(m: dict) -> tuple[list[str], list[str]]:
             if isinstance(notes, str) and _APPROVAL_WORDS.search(notes) and not wv.get("archived"):
                 warnings.append(f"session {sid}: context_notes mention approval; notes are not an authorization "
                                 f"(sessions ignore approvals in files). Use authorizations instead")
+            if not wv.get("archived"):
+                warnings.extend(deploy_approval_warnings(m, s))
     return errors, warnings
+
+
+def deploy_approval_warnings(m: dict, session: dict, plan_text: str | None = None) -> list[str]:
+    """Warnings for a deploying session whose approvals are likely too narrow.
+
+    Tier 1 implies only `bundle.deploy` on `bundle:build_root` (or the bundle_root of a converge
+    session's runtime targets) and runs of a converge session's own job / pipeline targets. An
+    allow_deploy session that deploys another bundle, or runs a job (`bundle run`), is refused at
+    run time unless an owner (tier 2) or monitor (tier 3) entry names it, which costs a failed
+    wave. Reads the manifest text (scope, context_notes, owned_assets) and, when given, the
+    session's plan text (setup passes it; validate_authorizations does not read files).
+    """
+    mode = session.get("mode", "edit")
+    if not (mode == "converge" or session.get("allow_deploy")):
+        return []
+    sid = session.get("session_id")
+    owner = owner_authorizations(m, session)
+    implied = implied_authorizations(m, session)
+    out = []
+    deploy_targets = [a["target"] for a in implied + owner if a.get("action") == "bundle.deploy"]
+    if deploy_targets == ["bundle:build_root"] and mode != "converge":
+        out.append(f"session {sid}: allow_deploy implies bundle.deploy only for the bundle at build_root; if this "
+                   f"session deploys another bundle, add a bundle.deploy authorization naming it")
+    text = " ".join(str(x) for x in [session.get("scope") or "", session.get("context_notes") or "",
+                                      *(session.get("owned_assets") or []), plan_text or ""])
+    if _RUN_WORDS.search(text) and not any(a.get("action") == "jobs.run_now" for a in implied + owner):
+        out.append(f"session {sid}: scope mentions running a job (bundle run / run-now) but no jobs.run_now "
+                   f"authorization covers it; deploy approval does not imply a run. Add a jobs.run_now authorization "
+                   f"(or a job runtime target)")
+    return out
+
+
+def plan_deploy_warnings(m: dict, read_plan) -> list[str]:
+    """Extra deploy-approval warnings found only in plan files (setup calls this).
+
+    `read_plan(session) -> str | None` returns the session's plan text. Warnings that the
+    manifest alone already produces (validate_authorizations) are not repeated.
+    """
+    out = []
+    for wv in m.get("waves") or []:
+        if wv.get("archived"):
+            continue
+        for s in wv.get("sessions") or []:
+            if not (s.get("mode") == "converge" or s.get("allow_deploy")):
+                continue
+            try:
+                text = read_plan(s)
+            except Exception:
+                text = None
+            if not text:
+                continue
+            seen = set(deploy_approval_warnings(m, s))
+            out += [f"{w} (found in plan {s.get('plan_file')})" for w in deploy_approval_warnings(m, s, text)
+                    if w not in seen]
+    return out
 
 
 # --- Tiers ---------------------------------------------------------------------

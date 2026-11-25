@@ -96,3 +96,15 @@ def test_sync_result_and_messages():
     failed = bs.sync_result("1", 9, "b", ok=False, before="a", after="b", error="boom", conflicts=["x"])
     assert not failed["pulled"]  # a failed sync never reports a pull
     assert bs.sync_message(failed) == "SYNC_FAILED: wave 1: boom"
+
+
+def test_setup_branch_prefers_the_manifest_over_a_stale_or_empty_job_default():
+    # The case that failed a real setup: the job default was emptied, the manifest had the branch.
+    assert bs.setup_branch("feature-x", "") == ("feature-x", "manifest")
+    assert bs.setup_branch(" feature-x ", "old-branch") == ("feature-x", "manifest")
+    assert bs.setup_branch(None, "feature-y") == ("feature-y", "job_default")
+    assert bs.setup_branch("", " feature-y ") == ("feature-y", "job_default")
+    assert bs.setup_branch(42, "feature-y") == ("feature-y", "job_default")  # not a string: ignored
+    assert bs.setup_branch(None, None) == ("", "none")
+    # An empty result still fails the sync with the existing message.
+    assert bs.branch_problem("feature-x", bs.setup_branch(None, "")[0]) == "the branch parameter is empty"
