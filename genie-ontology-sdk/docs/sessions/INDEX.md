@@ -21,6 +21,6 @@ Sessions are listed in reverse chronological order.
 | 2026-11-24 | [W0-1 / 03 Genie Agent Config Builder](2026-11-24_w0-1-03-geniespace-builder.md) | Wave 0-1, session 03, mode edit, status pass: geniespace.py with render CLI, 29 tests |
 | 2026-11-24 | [W0-1 / 02 Metric View YAML Library & Manifest](2026-11-24_w0-1-02-mv-yaml-library.md) | Wave 0-1, session 02, mode edit, status pass: mv_yaml.py (MV001-MV007, render_ddl, validate CLI), manifest.py, fixtures |
 | 2026-11-24 | [W0-0 / 01 SDK Foundation & Input Contract](2026-11-24_w0-0-01-sdk-foundation.md) | Wave 0-0, session 01, mode edit, status pass: pyproject, config.py + sdk_config schema, 31 tests, sdk-layout doc |
-| 2026-11-24 | [Build-Waves Instance Deploy](2026-11-24_build-waves-instance-deploy.md) | Instance deployed and verified (build/setup/smoke jobs), monitor (Devin, level 4) prerequisites |
+| 2026-11-24 | [Build-Waves Instance Deploy](2026-11-24_build-waves-instance-deploy.md) | Instance deployed and verified (build/setup/smoke jobs), Devin level 4 hand-off, runs through wave 0-8 (escalations: run approvals, IP ACL, setup branch bug, Pages deferred, agents schema overrides), SDK code review |
 | 2026-11-24 | [Build-0 Planning](2026-11-24_build-0-planning.md) | Fresh build-0 plan set (11 waves, 19 sessions, validate_manifest 0 errors), original plans moved to docs/design/l300-pipeline |
 | 2026-11-24 | [Initial Design](2026-11-24_initial-design.md) | L100 design, open question resolution, full file creation (other workspace), design review findings |

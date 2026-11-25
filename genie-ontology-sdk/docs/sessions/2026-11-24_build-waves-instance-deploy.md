@@ -34,8 +34,20 @@ All three have `deployment.metadata_file_path` = `/Workspace/Users/matthew.gigli
 * **Root cause:** my build-0 plan gave sessions 12/16 no `jobs.run_now` approval.
 * **Decision (owner): option 2** — let the monitor grant run approvals itself. `waves.json` now has top-level `branch` and `authorization_policy.monitor_may_authorize` = `jobs.run_now` and `bundle.deploy`, both scope `owned_assets` (exact `owned_assets` text of the session). Verified: `validate_manifest` and `validate_authorizations` 0 errors / 0 warnings; `filter_monitor_grants` keeps run grants for 12 and 16 with exact owned_assets text and drops other targets and owner-only actions.
 
+## Restart from wave 0-6 (2026-11-24 evening to 2026-11-25)
+* **Grants:** Devin wrote `docs/plans/authorizations.monitor.json` (5 grants: `jobs.run_now` for 12 and 16, `bundle.deploy` for 12, 15, 16), commit `6c518b3`.
+* **IP access list:** Devin's egress IP `100.51.63.145` was blocked; the owner added `100.51.63.145/32` to the existing `lakeLoom` allow list (12 entries). **Remove it after build-0.**
+* **Setup bug:** Devin's setup run `177277883707674` hit `SETUP_SYNC_FAILED: the branch parameter is empty` (setup reads the job's branch default before it patches the job), so 0 grants applied. With owner approval, setup run `1041856491710971` pulled `99c5701 -> 6c518b3` and kept all 5 grants, 0 dropped. **genie-build-waves backlog:** read the branch from the manifest (or patch first) before syncing.
+* **Fresh run `1082430844509839`** (Devin repair 1 of 8): wave 0-6 PASS (session 12 registered the metric views; commit `769253e`). Wave 0-7 FAIL: session 13 blocked, no TPC-H Discover domain (domain creation opt-in), and 8 glossary titles collide with other teams' pages account-wide; session 14 pass (commit `6d3a68b`).
+* **Owner decision (2026-11-25): defer UC Pages to build 1.** On the owner's instruction Genie Code set `.build-status/1082430844509839/13.json` to `pass` with an `owner_decision` note (old blocking text kept). Devin repaired from `w0-7_integrate` (repair `461529330422462`, 2 of 8): wave 0-7 PASS, commit `9916891`.
+* **Wave 0-8 FAIL** (same repair): session 15 blocked before deploying. The agents bundle's `variable-overrides.json` `schema` (`dev_matthew_giglia_ontology_tpch`, chosen by Genie Code when writing the overrides) does not exist; the metric views are in `hls_fde_dev.dev_matthew_giglia_ontology` (template `schema_name` default is `ontology`). `agent_probe` failed; waves 0-9..0-10 excluded. Root cause: my overrides value. Pending owner decision.
+
+## SDK code review
+* Read-only review written to [docs/reviews/2026-11-25_build-0-sdk-review.md](../reviews/2026-11-25_build-0-sdk-review.md) (pytest not run).
+
 ## Files modified
 * `docs/plans/waves.json` (branch, authorization_policy)
+* `docs/reviews/2026-11-25_build-0-sdk-review.md` (new), `PROJECT_MEMORY.md` (review link)
 * `PROJECT_MEMORY.md` (status, executor, next steps, monitor decision)
 * this summary, `docs/sessions/INDEX.md`
 * outside the repo: `~/genie-build-waves-instances/genie-ontology-sdk.vars.json`

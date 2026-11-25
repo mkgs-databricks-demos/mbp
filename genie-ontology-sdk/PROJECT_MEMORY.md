@@ -13,6 +13,7 @@ A developer toolkit that automates the standup of modeled knowledge for Genie On
 * Build-0 = build the reusable SDK, then dogfood it end to end on `samples.tpch` into `examples/tpch/`. 11 waves (`0-0`..`0-10`), 19 sessions, hybrid workflow. `validate_manifest`: 0 errors, 0 warnings, 100 job tasks.
 * **Manual prerequisite before wave 0-3 (done 2026-11-24):** the owner writes the gitignored `examples/tpch/ontology-metric-views/.databricks/bundle/dev/variable-overrides.json` (`catalog`, `warehouse_id`) and `examples/tpch/ontology-genie-agents/.databricks/bundle/dev/variable-overrides.json` (`catalog`, `schema` = dev-prefixed metric view schema, `warehouse_id`, `curator_group`). Workspace-specific values never go in committed files.
 * History: see [docs/sessions/INDEX.md](docs/sessions/INDEX.md).
+* Code review of the build-0 SDK (best practices, genie-build-waves coupling, customer path, prioritized improvements incl. Unity Gateway skills publishing): [docs/reviews/2026-11-25_build-0-sdk-review.md](docs/reviews/2026-11-25_build-0-sdk-review.md).
 
 ## Layout
 
