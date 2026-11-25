@@ -1,15 +1,19 @@
 {
   "version": 1,
-  "description": "Genie Ontology Modeled Knowledge SDK build-0: build the reusable SDK (library, skills, bundle templates, run kit, init tool), then dogfood it end to end on samples.tpch into examples/tpch/.",
+  "description": "Genie Ontology Modeled Knowledge SDK. Build-0 (archived): build the reusable SDK and dogfood it on samples.tpch into examples/tpch/. Build-1: CI, library fixes, wheel, reconciled and published skills, run kit and guided notebook, exhaustive MV-first tuning of the TPC-H agent until accuracy flattens, an independent report simulation, then the customer path on a second domain.",
   "workflow": {
     "mode": "hybrid"
   },
-  "branch": "mg-genie-ontology-modeled-knowledge-sdk",
+  "branch": "mg-genie-ontology-build-1-plan",
   "bundle_target": "dev",
   "authorization_policy": {
     "monitor_may_authorize": [
       {"action": "jobs.run_now", "scope": "owned_assets"},
-      {"action": "bundle.deploy", "scope": "owned_assets"}
+      {"action": "bundle.deploy", "scope": "owned_assets"},
+      {"action": "volume.write", "scope": "owned_assets"},
+      {"action": "workspace.write", "scope": "owned_assets"},
+      {"action": "sql.ddl", "scope": "owned_assets"},
+      {"action": "uc_skills.publish", "scope": "owned_assets"}
     ]
   },
   "status_dir": ".build-status",
@@ -17,7 +21,9 @@
   "sessions_dir": "docs/sessions",
   "context_files": [
     "PROJECT_MEMORY.md",
-    "docs/plans/INDEX.md",
+    "docs/plans/build-1/INDEX.md",
+    "docs/plans/build-1/REQUESTS.md",
+    "docs/build-0-observations.md",
     "docs/design/L100-genie-ontology-modeled-knowledge-sdk.md",
     "docs/research/metric-view-cicd-best-practices.md",
     "docs/research/genie-agent-api-deployment.md",
@@ -28,6 +34,7 @@
     {
       "wave_id": "0-0",
       "build": "0",
+      "archived": true,
       "name": "Foundation",
       "gate": [
         "All session status files have status pass",
@@ -59,6 +66,7 @@
     {
       "wave_id": "0-1",
       "build": "0",
+      "archived": true,
       "name": "Core Libraries & Skills",
       "gate": [
         "All session status files have status pass",
@@ -146,6 +154,7 @@
     {
       "wave_id": "0-2",
       "build": "0",
+      "archived": true,
       "name": "Bundle Templates & Run Kit",
       "gate": [
         "All session status files have status pass",
@@ -202,6 +211,7 @@
     {
       "wave_id": "0-3",
       "build": "0",
+      "archived": true,
       "name": "Init Tool & TPC-H Scaffold",
       "manual_prereqs": [
         {
@@ -246,6 +256,7 @@
     {
       "wave_id": "0-4",
       "build": "0",
+      "archived": true,
       "name": "Dogfood Discovery",
       "gate": [
         "All session status files have status pass",
@@ -284,6 +295,7 @@
     {
       "wave_id": "0-5",
       "build": "0",
+      "archived": true,
       "name": "Dogfood Metric View Synthesis",
       "gate": [
         "All session status files have status pass",
@@ -313,6 +325,7 @@
     {
       "wave_id": "0-6",
       "build": "0",
+      "archived": true,
       "name": "Dogfood Metric View Registration",
       "timeout_minutes": 120,
       "gate": [
@@ -350,6 +363,7 @@
     {
       "wave_id": "0-7",
       "build": "0",
+      "archived": true,
       "name": "Dogfood UC Pages & Agent Curation",
       "gate": [
         "Session 14 has status pass; session 13 has status pass, or blocked only because UC Pages writes were refused to the job task (the refusal and the owner command are in its summary)",
@@ -392,6 +406,7 @@
     {
       "wave_id": "0-8",
       "build": "0",
+      "archived": true,
       "name": "Dogfood Genie Agent Deployment",
       "timeout_minutes": 120,
       "gate": [
@@ -426,6 +441,7 @@
     {
       "wave_id": "0-9",
       "build": "0",
+      "archived": true,
       "name": "Dogfood Benchmark & Tuning",
       "timeout_minutes": 150,
       "gate": [
@@ -462,6 +478,7 @@
     {
       "wave_id": "0-10",
       "build": "0",
+      "archived": true,
       "name": "Build-0 Documentation",
       "gate": [
         "All session status files have status pass",
@@ -485,6 +502,914 @@
             "docs/design/L100-genie-ontology-modeled-knowledge-sdk.md"
           ],
           "depends_on": ["16"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-0",
+      "build": "1",
+      "name": "CI & Dependency Floor",
+      "manual_prereqs": [
+        {
+          "session_id": "P1-1",
+          "title": "Owner points the genie-build-waves instance at the renamed folder (vars file build_root and manifest_path), redeploys it from the web terminal with scripts/deploy_instance.py, and runs setup for this manifest",
+          "plan_file": "build-1/INDEX.md",
+          "done_when": "The build job's build_root parameter default ends with /genie-ontology-modeled-knowledge-sdk and its branch default equals the manifest branch"
+        },
+        {
+          "session_id": "P1-2",
+          "title": "Owner writes the gitignored .local/build-1.json under build_root with skills_catalog, skills_schema, scratch_schema (catalog.schema) and pages_domain_id, and creates the scratch schema (used by session 25 in wave 1-2)",
+          "plan_file": "build-1/INDEX.md",
+          "done_when": ".local/build-1.json exists, parses as JSON with the four keys, git check-ignore succeeds for it, and its scratch_schema appears in information_schema.schemata"
+        }
+      ],
+      "gate": [
+        "All session status files have status pass",
+        "pytest from a /tmp copy: cp -r <build_root> /tmp/gos-gate-1-0 && cd /tmp/gos-gate-1-0 && pip install -q pyyaml jsonschema pytest && GENIE_BUILD_WAVES_DIR=<build_root>/../genie-build-waves python -m pytest -q; report as check 'pytest'",
+        "In that pytest run tests/test_run_kit.py ran its validate_manifest test (not skipped); report as check 'run_kit_not_skipped'",
+        "From the /tmp copy: pip install -q ruff mypy && ruff check . && ruff format --check .; report as check 'ruff'",
+        "From the /tmp copy: mypy src exits 0 with the pyproject.toml configuration; report as check 'mypy'",
+        "ci/github/workflows/genie-ontology-modeled-knowledge-sdk-ci.yml parses as YAML and has lint, typecheck, test (databricks-sdk floor and latest) and bundle-validate jobs"
+      ],
+      "required_checks": ["pytest", "run_kit_not_skipped", "ruff", "mypy"],
+      "sessions": [
+        {
+          "session_id": "18",
+          "title": "CI, Lint/Type Config & databricks-sdk Floor (R5, R7)",
+          "plan_file": "build-1/18_ci_and_sdk_floor.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-1/18: ruff + mypy config in pyproject.toml and fixes, databricks-sdk floor and upper bound, tests/test_sdk_services.py, the staged CI workflow under ci/github/workflows/. No Git commands.",
+          "owned_paths": [
+            "pyproject.toml",
+            "src/genie_ontology_modeled_knowledge_sdk/**",
+            "tests/**",
+            "ci/**"
+          ],
+          "depends_on": ["17"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-1",
+      "build": "1",
+      "name": "Library & Template Defects, Benchmark Library",
+      "gate": [
+        "All session status files have status pass",
+        "pytest from a /tmp copy (same command as wave 1-0, directory /tmp/gos-gate-1-1); report as check 'pytest'",
+        "ruff check and mypy src pass in the /tmp copy; report as check 'lint'",
+        "tests cover 29, 30, 31 and 50 metric views producing agents that all pass validate_space; a fake pages client test shows a same-title page in another domain is never updated and a live upsert without domain_id writes nothing; report as check 'r4_tests'",
+        "In a /tmp copy of templates/ontology-metric-views with scratch overrides that omit consumer_group, bundle validate --strict --target dev fails with a message naming consumer_group; report as check 'consumer_group_required'"
+      ],
+      "validate_bundles": [
+        {"root": "templates/ontology-metric-views", "target": "dev"}
+      ],
+      "required_checks": ["pytest", "lint", "r4_tests", "consumer_group_required"],
+      "sessions": [
+        {
+          "session_id": "19",
+          "title": "Agent Config Fixes: Split Limit, Render Params/Check, Space Benchmarks (R4.1, R4.4)",
+          "plan_file": "build-1/19_geniespace_and_config.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-1/19: geniespace split at min(max_per_agent, 30), real subdomains in write_domain_manifest, render_text helper, render --params <resolved_target.json> and --check, benchmarks section in build_space/validate_space (max 500), config warning above 30. No Git commands.",
+          "owned_paths": [
+            "src/genie_ontology_modeled_knowledge_sdk/geniespace.py",
+            "src/genie_ontology_modeled_knowledge_sdk/config.py",
+            "tests/test_geniespace.py",
+            "tests/test_config.py",
+            "tests/fixtures/geniespace/**"
+          ],
+          "depends_on": ["18"]
+        },
+        {
+          "session_id": "20",
+          "title": "Pages: Domain-Scoped Upserts, Drafts, Bulk Terms (R4.2)",
+          "plan_file": "build-1/20_pages_domain_scoped.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-1/20: pages.upsert_pages requires domain_id for live runs and matches titles only in that domain, DRAFT status option and created-id report, dry-run collision report, link-safe description truncation, write_terms bulk helper. Mocked tests only, no live API writes.",
+          "owned_paths": [
+            "src/genie_ontology_modeled_knowledge_sdk/pages.py",
+            "tests/test_pages.py",
+            "tests/fixtures/glossary/**"
+          ],
+          "depends_on": ["18"]
+        },
+        {
+          "session_id": "21",
+          "title": "Templates & Scaffold: Required consumer_group, Resolved Target (R4.3, R4.4)",
+          "plan_file": "build-1/21_templates_and_scaffold.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-1/21: no consumer_group default in both templates, optional warehouse_id, targets.py (resolve_target from bundle summary, resolved_target.json contract), registration notebook exits with the resolved target, scaffold renders schema_name from target_schema and stops copying the placeholder agent. bundle validate only, no deploy.",
+          "owned_paths": [
+            "templates/ontology-metric-views/**",
+            "templates/ontology-genie-agents/**",
+            "src/genie_ontology_modeled_knowledge_sdk/scaffold.py",
+            "src/genie_ontology_modeled_knowledge_sdk/targets.py",
+            "tests/test_template_mv_bundle.py",
+            "tests/test_template_agent_bundle.py",
+            "tests/test_scaffold.py",
+            "tests/test_targets.py"
+          ],
+          "depends_on": ["18"]
+        },
+        {
+          "session_id": "22",
+          "title": "Benchmark Library for Exhaustive Tuning",
+          "plan_file": "build-1/22_benchmark_library.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-1/22: benchmark.py question-set loading from a folder, coverage matrix, holdout split, unit_mismatch scoring, to_space_benchmarks, run_eval over the Genie eval-runs API with the run_benchmark fallback (bounded concurrency, 429 backoff), accuracy history and the asymptote rule. Mocked tests only.",
+          "owned_paths": [
+            "src/genie_ontology_modeled_knowledge_sdk/benchmark.py",
+            "tests/test_benchmark.py",
+            "tests/fixtures/benchmark/**"
+          ],
+          "depends_on": ["18"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-2",
+      "build": "1",
+      "name": "Wheel & Reconciled Skills",
+      "gate": [
+        "All session status files have status pass",
+        "pytest from a /tmp copy (same command as wave 1-0, directory /tmp/gos-gate-1-2); report as check 'pytest'",
+        "In the /tmp copy: python -m pip wheel --no-deps -w dist . builds genie_ontology_modeled_knowledge_sdk-0.1.0-py3-none-any.whl; installing it in a fresh venv gives working gos-check-config, gos-validate-mv, gos-build-manifest, gos-render-agents and gos-scaffold (--help exits 0); report as check 'wheel'",
+        "grep finds no sys.path manipulation in notebooks/ and templates/, and no PYTHONPATH=...vendored form in skills/ or templates/; report as check 'no_vendored_paths'",
+        "Every skills/ontology-*/SKILL.md has front matter name equal to its folder and a description that names the Genie Ontology Modeled Knowledge SDK stage; skills/README.md lists all six with stage, platform skills relied on and precedence; report as check 'skills_reconciled'"
+      ],
+      "validate_bundles": [
+        {"root": "templates/ontology-metric-views", "target": "dev"}
+      ],
+      "required_checks": ["pytest", "wheel", "no_vendored_paths", "skills_reconciled"],
+      "sessions": [
+        {
+          "session_id": "23",
+          "title": "Wheel, Entry Points & Versioning (R2)",
+          "plan_file": "build-1/23_wheel.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-1/23: version 0.1.0 from one source, CHANGELOG.md, gos-* entry points, wheel build, metric-views template installs the wheel from a bundle-managed sdk_wheels volume (sdk_wheel variable), scaffold vendor flag with VENDORED_VERSION and drift test, init notebook installs the wheel. No deploy.",
+          "owned_paths": [
+            "pyproject.toml",
+            "CHANGELOG.md",
+            "src/genie_ontology_modeled_knowledge_sdk/__init__.py",
+            "src/genie_ontology_modeled_knowledge_sdk/scaffold.py",
+            "templates/ontology-metric-views/**",
+            "notebooks/init_ontology_project.ipynb",
+            "tests/test_wheel.py",
+            "tests/test_scaffold.py",
+            "tests/test_template_mv_bundle.py",
+            "ci/github/workflows/genie-ontology-modeled-knowledge-sdk-ci.yml"
+          ],
+          "depends_on": ["21"]
+        },
+        {
+          "session_id": "24",
+          "title": "Discovery Skills: Reconcile & Close Gaps (R8)",
+          "plan_file": "build-1/24_discovery_skills.md",
+          "mode": "edit",
+          "scope": "All tasks in plan build-1/24: ontology-domain-research, ontology-context-extraction and ontology-deep-eda reconciled with platform skills and fixed for build-0 observations 1-15 (bulk term writes via pages.write_terms).",
+          "owned_paths": [
+            "skills/ontology-domain-research/**",
+            "skills/ontology-context-extraction/**",
+            "skills/ontology-deep-eda/**"
+          ],
+          "depends_on": ["20"]
+        },
+        {
+          "session_id": "25",
+          "title": "Synthesis & Curation Skills: Reconcile, Verify Patterns on the Platform (R8)",
+          "plan_file": "build-1/25_synthesis_curation_skills.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-1/25: ontology-mv-synthesis and ontology-agent-curation reconciled with the platform metric-views skill and fixed for build-0 observations 16-20, 23, 26, 27; share-of-total, nested-join and FILTER patterns verified by registering scratch metric views. Create views only in the scratch schema, drop nothing.",
+          "owned_paths": [
+            "skills/ontology-mv-synthesis/**",
+            "skills/ontology-agent-curation/**",
+            "docs/research/platform-pattern-checks.md"
+          ],
+          "owned_assets": [
+            "metric views in the build-1 scratch schema (scratch_schema in .local/build-1.json)"
+          ],
+          "authorizations": [
+            {"action": "sql.ddl", "target": "metric views in the build-1 scratch schema (scratch_schema in .local/build-1.json)", "reason": "plan 25: CREATE OR REPLACE VIEW ... WITH METRICS for pattern checks; no DROP"}
+          ],
+          "depends_on": ["19"]
+        },
+        {
+          "session_id": "26",
+          "title": "Exhaustive Tuning Protocol Skill & Skills Index (R8)",
+          "plan_file": "build-1/26_tuning_skill.md",
+          "mode": "edit",
+          "scope": "All tasks in plan build-1/26: rewrite ontology-tuning for the exhaustive protocol (100-498 questions, coverage, holdout, MV-first ladder, at least 3 tuning plans, asymptote stop, independent report simulation), docs/design/tuning-protocol.md, and skills/README.md.",
+          "owned_paths": [
+            "skills/ontology-tuning/**",
+            "skills/README.md",
+            "docs/design/tuning-protocol.md"
+          ],
+          "depends_on": ["22"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-3",
+      "build": "1",
+      "name": "Skills Publishing",
+      "manual_prereqs": [
+        {
+          "session_id": "P1-3",
+          "title": "Owner enables the Unity Gateway skills previews, creates the skills schema named in .local/build-1.json and grants the build identity USE CATALOG, USE SCHEMA, CREATE VOLUME, READ VOLUME and WRITE VOLUME on it",
+          "plan_file": "build-1/27_skills_publishing.md",
+          "done_when": "The schema skills_catalog.skills_schema from .local/build-1.json exists in information_schema.schemata"
+        }
+      ],
+      "gate": [
+        "All session status files have status pass",
+        "pytest from a /tmp copy (same command as wave 1-0, directory /tmp/gos-gate-1-3), including tests/test_skills.py for all six skills; report as check 'pytest'",
+        "docs/skills/publish_results.md shows two publish_skills runs in this build run, the second with 0 changes, and a listing of the skills schema with six SDK skill ids; report as check 'skills_published'",
+        "The session summary records whether this unattended job task could load a Unity Catalog skill (the R1 spike), and the workspace-folder fallback is documented"
+      ],
+      "required_checks": ["pytest", "skills_published"],
+      "sessions": [
+        {
+          "session_id": "27",
+          "title": "Publish SDK Skills to the Unity Gateway Skills Library (R1)",
+          "plan_file": "build-1/27_skills_publishing.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-1/27: ci/skills.yaml mapping, staged publish workflow, skills_publish.py + notebooks/publish_skills (create -> upload -> finalize, idempotent), sdk_config skills key, scaffold records the skills location, tests/test_skills.py, then publish the six skills twice and record docs/skills/publish_results.md.",
+          "owned_paths": [
+            "ci/skills.yaml",
+            "ci/github/workflows/publish-genie-ontology-skills.yml",
+            "notebooks/publish_skills.ipynb",
+            "src/genie_ontology_modeled_knowledge_sdk/skills_publish.py",
+            "src/genie_ontology_modeled_knowledge_sdk/config.py",
+            "src/genie_ontology_modeled_knowledge_sdk/schemas/**",
+            "src/genie_ontology_modeled_knowledge_sdk/scaffold.py",
+            "tests/test_skills.py",
+            "tests/test_skills_publish.py",
+            "docs/skills/**"
+          ],
+          "owned_assets": [
+            "SDK skills in the Unity Catalog skills schema (skills_catalog.skills_schema in .local/build-1.json)"
+          ],
+          "authorizations": [
+            {"action": "uc_skills.publish", "target": "SDK skills in the Unity Catalog skills schema (skills_catalog.skills_schema in .local/build-1.json)", "reason": "plan 27: create, upload and finalize the six ontology-* skills (twice, idempotency check)"}
+          ],
+          "depends_on": ["23", "24", "25", "26"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-4",
+      "build": "1",
+      "name": "Run Kit & Guided Setup Notebook",
+      "gate": [
+        "All session status files have status pass",
+        "pytest from a /tmp copy (same command as wave 1-0, directory /tmp/gos-gate-1-4); report as check 'pytest'",
+        "A run kit rendered by scaffold_project into /tmp has validate_manifest and validate_authorizations with 0 errors and 0 warnings; report as check 'run_kit_validate'",
+        "test_run_kit.py fails on a deliberately broken copy (no top-level branch, or a deploying session without bundle.deploy); report as check 'run_kit_negative'",
+        "setup_project writes both overrides files with matching catalog and schema for a /tmp scratch project, a second run changes nothing, and notebooks/init_ontology_project.ipynb has empty required widget defaults; report as check 'guided_setup'"
+      ],
+      "required_checks": ["pytest", "run_kit_validate", "run_kit_negative", "guided_setup"],
+      "sessions": [
+        {
+          "session_id": "28",
+          "title": "Run Kit Fixes & Exhaustive Tuning Waves (R3)",
+          "plan_file": "build-1/28_run_kit.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-1/28: {{branch}} token, authorization_policy and explicit bundle.deploy / jobs.run_now approvals per deploying session, Pages manual_prereqs and pages_domain_id, soft accuracy gates, skills by Unity Catalog id, agents schema from resolved_target.json, the exhaustive tuning and report-simulation waves, tests/test_run_kit.py.",
+          "owned_paths": [
+            "templates/run/**",
+            "src/genie_ontology_modeled_knowledge_sdk/scaffold.py",
+            "src/genie_ontology_modeled_knowledge_sdk/config.py",
+            "src/genie_ontology_modeled_knowledge_sdk/schemas/**",
+            "tests/test_run_kit.py",
+            "tests/test_config.py"
+          ],
+          "depends_on": ["27"]
+        },
+        {
+          "session_id": "29",
+          "title": "Guided Setup Notebook (R6)",
+          "plan_file": "build-1/29_guided_setup.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-1/29: setup_project.py (prerequisite checks, overrides writer, vars-file writer, checklist), notebooks/init_ontology_project with empty widgets and an example dropdown, docs/usage.md. Write only inside /tmp scratch projects when testing.",
+          "owned_paths": [
+            "notebooks/init_ontology_project.ipynb",
+            "src/genie_ontology_modeled_knowledge_sdk/setup_project.py",
+            "tests/test_setup_project.py",
+            "docs/usage.md"
+          ],
+          "depends_on": ["27"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-5",
+      "build": "1",
+      "name": "TPC-H Metric View Refresh & Re-registration",
+      "timeout_minutes": 120,
+      "manual_prereqs": [
+        {
+          "session_id": "P1-4",
+          "title": "Owner adds consumer_group to both gitignored TPC-H variable-overrides.json files and confirms the agents schema equals the metric-views dev schema",
+          "plan_file": "build-1/30_tpch_mv_refresh.md",
+          "done_when": "Both examples/tpch/*/.databricks/bundle/dev/variable-overrides.json files parse as JSON, contain consumer_group, and are untracked"
+        },
+        {
+          "session_id": "P1-5",
+          "title": "Owner deletes the unreferenced placeholder examples/tpch/ontology-genie-agents/agents/ontology_agent.geniespace.json on the build branch (sessions cannot delete files)",
+          "plan_file": "build-1/30_tpch_mv_refresh.md",
+          "done_when": "The placeholder file is not in git ls-files on the build branch"
+        }
+      ],
+      "gate": [
+        "All session status files have status pass",
+        "The dogfood register_metric_views job (examples/tpch/ontology-metric-views, target dev; find it with bundle summary) has a run that started after this build run started and ended SUCCESS; report as check 'registration_job'",
+        "examples/tpch/docs/registration/registration_results.md lists every manifest.json entry as registered with smoke pass and cardinality pass, and the job installed the SDK from the wheel (not a vendored copy); report as check 'mv_smoke'",
+        "examples/tpch/docs/registration/resolved_target.json exists, and its catalog.schema appears in information_schema.schemata with all 7 metric views; report as check 'resolved_target'",
+        "No genie_ontology_modeled_knowledge_sdk_vendored folder remains under examples/tpch/"
+      ],
+      "validate_bundles": [
+        {"root": "examples/tpch/ontology-metric-views", "target": "dev"}
+      ],
+      "required_checks": ["registration_job", "mv_smoke", "resolved_target"],
+      "sessions": [
+        {
+          "session_id": "30",
+          "title": "TPC-H Metric Views on the Wheel, Ratio Units, Re-registration",
+          "plan_file": "build-1/30_tpch_mv_refresh.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "scope": "All tasks in plan build-1/30: move examples/tpch/ontology-metric-views to the build-1 template (wheel, sdk_wheels volume, required consumer_group), fix Return Rate units (observation 30), deploy to dev, upload the wheel, run register_metric_views until all views pass smoke + cardinality (max 4 attempts), write registration_results.md and resolved_target.json. Deploy only this bundle.",
+          "owned_paths": [
+            "examples/tpch/ontology-metric-views/**",
+            "examples/tpch/docs/registration/**"
+          ],
+          "exclude_paths": [
+            "examples/tpch/**/.databricks/**"
+          ],
+          "owned_assets": [
+            "bundle:examples/tpch/ontology-metric-views (target dev)",
+            "register_metric_views job of examples/tpch/ontology-metric-views (target dev)",
+            "sdk_wheels volume of examples/tpch/ontology-metric-views (target dev)"
+          ],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:examples/tpch/ontology-metric-views (target dev)", "reason": "plan 30: bundle deploy -t dev of the dogfood metric-views bundle"},
+            {"action": "jobs.run_now", "target": "register_metric_views job of examples/tpch/ontology-metric-views (target dev)", "reason": "plan 30: bundle run register_metric_views -t dev (registration, smoke, cardinality)"},
+            {"action": "volume.write", "target": "sdk_wheels volume of examples/tpch/ontology-metric-views (target dev)", "reason": "plan 30: upload the 0.1.0 wheel the registration job installs"}
+          ],
+          "depends_on": ["28", "29"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-6",
+      "build": "1",
+      "name": "TPC-H Draft Pages & Benchmark Authoring",
+      "timeout_minutes": 120,
+      "gate": [
+        "Sessions 32, 33 and 34 have status pass; session 31 has status pass, or blocked only because Pages writes were refused to the job task (refusal text and the owner command in its summary)",
+        "examples/tpch/docs/pages/pages_registration.md has one row per glossary term with the page id, status DRAFT and the domain recorded only as 'development domain'; a second upsert reported 0 changes; report as check 'pages_drafts'",
+        "genie_ontology_modeled_knowledge_sdk.benchmark.coverage over examples/tpch/docs/tuning/benchmark/*.yml and the 7 metric view YAMLs passes: 100-498 questions, at least 12 per metric view, every measure and dimension at least once, at least 25% cross-view; report as check 'benchmark_coverage'",
+        "Every question has expected_sql, and each authoring session's notes file lists every question id with statement state SUCCEEDED; report as check 'expected_sql_runs'"
+      ],
+      "required_checks": ["benchmark_coverage", "expected_sql_runs"],
+      "sessions": [
+        {
+          "session_id": "31",
+          "title": "TPC-H Glossary as Draft UC Pages (Development Domain)",
+          "plan_file": "build-1/31_tpch_draft_pages.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-1/31: dry run, then upsert the TPC-H glossary as DRAFT pages in the development domain from .local/build-1.json, record every created page id, idempotency re-run. Never update or delete pages that this build did not create; never create domains.",
+          "owned_paths": [
+            "examples/tpch/docs/pages/**"
+          ],
+          "owned_assets": [
+            "DRAFT UC Pages for the TPC-H glossary in the development Discover domain (pages_domain_id in .local/build-1.json)"
+          ],
+          "authorizations": [
+            {"action": "workspace.write", "target": "DRAFT UC Pages for the TPC-H glossary in the development Discover domain (pages_domain_id in .local/build-1.json)", "reason": "plan 31: create or update DRAFT pages for the 23 TPC-H terms only"}
+          ],
+          "depends_on": ["20", "30"]
+        },
+        {
+          "session_id": "32",
+          "title": "Benchmark Questions: Sales Views",
+          "plan_file": "build-1/32_benchmark_sales.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-1/32: at least 15 questions per view for orders, revenue and market_share with tokenized expected_sql, each run read-only. Write only the owned files.",
+          "owned_paths": [
+            "examples/tpch/docs/tuning/benchmark/sales.yml",
+            "examples/tpch/docs/tuning/benchmark/sales_notes.md"
+          ],
+          "depends_on": ["22", "30"]
+        },
+        {
+          "session_id": "33",
+          "title": "Benchmark Questions: Fulfillment & Procurement Views",
+          "plan_file": "build-1/33_benchmark_fulfillment_procurement.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-1/33: at least 15 questions per view for fulfillment, returns, profit and supply_cost with tokenized expected_sql, each run read-only. Write only the owned files.",
+          "owned_paths": [
+            "examples/tpch/docs/tuning/benchmark/fulfillment_procurement.yml",
+            "examples/tpch/docs/tuning/benchmark/fulfillment_procurement_notes.md"
+          ],
+          "depends_on": ["22", "30"]
+        },
+        {
+          "session_id": "34",
+          "title": "Benchmark Questions: Cross-View",
+          "plan_file": "build-1/34_benchmark_cross_view.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-1/34: at least 60 questions that need two or more metric views (every view pair with a business meaning), tokenized expected_sql, each run read-only. Write only the owned files.",
+          "owned_paths": [
+            "examples/tpch/docs/tuning/benchmark/cross_view.yml",
+            "examples/tpch/docs/tuning/benchmark/cross_view_notes.md"
+          ],
+          "depends_on": ["22", "30"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-7",
+      "build": "1",
+      "name": "Tuning Baseline",
+      "timeout_minutes": 180,
+      "gate": [
+        "All session status files have status pass",
+        "examples/tpch/docs/tuning/accuracy_history.json has a baseline entry from an evaluation that started after this build run started, with tuning and holdout accuracy; report as check 'baseline_results'",
+        "examples/tpch/docs/tuning/tuning_plan_01.md classifies every failed tuning-split question with one category and a ladder step, and never cites a holdout question; report as check 'tuning_plan_01'",
+        "The agent was rendered with geniespace render --params examples/tpch/docs/registration/resolved_target.json --check, and every agent file passes validate_space"
+      ],
+      "required_checks": ["baseline_results", "tuning_plan_01"],
+      "sessions": [
+        {
+          "session_id": "35",
+          "title": "TPC-H Benchmarks in the Agent & Baseline Evaluation",
+          "plan_file": "build-1/35_tuning_baseline.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "scope": "All tasks in plan build-1/35: load the benchmark set (tuning + holdout, max 498) into the agent file, render from resolved_target.json with --check, deploy the agents bundle to dev, run the baseline evaluation, score both splits, write accuracy_history.json, iterations/00_baseline.md and tuning_plan_01.md. Deploy only the agents bundle.",
+          "owned_paths": [
+            "examples/tpch/ontology-genie-agents/**",
+            "examples/tpch/docs/tuning/**",
+            "examples/tpch/docs/deployment/**"
+          ],
+          "exclude_paths": [
+            "examples/tpch/**/.databricks/**",
+            "examples/tpch/docs/tuning/benchmark/**"
+          ],
+          "owned_assets": [
+            "bundle:examples/tpch/ontology-genie-agents (target dev)"
+          ],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:examples/tpch/ontology-genie-agents (target dev)", "reason": "plan 35: deploy the agent with its benchmark questions"}
+          ],
+          "depends_on": ["31", "32", "33", "34"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-8",
+      "build": "1",
+      "name": "Tuning Iteration 1",
+      "timeout_minutes": 180,
+      "gate": [
+        "All session status files have status pass",
+        "examples/tpch/docs/tuning/tuning_plan_01.md is marked applied, with an outcome for every action; examples/tpch/docs/tuning/iterations/01.md and a new accuracy_history.json entry exist from an evaluation that started after this build run started; report as check 'iteration_01'",
+        "examples/tpch/docs/tuning/tuning_plan_02.md exists; report as check 'next_plan'",
+        "Every change to an agent instruction or example SQL since the baseline has an exhaustion record in the tuning plans (all metric view and UC semantic ladder steps tried for that failure); report as check 'mv_first'",
+        "If any metric view YAML changed, the register_metric_views job has a SUCCESS run that started after the change; mv_yaml validate exits 0"
+      ],
+      "validate_bundles": [
+        {"root": "examples/tpch/ontology-metric-views", "target": "dev"}
+      ],
+      "required_checks": ["iteration_01", "next_plan", "mv_first"],
+      "sessions": [
+        {
+          "session_id": "36",
+          "title": "Tuning Iteration 1 (MV-First)",
+          "plan_file": "build-1/36-41_tuning_iteration.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "timeout_minutes": 180,
+          "scope": "Iteration k=1 of plan build-1/36-41: apply tuning_plan_01.md (metric view and UC semantic fixes first), validate, re-register (bundle run register_metric_views), redeploy the agent only if its file changed, re-evaluate both splits, write iterations/01.md, the accuracy_history.json entry and tuning_plan_02.md. Mandatory iteration.",
+          "owned_paths": [
+            "examples/tpch/ontology-metric-views/metric_views/**",
+            "examples/tpch/ontology-genie-agents/agents/**",
+            "examples/tpch/docs/semantics/**",
+            "examples/tpch/docs/pages/**",
+            "examples/tpch/docs/tuning/**"
+          ],
+          "exclude_paths": [
+            "examples/tpch/docs/tuning/benchmark/**"
+          ],
+          "owned_assets": [
+            "bundle:examples/tpch/ontology-metric-views (target dev)",
+            "register_metric_views job of examples/tpch/ontology-metric-views (target dev)",
+            "bundle:examples/tpch/ontology-genie-agents (target dev)",
+            "DRAFT UC Pages for the TPC-H glossary in the development Discover domain (pages_domain_id in .local/build-1.json)"
+          ],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:examples/tpch/ontology-metric-views (target dev)", "reason": "tuning: redeploy changed metric view YAML"},
+            {"action": "jobs.run_now", "target": "register_metric_views job of examples/tpch/ontology-metric-views (target dev)", "reason": "tuning: re-register changed metric views"},
+            {"action": "bundle.deploy", "target": "bundle:examples/tpch/ontology-genie-agents (target dev)", "reason": "tuning: redeploy the agent after a justified change"},
+            {"action": "workspace.write", "target": "DRAFT UC Pages for the TPC-H glossary in the development Discover domain (pages_domain_id in .local/build-1.json)", "reason": "tuning ladder step: update a glossary page this build created"}
+          ],
+          "depends_on": ["35"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-9",
+      "build": "1",
+      "name": "Tuning Iteration 2",
+      "timeout_minutes": 180,
+      "gate": [
+        "All session status files have status pass",
+        "examples/tpch/docs/tuning/tuning_plan_02.md is marked applied, with an outcome for every action; examples/tpch/docs/tuning/iterations/02.md and a new accuracy_history.json entry exist from an evaluation that started after this build run started; report as check 'iteration_02'",
+        "examples/tpch/docs/tuning/tuning_plan_03.md exists; report as check 'next_plan'",
+        "Every change to an agent instruction or example SQL since the baseline has an exhaustion record in the tuning plans; report as check 'mv_first'",
+        "If any metric view YAML changed, the register_metric_views job has a SUCCESS run that started after the change; mv_yaml validate exits 0"
+      ],
+      "validate_bundles": [
+        {"root": "examples/tpch/ontology-metric-views", "target": "dev"}
+      ],
+      "required_checks": ["iteration_02", "next_plan", "mv_first"],
+      "sessions": [
+        {
+          "session_id": "37",
+          "title": "Tuning Iteration 2 (MV-First)",
+          "plan_file": "build-1/36-41_tuning_iteration.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "timeout_minutes": 180,
+          "scope": "Iteration k=2 of plan build-1/36-41: apply tuning_plan_02.md (metric view and UC semantic fixes first), validate, re-register (bundle run register_metric_views), redeploy the agent only if its file changed, re-evaluate both splits, write iterations/02.md, the accuracy_history.json entry and tuning_plan_03.md. Mandatory iteration.",
+          "owned_paths": [
+            "examples/tpch/ontology-metric-views/metric_views/**",
+            "examples/tpch/ontology-genie-agents/agents/**",
+            "examples/tpch/docs/semantics/**",
+            "examples/tpch/docs/pages/**",
+            "examples/tpch/docs/tuning/**"
+          ],
+          "exclude_paths": [
+            "examples/tpch/docs/tuning/benchmark/**"
+          ],
+          "owned_assets": [
+            "bundle:examples/tpch/ontology-metric-views (target dev)",
+            "register_metric_views job of examples/tpch/ontology-metric-views (target dev)",
+            "bundle:examples/tpch/ontology-genie-agents (target dev)",
+            "DRAFT UC Pages for the TPC-H glossary in the development Discover domain (pages_domain_id in .local/build-1.json)"
+          ],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:examples/tpch/ontology-metric-views (target dev)", "reason": "tuning: redeploy changed metric view YAML"},
+            {"action": "jobs.run_now", "target": "register_metric_views job of examples/tpch/ontology-metric-views (target dev)", "reason": "tuning: re-register changed metric views"},
+            {"action": "bundle.deploy", "target": "bundle:examples/tpch/ontology-genie-agents (target dev)", "reason": "tuning: redeploy the agent after a justified change"},
+            {"action": "workspace.write", "target": "DRAFT UC Pages for the TPC-H glossary in the development Discover domain (pages_domain_id in .local/build-1.json)", "reason": "tuning ladder step: update a glossary page this build created"}
+          ],
+          "depends_on": ["36"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-10",
+      "build": "1",
+      "name": "Tuning Iteration 3",
+      "timeout_minutes": 180,
+      "gate": [
+        "All session status files have status pass",
+        "examples/tpch/docs/tuning/tuning_plan_03.md is marked applied, with an outcome for every action; examples/tpch/docs/tuning/iterations/03.md and a new accuracy_history.json entry exist from an evaluation that started after this build run started; report as check 'iteration_03'",
+        "examples/tpch/docs/tuning/tuning_plan_04.md exists, or iterations/03.md records that the asymptote rule (benchmark.asymptote) is met; report as check 'next_plan'",
+        "Every change to an agent instruction or example SQL since the baseline has an exhaustion record in the tuning plans; report as check 'mv_first'",
+        "If any metric view YAML changed, the register_metric_views job has a SUCCESS run that started after the change; mv_yaml validate exits 0"
+      ],
+      "validate_bundles": [
+        {"root": "examples/tpch/ontology-metric-views", "target": "dev"}
+      ],
+      "required_checks": ["iteration_03", "next_plan", "mv_first"],
+      "sessions": [
+        {
+          "session_id": "38",
+          "title": "Tuning Iteration 3 (MV-First)",
+          "plan_file": "build-1/36-41_tuning_iteration.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "timeout_minutes": 180,
+          "scope": "Iteration k=3 of plan build-1/36-41: apply tuning_plan_03.md (metric view and UC semantic fixes first), validate, re-register (bundle run register_metric_views), redeploy the agent only if its file changed, re-evaluate both splits, write iterations/03.md and the accuracy_history.json entry, evaluate the asymptote rule, and write tuning_plan_04.md unless it is met. Mandatory iteration.",
+          "owned_paths": [
+            "examples/tpch/ontology-metric-views/metric_views/**",
+            "examples/tpch/ontology-genie-agents/agents/**",
+            "examples/tpch/docs/semantics/**",
+            "examples/tpch/docs/pages/**",
+            "examples/tpch/docs/tuning/**"
+          ],
+          "exclude_paths": [
+            "examples/tpch/docs/tuning/benchmark/**"
+          ],
+          "owned_assets": [
+            "bundle:examples/tpch/ontology-metric-views (target dev)",
+            "register_metric_views job of examples/tpch/ontology-metric-views (target dev)",
+            "bundle:examples/tpch/ontology-genie-agents (target dev)",
+            "DRAFT UC Pages for the TPC-H glossary in the development Discover domain (pages_domain_id in .local/build-1.json)"
+          ],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:examples/tpch/ontology-metric-views (target dev)", "reason": "tuning: redeploy changed metric view YAML"},
+            {"action": "jobs.run_now", "target": "register_metric_views job of examples/tpch/ontology-metric-views (target dev)", "reason": "tuning: re-register changed metric views"},
+            {"action": "bundle.deploy", "target": "bundle:examples/tpch/ontology-genie-agents (target dev)", "reason": "tuning: redeploy the agent after a justified change"},
+            {"action": "workspace.write", "target": "DRAFT UC Pages for the TPC-H glossary in the development Discover domain (pages_domain_id in .local/build-1.json)", "reason": "tuning ladder step: update a glossary page this build created"}
+          ],
+          "depends_on": ["37"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-11",
+      "build": "1",
+      "name": "Tuning Iteration 4 (until asymptote)",
+      "timeout_minutes": 180,
+      "gate": [
+        "All session status files have status pass",
+        "Either examples/tpch/docs/tuning/iterations/04.md records a full iteration (tuning_plan_04.md applied, new accuracy_history.json entry from an evaluation after this build run started, tuning_plan_05.md written unless the asymptote rule is met), or iterations/04.md records 'converged at iteration <j>' with the benchmark.asymptote output and no file outside docs/tuning changed; report as check 'iteration_04'",
+        "Every change to an agent instruction or example SQL since the baseline has an exhaustion record in the tuning plans; report as check 'mv_first'",
+        "If any metric view YAML changed, the register_metric_views job has a SUCCESS run that started after the change; mv_yaml validate exits 0"
+      ],
+      "validate_bundles": [
+        {"root": "examples/tpch/ontology-metric-views", "target": "dev"}
+      ],
+      "required_checks": ["iteration_04", "mv_first"],
+      "sessions": [
+        {
+          "session_id": "39",
+          "title": "Tuning Iteration 4 (Conditional, MV-First)",
+          "plan_file": "build-1/36-41_tuning_iteration.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "timeout_minutes": 180,
+          "scope": "Iteration k=4 of plan build-1/36-41: if benchmark.asymptote over accuracy_history.json is already met, write iterations/04.md 'converged at iteration <j>' and change nothing else; otherwise apply tuning_plan_04.md, re-register (bundle run register_metric_views), redeploy the agent only if its file changed, re-evaluate, write iterations/04.md, the history entry and tuning_plan_05.md unless the rule is now met.",
+          "owned_paths": [
+            "examples/tpch/ontology-metric-views/metric_views/**",
+            "examples/tpch/ontology-genie-agents/agents/**",
+            "examples/tpch/docs/semantics/**",
+            "examples/tpch/docs/pages/**",
+            "examples/tpch/docs/tuning/**"
+          ],
+          "exclude_paths": [
+            "examples/tpch/docs/tuning/benchmark/**"
+          ],
+          "owned_assets": [
+            "bundle:examples/tpch/ontology-metric-views (target dev)",
+            "register_metric_views job of examples/tpch/ontology-metric-views (target dev)",
+            "bundle:examples/tpch/ontology-genie-agents (target dev)",
+            "DRAFT UC Pages for the TPC-H glossary in the development Discover domain (pages_domain_id in .local/build-1.json)"
+          ],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:examples/tpch/ontology-metric-views (target dev)", "reason": "tuning: redeploy changed metric view YAML"},
+            {"action": "jobs.run_now", "target": "register_metric_views job of examples/tpch/ontology-metric-views (target dev)", "reason": "tuning: re-register changed metric views"},
+            {"action": "bundle.deploy", "target": "bundle:examples/tpch/ontology-genie-agents (target dev)", "reason": "tuning: redeploy the agent after a justified change"},
+            {"action": "workspace.write", "target": "DRAFT UC Pages for the TPC-H glossary in the development Discover domain (pages_domain_id in .local/build-1.json)", "reason": "tuning ladder step: update a glossary page this build created"}
+          ],
+          "depends_on": ["38"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-12",
+      "build": "1",
+      "name": "Tuning Iteration 5 (until asymptote)",
+      "timeout_minutes": 180,
+      "gate": [
+        "All session status files have status pass",
+        "Either examples/tpch/docs/tuning/iterations/05.md records a full iteration (tuning_plan_05.md applied, new accuracy_history.json entry from an evaluation after this build run started, tuning_plan_06.md written unless the asymptote rule is met), or iterations/05.md records 'converged at iteration <j>' with the benchmark.asymptote output and no file outside docs/tuning changed; report as check 'iteration_05'",
+        "Every change to an agent instruction or example SQL since the baseline has an exhaustion record in the tuning plans; report as check 'mv_first'",
+        "If any metric view YAML changed, the register_metric_views job has a SUCCESS run that started after the change; mv_yaml validate exits 0"
+      ],
+      "validate_bundles": [
+        {"root": "examples/tpch/ontology-metric-views", "target": "dev"}
+      ],
+      "required_checks": ["iteration_05", "mv_first"],
+      "sessions": [
+        {
+          "session_id": "40",
+          "title": "Tuning Iteration 5 (Conditional, MV-First)",
+          "plan_file": "build-1/36-41_tuning_iteration.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "timeout_minutes": 180,
+          "scope": "Iteration k=5 of plan build-1/36-41: if benchmark.asymptote over accuracy_history.json is already met, write iterations/05.md 'converged at iteration <j>' and change nothing else; otherwise apply tuning_plan_05.md, re-register (bundle run register_metric_views), redeploy the agent only if its file changed, re-evaluate, write iterations/05.md, the history entry and tuning_plan_06.md unless the rule is now met.",
+          "owned_paths": [
+            "examples/tpch/ontology-metric-views/metric_views/**",
+            "examples/tpch/ontology-genie-agents/agents/**",
+            "examples/tpch/docs/semantics/**",
+            "examples/tpch/docs/pages/**",
+            "examples/tpch/docs/tuning/**"
+          ],
+          "exclude_paths": [
+            "examples/tpch/docs/tuning/benchmark/**"
+          ],
+          "owned_assets": [
+            "bundle:examples/tpch/ontology-metric-views (target dev)",
+            "register_metric_views job of examples/tpch/ontology-metric-views (target dev)",
+            "bundle:examples/tpch/ontology-genie-agents (target dev)",
+            "DRAFT UC Pages for the TPC-H glossary in the development Discover domain (pages_domain_id in .local/build-1.json)"
+          ],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:examples/tpch/ontology-metric-views (target dev)", "reason": "tuning: redeploy changed metric view YAML"},
+            {"action": "jobs.run_now", "target": "register_metric_views job of examples/tpch/ontology-metric-views (target dev)", "reason": "tuning: re-register changed metric views"},
+            {"action": "bundle.deploy", "target": "bundle:examples/tpch/ontology-genie-agents (target dev)", "reason": "tuning: redeploy the agent after a justified change"},
+            {"action": "workspace.write", "target": "DRAFT UC Pages for the TPC-H glossary in the development Discover domain (pages_domain_id in .local/build-1.json)", "reason": "tuning ladder step: update a glossary page this build created"}
+          ],
+          "depends_on": ["39"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-13",
+      "build": "1",
+      "name": "Tuning Iteration 6 & Asymptote Gate",
+      "timeout_minutes": 180,
+      "gate": [
+        "All session status files have status pass",
+        "Either examples/tpch/docs/tuning/iterations/06.md records a full iteration (tuning_plan_06.md applied, new accuracy_history.json entry from an evaluation after this build run started) or 'converged at iteration <j>'; report as check 'iteration_06'",
+        "benchmark.asymptote over examples/tpch/docs/tuning/accuracy_history.json returns reached=true with at least 3 completed fix iterations (tuning plans 01-03 applied); report as check 'asymptote'. If it is not reached after iteration 6 this check fails and the owner decides whether to append iterations",
+        "examples/tpch/docs/tuning/tuning_summary.md has the accuracy curve (tuning and holdout per iteration), every change by ladder step, and every remaining failure with its category and exhausted ladder steps; report as check 'tuning_summary'",
+        "Every change to an agent instruction or example SQL since the baseline has an exhaustion record in the tuning plans; report as check 'mv_first'"
+      ],
+      "validate_bundles": [
+        {"root": "examples/tpch/ontology-metric-views", "target": "dev"}
+      ],
+      "required_checks": ["iteration_06", "asymptote", "tuning_summary", "mv_first"],
+      "sessions": [
+        {
+          "session_id": "41",
+          "title": "Tuning Iteration 6 (Conditional) & Tuning Summary",
+          "plan_file": "build-1/36-41_tuning_iteration.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "timeout_minutes": 180,
+          "scope": "Iteration k=6 of plan build-1/36-41 (final): if benchmark.asymptote is already met, write iterations/06.md 'converged at iteration <j>'; otherwise apply tuning_plan_06.md, re-register (bundle run register_metric_views), redeploy the agent only if its file changed, re-evaluate and write iterations/06.md. Then write tuning_summary.md.",
+          "owned_paths": [
+            "examples/tpch/ontology-metric-views/metric_views/**",
+            "examples/tpch/ontology-genie-agents/agents/**",
+            "examples/tpch/docs/semantics/**",
+            "examples/tpch/docs/pages/**",
+            "examples/tpch/docs/tuning/**"
+          ],
+          "exclude_paths": [
+            "examples/tpch/docs/tuning/benchmark/**"
+          ],
+          "owned_assets": [
+            "bundle:examples/tpch/ontology-metric-views (target dev)",
+            "register_metric_views job of examples/tpch/ontology-metric-views (target dev)",
+            "bundle:examples/tpch/ontology-genie-agents (target dev)",
+            "DRAFT UC Pages for the TPC-H glossary in the development Discover domain (pages_domain_id in .local/build-1.json)"
+          ],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:examples/tpch/ontology-metric-views (target dev)", "reason": "tuning: redeploy changed metric view YAML"},
+            {"action": "jobs.run_now", "target": "register_metric_views job of examples/tpch/ontology-metric-views (target dev)", "reason": "tuning: re-register changed metric views"},
+            {"action": "bundle.deploy", "target": "bundle:examples/tpch/ontology-genie-agents (target dev)", "reason": "tuning: redeploy the agent after a justified change"},
+            {"action": "workspace.write", "target": "DRAFT UC Pages for the TPC-H glossary in the development Discover domain (pages_domain_id in .local/build-1.json)", "reason": "tuning ladder step: update a glossary page this build created"}
+          ],
+          "depends_on": ["40"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-14",
+      "build": "1",
+      "name": "Independent Report Simulation (Final Evaluation)",
+      "timeout_minutes": 180,
+      "gate": [
+        "All session status files have status pass",
+        "examples/tpch/docs/evaluation/report_simulation_results.md has 4-5 report personas, each with 8-15 turns asked in one Genie conversation, a per-turn grade against pre-registered ground-truth SQL over samples.tpch source tables, a per-report score and an overall score; report as check 'report_simulation'",
+        "Every ground-truth query file under examples/tpch/docs/evaluation/ground_truth/ was written before its report was run (timestamps in the results file) and ran with state SUCCEEDED; report as check 'ground_truth'",
+        "The session summary states that no file under examples/tpch/docs/tuning/ and no agent instructions were read. An overall score below 80% is recorded as a build-1 backlog item, not a failure"
+      ],
+      "required_checks": ["report_simulation", "ground_truth"],
+      "sessions": [
+        {
+          "session_id": "42",
+          "title": "Independent Report-Perspective Simulation of the TPC-H Agent",
+          "plan_file": "build-1/42_report_simulation.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-1/42: independent of tuning (never read examples/tpch/docs/tuning/** or agent instructions), define report personas, pre-register ground-truth SQL on samples.tpch source tables, run each report as one multi-turn Genie conversation, grade, assemble the reports and the scorecard.",
+          "owned_paths": [
+            "examples/tpch/docs/evaluation/**"
+          ],
+          "depends_on": ["41"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-15",
+      "build": "1",
+      "name": "Customer Path Preparation (R9)",
+      "gate": [
+        "All session status files have status pass",
+        "docs/customer-path/run_plan.md names the second dataset (verified readable), every step from docs/usage.md and the guided notebook in order, and an empty intervention log table; report as check 'run_plan'",
+        "docs/customer-path/sdk_config.example.json passes config.validate_config, and a /tmp scaffold from it renders a run kit with validate_manifest and validate_authorizations at 0 errors; report as check 'dry_scaffold'"
+      ],
+      "required_checks": ["run_plan", "dry_scaffold"],
+      "sessions": [
+        {
+          "session_id": "43",
+          "title": "Customer Path: Second Domain Run Plan & Dry Scaffold",
+          "plan_file": "build-1/43_customer_path_prep.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-1/43: choose and verify the second sample dataset, write the run plan and intervention log template, sdk_config.example.json, and dry-scaffold it in /tmp only.",
+          "owned_paths": [
+            "docs/customer-path/**"
+          ],
+          "depends_on": ["42"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-16",
+      "build": "1",
+      "name": "Customer Path Run Report (R9)",
+      "manual_prereqs": [
+        {
+          "session_id": "P1-6",
+          "title": "Child build on the second domain, following docs/customer-path/run_plan.md: the owner (or Devin with the owner's hand-off approval) creates a separate Git folder on a feature branch, runs the guided notebook, deploys a second genie-build-waves instance, runs setup and drives the child build to its verdict, logging every intervention",
+          "plan_file": "build-1/43_customer_path_prep.md",
+          "done_when": ".local/build-1.json has customer_path_root, and that folder's .build-status has a build_verdict.json from a finished child build"
+        }
+      ],
+      "gate": [
+        "All session status files have status pass",
+        "docs/customer-path/run_report.md states the child build verdict: all waves pass, or stops only on documented owner prerequisites; report as check 'customer_path_verdict'",
+        "The child project's docs/plans files and waves.json equal a fresh scaffold of its sdk_config.json except for rendered tokens (diff in the report); report as check 'no_hand_edits'",
+        "Every intervention log entry links a documented prerequisite (docs/usage.md or templates/run/README.md) or a request in docs/plans/build-2/REQUESTS.md; report as check 'interventions_closed'"
+      ],
+      "required_checks": ["customer_path_verdict", "no_hand_edits", "interventions_closed"],
+      "sessions": [
+        {
+          "session_id": "44",
+          "title": "Customer Path Run Report & Interventions",
+          "plan_file": "build-1/44_customer_path_report.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan build-1/44: read the child build's verdict, summaries and intervention log (read-only), write docs/customer-path/run_report.md, document prerequisites in docs/usage.md and templates/run/README.md, and record code fixes as build-2 requests.",
+          "owned_paths": [
+            "docs/customer-path/**",
+            "docs/usage.md",
+            "templates/run/README.md",
+            "docs/plans/build-2/**"
+          ],
+          "depends_on": ["43"]
+        }
+      ]
+    },
+    {
+      "wave_id": "1-17",
+      "build": "1",
+      "name": "Build-1 Documentation & Observations",
+      "gate": [
+        "All session status files have status pass",
+        "Every relative link in README.md, docs/usage.md, skills/README.md and docs/plans/build-1/INDEX.md resolves to an existing file; report as check 'link_check'",
+        "docs/build-1-observations.md has one row per skill gap, template fix or platform limit reported in the build-1 session summaries (sessions 18-44); report as check 'observations'",
+        "No committed file outside docs/sessions/ contains a workspace host, a user home folder path, a resolved dev schema name, a Discover domain id or a Genie space id (grep; the one agreed exception is examples/tpch/docs/registration/resolved_target.json)"
+      ],
+      "required_checks": ["link_check", "observations"],
+      "sessions": [
+        {
+          "session_id": "45",
+          "title": "Build-1 Documentation & Observations",
+          "plan_file": "build-1/45_build1_docs.md",
+          "mode": "edit",
+          "scope": "All tasks in plan build-1/45: README, PROJECT_MEMORY.md, docs/build-1-observations.md, CHANGELOG.md entry, L100 build status, examples/tpch/README.md.",
+          "owned_paths": [
+            "README.md",
+            "PROJECT_MEMORY.md",
+            "CHANGELOG.md",
+            "docs/build-1-observations.md",
+            "docs/design/L100-genie-ontology-modeled-knowledge-sdk.md",
+            "examples/tpch/README.md"
+          ],
+          "depends_on": ["44"]
         }
       ]
     }

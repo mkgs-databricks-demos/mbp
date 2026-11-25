@@ -6,6 +6,7 @@ Sessions are listed in reverse chronological order.
 
 | Date | Session | Summary |
 |---|---|---|
+| 2026-11-25 | [Build-1 planning](2026-11-25_build-1-planning.md) | R1-R9 merged with the 31 build-0 observations plus exhaustive tuning (100-498 questions, >= 3 tuning plans, MV-first, asymptote stop) and an independent report simulation: 18 waves `1-0`..`1-17`, sessions 18-45; Devin level 4 as autonomous as possible; validate_manifest and validate_authorizations 0/0; 280 tests pass; owner prerequisites P1-1..P1-7 |
 | 2026-11-25 | [Build-1 development Pages domain](2026-11-25_build-1-dev-pages-domain.md) | Metastore at its domain limit; owner chose the existing owner-controlled `mkgs_hc_finance` domain for build-1 Pages development and the TPC-H dogfood (drafts only, page ids recorded for cleanup) |
 | 2026-11-25 | [Build-0 close-out (Genie Code session)](2026-11-25_build-0-close-out.md) | Review fixes (1 medium, 4 low), genie-build-waves backlog items 12/13, rename, wrap-up, PROJECT_MEMORY/README refresh, PR text; start-session notebook kept in the repo |
 | 2026-11-25 | [Build-0 wrap-up](2026-11-25_build-0-wrap-up.md) | Build-level verdict: build-0 passed, 11 waves over three runs, 3 of 8 repairs; outcomes, owner decisions per wave, follow-ups, open items for build 1 |

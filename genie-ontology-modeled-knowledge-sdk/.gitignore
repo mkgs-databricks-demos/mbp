@@ -5,6 +5,9 @@
 .databricks/
 **/.databricks/
 
+# Build-local targets (skills schema, Pages domain id, scratch schema; workspace-specific)
+.local/
+
 # Rendered Genie Agent files (resolved catalog/schema names)
 **/.rendered/
 

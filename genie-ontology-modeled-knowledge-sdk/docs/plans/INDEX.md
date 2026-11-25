@@ -1,5 +1,7 @@
 # Build Plan Index — Genie Ontology Modeled Knowledge SDK
 
+> **Build 1:** see [build-1/INDEX.md](build-1/INDEX.md) (waves `1-0`..`1-17`, sessions 18-45). This file is the build-0 index; its waves are archived in `waves.json`.
+
 ## Overview
 
 **Build-0** builds the reusable Genie Ontology Modeled Knowledge SDK:

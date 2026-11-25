@@ -20,7 +20,8 @@ A developer toolkit that automates the standup of modeled knowledge for Genie On
 * **Manual prerequisite before wave 0-3 (done 2026-11-24):** the owner writes the gitignored `examples/tpch/ontology-metric-views/.databricks/bundle/dev/variable-overrides.json` (`catalog`, `warehouse_id`) and `examples/tpch/ontology-genie-agents/.databricks/bundle/dev/variable-overrides.json` (`catalog`, `schema` = dev-prefixed metric view schema, `warehouse_id`, `curator_group`). Workspace-specific values never go in committed files.
 * History: see [docs/sessions/INDEX.md](docs/sessions/INDEX.md).
 * Code review of the build-0 SDK (best practices, genie-build-waves coupling, customer path, prioritized improvements incl. Unity Gateway skills publishing): [docs/reviews/2026-11-25_build-0-sdk-review.md](docs/reviews/2026-11-25_build-0-sdk-review.md).
-* **Build-1 requests** (owner-accepted, priority order R1-R9, each with change, files, acceptance criteria, dependencies, plus a sequencing table): [docs/plans/build-1/REQUESTS.md](docs/plans/build-1/REQUESTS.md). Merge with `docs/build-0-observations.md` before planning build 1.
+* **Build-1 requests** (owner-accepted, priority order R1-R9, each with change, files, acceptance criteria, dependencies, plus a sequencing table): [docs/plans/build-1/REQUESTS.md](docs/plans/build-1/REQUESTS.md).
+* **Build-1 planned (2026-11-25, not run):** [docs/plans/build-1/INDEX.md](docs/plans/build-1/INDEX.md). 18 waves `1-0`..`1-17`, sessions 18-45, appended to `docs/plans/waves.json` with the build-0 waves archived. R1-R9 + all build-0 observations + exhaustive MV-first tuning (100-498 questions, >= 3 tuning plans, stop at the asymptote) + an independent report simulation as the final evaluation; R9 last. `validate_manifest` / `validate_authorizations` 0/0, 163 job tasks. Owner prerequisites P1-1..P1-7 in the INDEX ([planning summary](docs/sessions/2026-11-25_build-1-planning.md)).
 
 ## Layout
 
@@ -109,13 +110,17 @@ The list below is kept as the historical record. Details and evidence: [2026-11-
 2. ~~Deploy a genie-build-waves instance~~ (done).
 3. ~~Run build-0 to completion~~ (done; waves 0-0..0-10 passed, 0-10 wrote the docs).
 4. Owner review and merge of the build-0 feature branch PR (title and description drafted in the [close-out session](docs/sessions/2026-11-25_build-0-close-out.md)).
-4b. Point the genie-build-waves instance at the renamed folder (vars file `build_root` / `manifest_path`), redeploy, rerun setup.
-5. Owner items from build-0: run the pages owner cell against the build-1 development Pages domain (below); delete the unreferenced `examples/tpch/ontology-genie-agents/agents/ontology_agent.geniespace.json` placeholder.
-6. Plan build 1: merge [docs/plans/build-1/REQUESTS.md](docs/plans/build-1/REQUESTS.md) (R1-R9) with [docs/build-0-observations.md](docs/build-0-observations.md), then write the build-1 plans and manifest.
+4b. Point the genie-build-waves instance at the renamed folder (vars file `build_root` / `manifest_path`), redeploy, rerun setup (build-1 P1-1).
+5. Owner items from build-0: Pages are now session 31 of build 1 (drafts in the development domain); the placeholder deletion is build-1 P1-5.
+6. ~~Plan build 1~~ (done 2026-11-25). Next: owner reviews the plan PR, completes P1-1..P1-5, then hands build 1 to Devin (level 4).
 
 ## Build-1 decisions
 
 * **Development Pages domain (owner, 2026-11-25):** the metastore is at its Discover domain limit, so build 1 uses an existing domain the owner controls for Pages development and the TPC-H dogfood instead of creating one. Which domain, and why: [dev Pages domain session summary](docs/sessions/2026-11-25_build-1-dev-pages-domain.md). Rules: `DRAFT` pages only, record every created page id in `examples/tpch/docs/pages/pages_registration.md` for cleanup, keep the domain id out of committed SDK files.
+
+* **Build-1 executor (owner, 2026-11-25):** Devin at level 4, as autonomous as possible: explicit owner authorizations per side effect, `monitor_may_authorize` on `owned_assets` for `jobs.run_now`, `bundle.deploy`, `volume.write`, `workspace.write`, `sql.ddl`, `uc_skills.publish`; owner-only actions (grants, permissions, secrets, destroy, deletes) stay `manual_prereqs`.
+* **Build-1 defaults (proposed, owner did not object):** repo-root files staged under `ci/` and moved by the owner; asymptote = after >= 3 applied tuning plans, < 1.0 point gain in each of the last 2 iterations (or 100%) with holdout within 2.0 points of its best, at most 6 iterations; report simulation target 80%, recorded not gated.
+* **Build-1 local targets:** workspace-specific values in gitignored `.local/build-1.json` (`skills_catalog`, `skills_schema`, `scratch_schema`, `pages_domain_id`, `customer_path_root`). The only committed file allowed a resolved dev schema name is `examples/tpch/docs/registration/resolved_target.json`.
 
 ## Build-0 open decisions (defaults applied)
 
