@@ -5,8 +5,8 @@ Deploy the SDK bundle (`databricks.yml` at `build_root`) to dev, which builds th
 
 ## Context
 * [REQUESTS R7a](REQUESTS.md#r7a-sdk-wheel-distribution); session 23 wrote the bundle, the smoke job and the template variables.
-* Owner prerequisite P1-8 is done: the volume exists (or the owner approved it as a bundle resource; then session 23 declared it and this deploy creates it), grants are in place (`WRITE VOLUME` for the build identity, `READ VOLUME` for project run-as principals and the genie-build-waves run-as user), and `.databricks/bundle/dev/variable-overrides.json` at `build_root` has `sdk_volume_path`. Never print or commit that value; in committed files write `<sdk_volume_path>`.
-* Authorized: `bundle.deploy` of the SDK bundle (target dev), `jobs.run_now` of its `sdk_smoke` job, `volume.write` to a `releases/` folder in that volume. No grants (owner-only).
+* The SDK schema and its `sdk_wheels` volume were created by session 18's deploy of this same bundle (wave 1-0), from the owner's answers in the gitignored SDK bundle overrides (P1-8). The build identity owns them; the bundle grants `READ_VOLUME` / `USE_SCHEMA` to `sdk_consumer_group`. Never print or commit resolved names; in committed files write `<sdk_volume_path>`.
+* Authorized: `bundle.deploy` of the SDK bundle (target dev), `jobs.run_now` of its `sdk_smoke` job, `volume.write` to a `releases/` folder in that volume. No other grants.
 * Open questions this session answers (R7a "not yet verified"): the sub-path the CLI uploads to under `artifact_path`; whether that path is stable across deploys of the same version; whether the version string is changed by dynamic versioning.
 
 ## Tasks
@@ -25,4 +25,4 @@ Deploy the SDK bundle (`databricks.yml` at `build_root`) to dev, which builds th
 - Dev deployment of the SDK bundle, its `sdk_smoke` job, the `releases/` folder in the SDK volume.
 
 ## Dependencies
-- Session 23; owner prerequisite P1-8.
+- Sessions 18 (SDK schema and volume), 23.

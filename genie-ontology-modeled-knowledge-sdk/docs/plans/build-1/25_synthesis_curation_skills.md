@@ -5,11 +5,11 @@ Reconcile `ontology-mv-synthesis` and `ontology-agent-curation` with the platfor
 
 ## Context
 * [REQUESTS R8](REQUESTS.md#r8-reconcile-overlapping-skills). `ontology-mv-synthesis` keeps SDK rules only: tokens, manifest, `# verified:` joins, subdomain comments, materialization ranking, MV-first. Metric view syntax is referenced, not restated.
-* Scratch schema: `scratch_schema` in `.local/build-1.json` (owner-created, P1-3). You are authorized for `sql.ddl` there: `CREATE OR REPLACE VIEW ... WITH METRICS LANGUAGE YAML` only; never `DROP`, never another schema. Source data: `samples.tpch` (read-only).
+* Scratch location: the **SDK schema** (the SDK bundle's schema, deployed by session 18; resolve it with `databricks bundle summary -t dev` at `build_root`). You are authorized for `sql.ddl` there for views named `scratch_*` only: `CREATE OR REPLACE VIEW scratch_... WITH METRICS LANGUAGE YAML`; never `DROP`, never another name or schema. List every `scratch_*` view you created in your summary (cleanup is an owner step after the build). Source data: `samples.tpch` (read-only).
 * Session 19 may send a request about the L200-G agent-size rule text: apply it (split at `min(max_metric_views_per_agent, 30)`).
 
 ## Tasks
-1. Platform checks (record SQL, outcome and error text in `docs/research/platform-pattern-checks.md`, with no catalog or schema names: use `<scratch>`):
+1. Platform checks (record SQL, outcome and error text in `docs/research/platform-pattern-checks.md`, with no catalog or schema names: use `<sdk_schema>`):
    * obs 16: a share-of-total measure (national market share) in one view: try window measures / `MEASURE()` over a total and record what works;
    * obs 17: a snowflake dimension through a nested join path (`orders.customer.customer_nation.n_name`);
    * a `FILTER` measure and a `format` block on a ratio (for obs 30);
@@ -21,11 +21,11 @@ Reconcile `ontology-mv-synthesis` and `ontology-agent-curation` with the platfor
 ## Acceptance Criteria
 - [ ] Gate check `skills_reconciled` passes for these two skills.
 - [ ] `platform-pattern-checks.md` has one row per check with pass/fail and the error text; every pattern added to `yaml-patterns.md` is marked verified there.
-- [ ] No DDL outside the scratch schema (list every statement in the summary).
+- [ ] No DDL other than `CREATE OR REPLACE VIEW scratch_*` in the SDK schema (list every statement in the summary).
 
 ## Owned Paths / Assets
 - `skills/ontology-mv-synthesis/**`, `skills/ontology-agent-curation/**`, `docs/research/platform-pattern-checks.md`
-- Metric views in the build-1 scratch schema.
+- `scratch_*` metric views in the SDK schema.
 
 ## Dependencies
-- Session 19 (render flags, split rule).
+- Sessions 18 (SDK schema), 19 (render flags, split rule).

@@ -62,6 +62,18 @@ The development Pages domain for `pages_domain_id` is the one chosen in [2026-11
 
 **Verification (addendum):** `validate_manifest` and `validate_authorizations` 0 errors, 0 warnings; 30 waves (11 archived, 19 runnable), 48 sessions, 172 job tasks; `plan_deploy_warnings` none; every authorization target is in its session's `owned_assets`; every plan file exists; relative links resolve; no workspace ids or user paths outside `docs/sessions/`; SDK tests from a `/tmp` copy: 280 passed.
 
+## Addendum 2: one SDK schema, deployed as a bundle
+
+**Owner question:** the first prerequisite draft proposed three schemas (scratch, skills, SDK + volume). **Owner decision:** one schema, chosen in SDK setup (ask catalog and schema, recommend a new schema), deployed as a DAB with a schema resource.
+
+**Facts used:** the build job (`[dev matthew_giglia] Genie Ontology SDK: Build Waves`) runs as the owner, and dev-mode bundles run as the deployer, so a bundle-created schema and volume need no extra grants for this build; development mode prefixes schema names (build 0 got `dev_matthew_giglia_ontology` from `ontology`).
+
+**Changes:**
+* Session 18 (wave 1-0, now a single-session deploy wave): bootstraps the SDK bundle at `build_root` (variables `sdk_catalog`, `sdk_schema` default `ontology_sdk`, `sdk_consumer_group`, `warehouse_id`; `schemas.sdk` and `volumes.sdk_wheels` resources with consumer grants; existing-schema mode) and deploys it to dev; gate check `sdk_schema_deployed`. Deploying the volume before any artifact also removes the first-deploy ordering risk for `artifact_path`.
+* P1-8 moved to wave 1-0 and became "answer the SDK setup questions" in the SDK bundle's gitignored overrides (no SQL, no grants). P1-2 now holds only `pages_domain_id`. P1-3 is only "skills preview on".
+* Session 23 extends the bundle (artifacts, `artifact_path` = its own volume); 23b no longer has a prerequisite; session 25 creates only `scratch_*` views in the SDK schema; session 27 publishes into the SDK schema; session 29 adds `notebooks/setup_sdk` (asks catalog/schema, new schema recommended, writes overrides, prints the deploy command) and a "Set up the SDK" section in `docs/usage.md`.
+* Authorization targets and `owned_assets` renamed to the SDK schema (sessions 18, 23b, 25, 27); REQUESTS R7a item 0 and decision; INDEX; PROJECT_MEMORY.
+
 ## Files modified
 * `docs/plans/waves.json` (build-0 waves archived; build-1 waves, branch, policy, context files)
 * `docs/plans/build-1/INDEX.md` and 23 plan files (`18_*`..`45_*`, `36-41_tuning_iteration.md`)

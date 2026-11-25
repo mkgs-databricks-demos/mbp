@@ -518,9 +518,15 @@
         },
         {
           "session_id": "P1-2",
-          "title": "Owner writes the gitignored .local/build-1.json under build_root with skills_catalog, skills_schema, scratch_schema (catalog.schema) and pages_domain_id, and creates the scratch schema (used by session 25 in wave 1-2)",
+          "title": "Owner writes the gitignored .local/build-1.json under build_root with pages_domain_id (customer_path_root is added before wave 1-16)",
           "plan_file": "build-1/INDEX.md",
-          "done_when": ".local/build-1.json exists, parses as JSON with the four keys, git check-ignore succeeds for it, and its scratch_schema appears in information_schema.schemata"
+          "done_when": ".local/build-1.json exists, parses as JSON with pages_domain_id, and git check-ignore succeeds for it"
+        },
+        {
+          "session_id": "P1-8",
+          "title": "Owner answers the SDK setup questions for this workspace: writes the gitignored SDK bundle overrides .databricks/bundle/dev/variable-overrides.json at build_root with sdk_catalog (an existing catalog), sdk_schema (recommended: a new schema the SDK bundle creates, e.g. ontology_sdk), sdk_consumer_group and warehouse_id",
+          "plan_file": "build-1/18_ci_and_sdk_floor.md",
+          "done_when": "The SDK bundle overrides file parses as JSON with sdk_catalog, sdk_schema, sdk_consumer_group and warehouse_id, is untracked, and sdk_catalog exists in information_schema.catalogs"
         }
       ],
       "gate": [
@@ -529,22 +535,39 @@
         "In that pytest run tests/test_run_kit.py ran its validate_manifest test (not skipped); report as check 'run_kit_not_skipped'",
         "From the /tmp copy: pip install -q ruff mypy && ruff check . && ruff format --check .; report as check 'ruff'",
         "From the /tmp copy: mypy src exits 0 with the pyproject.toml configuration; report as check 'mypy'",
-        "ci/github/workflows/genie-ontology-modeled-knowledge-sdk-ci.yml parses as YAML and has lint, typecheck, test (databricks-sdk floor and latest) and bundle-validate jobs"
+        "ci/github/workflows/genie-ontology-modeled-knowledge-sdk-ci.yml parses as YAML and has lint, typecheck, test (databricks-sdk floor and latest) and bundle-validate jobs",
+        "The SDK bundle (root databricks.yml, target dev) is deployed: its schema (bundle summary; dev-prefixed) is in information_schema.schemata and its sdk_wheels volume is in information_schema.volumes; report as check 'sdk_schema_deployed'"
       ],
-      "required_checks": ["pytest", "run_kit_not_skipped", "ruff", "mypy"],
+      "validate_bundles": [
+        {"root": ".", "target": "dev"}
+      ],
+      "required_checks": ["pytest", "run_kit_not_skipped", "ruff", "mypy", "sdk_schema_deployed"],
       "sessions": [
         {
           "session_id": "18",
-          "title": "CI, Lint/Type Config & databricks-sdk Floor (R5, R7)",
+          "title": "CI, Lint/Type Config, databricks-sdk Floor & SDK Bundle Bootstrap (R5, R7, R7a)",
           "plan_file": "build-1/18_ci_and_sdk_floor.md",
           "mode": "edit",
           "allow_execute": true,
-          "scope": "All tasks in plan build-1/18: ruff + mypy config in pyproject.toml and fixes, databricks-sdk floor and upper bound, tests/test_sdk_services.py, the staged CI workflow under ci/github/workflows/. No Git commands.",
+          "allow_deploy": true,
+          "scope": "All tasks in plan build-1/18: ruff + mypy config in pyproject.toml and fixes, databricks-sdk floor and upper bound, tests/test_sdk_services.py, the staged CI workflow under ci/github/workflows/, and the SDK bundle at build_root (databricks.yml with sdk_catalog/sdk_schema variables, a schema resource and the sdk_wheels volume resource, no artifacts yet) deployed with bundle deploy -t dev so the SDK schema and volume exist for later waves. Deploy only the SDK bundle. No Git commands.",
           "owned_paths": [
             "pyproject.toml",
+            "databricks.yml",
+            "resources/**",
             "src/genie_ontology_modeled_knowledge_sdk/**",
             "tests/**",
-            "ci/**"
+            "ci/**",
+            "docs/distribution/**"
+          ],
+          "exclude_paths": [
+            ".databricks/**"
+          ],
+          "owned_assets": [
+            "bundle:build_root (SDK bundle databricks.yml, target dev)"
+          ],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:build_root (SDK bundle databricks.yml, target dev)", "reason": "plan 18: bundle deploy -t dev creates the SDK schema and the sdk_wheels volume"}
           ],
           "depends_on": ["17"]
         }
@@ -641,7 +664,7 @@
         "In the /tmp copy: python -m pip wheel --no-deps -w dist . builds genie_ontology_modeled_knowledge_sdk-0.1.0-py3-none-any.whl; installing it in a fresh venv gives working gos-check-config, gos-validate-mv, gos-build-manifest, gos-render-agents and gos-scaffold (--help exits 0); report as check 'wheel'",
         "grep finds no sys.path manipulation in templates/, and in notebooks/ only the init notebook's guarded developer fallback (runs only when the installed package is missing and the notebook sits in an SDK checkout); no PYTHONPATH=...vendored form in skills/ or templates/; report as check 'no_vendored_paths'",
         "Every skills/ontology-*/SKILL.md has front matter name equal to its folder and a description that names the Genie Ontology Modeled Knowledge SDK stage; skills/README.md lists all six with stage, platform skills relied on and precedence; report as check 'skills_reconciled'",
-        "In the /tmp copy, databricks bundle validate --strict --target dev of the SDK bundle (root databricks.yml) passes with --var sdk_volume_path=/Volumes/placeholder/placeholder/placeholder; report as check 'sdk_bundle_validate'",
+        "In the /tmp copy, databricks bundle validate --strict --target dev of the SDK bundle (root databricks.yml) passes with placeholder --var values for sdk_catalog, sdk_schema, sdk_consumer_group and warehouse_id, in both the new-schema (recommended) and existing-schema modes; report as check 'sdk_bundle_validate'",
         "In a fresh venv with only the built wheel (plus pytest, pyyaml, jsonschema) installed, the test suite run from a directory where src/ is not importable passes, and genie_ontology_modeled_knowledge_sdk.__file__ is under site-packages; tests/test_version.py shows pyproject.toml, __version__, the wheel metadata and the template sdk_version default all equal 0.1.0; report as check 'installed_wheel_tests'",
         "A /tmp scaffold with vendor=False has no genie_ontology_modeled_knowledge_sdk_vendored files and its notebooks import the installed package; with vendor=True the vendored-copy tests pass and the copies cover the notebooks' import closure; report as check 'vendor_modes'"
       ],
@@ -656,7 +679,7 @@
           "plan_file": "build-1/23_wheel.md",
           "mode": "edit",
           "allow_execute": true,
-          "scope": "All tasks in plan build-1/23 (R2 + R7a code): version 0.1.0 from one source with CHANGELOG.md and a version-consistency test, gos-* entry points, an SDK-root bundle (artifacts whl, artifact_path from sdk_volume_path, sdk_smoke job, limited sync), the metric-views template installs the pinned wheel through a job environment (sdk_version, sdk_wheel), scaffold vendor=False by default with opt-in import-closure vendoring, install cells per the repo convention, init notebook uses the installed wheel, CI tests the installed wheel, README 'Getting the SDK'. bundle validate only, no deploy.",
+          "scope": "All tasks in plan build-1/23 (R2 + R7a code): version 0.1.0 from one source with CHANGELOG.md and a version-consistency test, gos-* entry points, the SDK-root bundle from session 18 extended with artifacts whl (workspace.artifact_path = its sdk_wheels volume), the sdk_smoke job and limited sync, the metric-views template installs the pinned wheel through a job environment (sdk_version, sdk_wheel), scaffold vendor=False by default with opt-in import-closure vendoring, install cells per the repo convention, init notebook uses the installed wheel, CI tests the installed wheel, README 'Getting the SDK'. bundle validate only, no deploy.",
           "owned_paths": [
             "pyproject.toml",
             "CHANGELOG.md",
@@ -697,17 +720,17 @@
           "plan_file": "build-1/25_synthesis_curation_skills.md",
           "mode": "edit",
           "allow_execute": true,
-          "scope": "All tasks in plan build-1/25: ontology-mv-synthesis and ontology-agent-curation reconciled with the platform metric-views skill and fixed for build-0 observations 16-20, 23, 26, 27; share-of-total, nested-join and FILTER patterns verified by registering scratch metric views. Create views only in the scratch schema, drop nothing.",
+          "scope": "All tasks in plan build-1/25: ontology-mv-synthesis and ontology-agent-curation reconciled with the platform metric-views skill and fixed for build-0 observations 16-20, 23, 26, 27; share-of-total, nested-join and FILTER patterns verified by registering scratch metric views. Create only scratch_* metric views in the SDK schema (from the SDK bundle summary), drop nothing.",
           "owned_paths": [
             "skills/ontology-mv-synthesis/**",
             "skills/ontology-agent-curation/**",
             "docs/research/platform-pattern-checks.md"
           ],
           "owned_assets": [
-            "metric views in the build-1 scratch schema (scratch_schema in .local/build-1.json)"
+            "scratch_* metric views in the SDK schema (SDK bundle at build_root, target dev)"
           ],
           "authorizations": [
-            {"action": "sql.ddl", "target": "metric views in the build-1 scratch schema (scratch_schema in .local/build-1.json)", "reason": "plan 25: CREATE OR REPLACE VIEW ... WITH METRICS for pattern checks; no DROP"}
+            {"action": "sql.ddl", "target": "scratch_* metric views in the SDK schema (SDK bundle at build_root, target dev)", "reason": "plan 25: CREATE OR REPLACE VIEW scratch_* ... WITH METRICS for pattern checks; no DROP"}
           ],
           "depends_on": ["19"]
         },
@@ -731,17 +754,9 @@
       "build": "1",
       "name": "SDK Wheel Publish (deploy)",
       "timeout_minutes": 90,
-      "manual_prereqs": [
-        {
-          "session_id": "P1-8",
-          "title": "Owner provides the SDK wheel volume: creates the UC volume (or approves declaring it as a bundle resource), grants WRITE VOLUME to the build identity and the CI publishing service principal and READ VOLUME to project job run-as principals and the genie-build-waves run-as user, and writes the gitignored SDK bundle overrides .databricks/bundle/dev/variable-overrides.json with sdk_volume_path",
-          "plan_file": "build-1/23b_wheel_publish.md",
-          "done_when": "The SDK bundle overrides file parses as JSON with sdk_volume_path, is untracked, and the volume it names exists in information_schema.volumes"
-        }
-      ],
       "gate": [
         "All session status files have status pass",
-        "The SDK bundle (root databricks.yml, target dev) was deployed in this build run, and the volume at sdk_volume_path holds exactly one genie_ontology_modeled_knowledge_sdk wheel for the pyproject.toml version (0.1.0) at the stable path recorded in docs/distribution/wheel_publish.md; report as check 'wheel_published'",
+        "The SDK bundle (root databricks.yml, target dev) was deployed in this build run, and the SDK bundle's sdk_wheels volume holds exactly one genie_ontology_modeled_knowledge_sdk wheel for the pyproject.toml version (0.1.0) at the stable path recorded in docs/distribution/wheel_publish.md; report as check 'wheel_published'",
         "The sdk_smoke job (SDK bundle, target dev; find it with bundle summary) has a run that started after this build run started, ended SUCCESS and printed __version__ 0.1.0; report as check 'sdk_smoke'",
         "docs/distribution/wheel_publish.md records the CLI upload sub-path, whether the copy to releases/<version>/ was needed, and uses placeholders instead of catalog, schema or volume names"
       ],
@@ -757,7 +772,7 @@
           "mode": "edit",
           "allow_execute": true,
           "allow_deploy": true,
-          "scope": "All tasks in plan build-1/23b: bundle deploy -t dev of the SDK bundle at build_root (builds the wheel and uploads it to sdk_volume_path), bundle run sdk_smoke -t dev, verify exactly one 0.1.0 wheel, and record the stable wheel path pattern (copy to releases/<version>/ only if the CLI upload path is not stable). Deploy only the SDK bundle.",
+          "scope": "All tasks in plan build-1/23b: bundle deploy -t dev of the SDK bundle at build_root (builds the wheel and uploads it to the bundle's sdk_wheels volume), bundle run sdk_smoke -t dev, verify exactly one 0.1.0 wheel, and record the stable wheel path pattern (copy to releases/<version>/ only if the CLI upload path is not stable). Deploy only the SDK bundle.",
           "owned_paths": [
             "databricks.yml",
             "resources/**",
@@ -770,12 +785,12 @@
           "owned_assets": [
             "bundle:build_root (SDK bundle databricks.yml, target dev)",
             "sdk_smoke job of the SDK bundle (target dev)",
-            "SDK wheel releases folder in the SDK volume (sdk_volume_path in the SDK bundle overrides)"
+            "releases folder in the SDK bundle's sdk_wheels volume (target dev)"
           ],
           "authorizations": [
             {"action": "bundle.deploy", "target": "bundle:build_root (SDK bundle databricks.yml, target dev)", "reason": "plan 23b: bundle deploy -t dev builds the wheel and uploads it to the SDK volume"},
             {"action": "jobs.run_now", "target": "sdk_smoke job of the SDK bundle (target dev)", "reason": "plan 23b: bundle run sdk_smoke -t dev proves the published wheel installs and reports its version"},
-            {"action": "volume.write", "target": "SDK wheel releases folder in the SDK volume (sdk_volume_path in the SDK bundle overrides)", "reason": "plan 23b: copy the wheel to releases/<version>/ only if the CLI upload path is not stable"}
+            {"action": "volume.write", "target": "releases folder in the SDK bundle's sdk_wheels volume (target dev)", "reason": "plan 23b: copy the wheel to releases/<version>/ only if the CLI upload path is not stable"}
           ],
           "depends_on": ["23"]
         }
@@ -788,9 +803,9 @@
       "manual_prereqs": [
         {
           "session_id": "P1-3",
-          "title": "Owner enables the Unity Gateway skills previews, creates the skills schema named in .local/build-1.json and grants the build identity USE CATALOG, USE SCHEMA, CREATE VOLUME, READ VOLUME and WRITE VOLUME on it",
+          "title": "Owner confirms the Unity Gateway skills preview is enabled for the workspace (the skills live in the SDK bundle's schema, deployed in wave 1-0 and owned by the build identity, so no schema creation or grants are needed)",
           "plan_file": "build-1/27_skills_publishing.md",
-          "done_when": "The schema skills_catalog.skills_schema from .local/build-1.json exists in information_schema.schemata"
+          "done_when": "Listing skills in the SDK bundle's schema (bundle summary) returns without a feature-disabled error"
         }
       ],
       "gate": [
@@ -821,10 +836,10 @@
             "docs/skills/**"
           ],
           "owned_assets": [
-            "SDK skills in the Unity Catalog skills schema (skills_catalog.skills_schema in .local/build-1.json)"
+            "SDK skills in the SDK schema (SDK bundle at build_root, target dev)"
           ],
           "authorizations": [
-            {"action": "uc_skills.publish", "target": "SDK skills in the Unity Catalog skills schema (skills_catalog.skills_schema in .local/build-1.json)", "reason": "plan 27: create, upload and finalize the six ontology-* skills (twice, idempotency check)"}
+            {"action": "uc_skills.publish", "target": "SDK skills in the SDK schema (SDK bundle at build_root, target dev)", "reason": "plan 27: create, upload and finalize the six ontology-* skills (twice, idempotency check)"}
           ],
           "depends_on": ["23b", "24", "25", "26"]
         }
@@ -866,9 +881,10 @@
           "plan_file": "build-1/29_guided_setup.md",
           "mode": "edit",
           "allow_execute": true,
-          "scope": "All tasks in plan build-1/29: setup_project.py (prerequisite checks incl. the SDK wheel volume, overrides writer incl. sdk_volume_path and sdk_version, vars-file writer, checklist), notebooks/init_ontology_project with empty widgets, an example dropdown and a vendor widget (off by default), docs/usage.md incl. 'Getting the SDK' (wheel default, vendored opt-in, editable install). Write only inside /tmp scratch projects when testing.",
+          "scope": "All tasks in plan build-1/29: setup_project.py (SDK setup that asks the catalog and schema for the SDK with a new schema recommended and writes the SDK bundle overrides; project prerequisite checks incl. the SDK wheel; overrides writer incl. sdk_volume_path and sdk_version; vars-file writer; checklist), notebooks/setup_sdk, notebooks/init_ontology_project with empty widgets, an example dropdown and a vendor widget (off by default), docs/usage.md incl. 'Getting the SDK' (wheel default, vendored opt-in, editable install). Write only inside /tmp scratch projects when testing.",
           "owned_paths": [
             "notebooks/init_ontology_project.ipynb",
+            "notebooks/setup_sdk.ipynb",
             "src/genie_ontology_modeled_knowledge_sdk/setup_project.py",
             "tests/test_setup_project.py",
             "docs/usage.md"
@@ -885,7 +901,7 @@
       "manual_prereqs": [
         {
           "session_id": "P1-4",
-          "title": "Owner adds consumer_group to both gitignored TPC-H variable-overrides.json files, adds sdk_volume_path (the SDK wheel volume from P1-8) to the metric-views one, and confirms the agents schema equals the metric-views dev schema",
+          "title": "Owner adds consumer_group to both gitignored TPC-H variable-overrides.json files, adds sdk_volume_path (the /Volumes path of the SDK bundle's sdk_wheels volume, from its bundle summary) to the metric-views one, and confirms the agents schema equals the metric-views dev schema",
           "plan_file": "build-1/30_tpch_mv_refresh.md",
           "done_when": "Both examples/tpch/*/.databricks/bundle/dev/variable-overrides.json files parse as JSON, contain consumer_group (and sdk_volume_path for the metric-views bundle), and are untracked"
         },

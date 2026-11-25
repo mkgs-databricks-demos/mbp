@@ -7,13 +7,14 @@ Build 1 turns the build-0 SDK into something a customer can install and run, and
 * **Manifest:** [`docs/plans/waves.json`](../waves.json). Build-0 waves `0-0`..`0-10` stay as history with `"archived": true`; build-1 waves are `1-0`..`1-17` plus `1-2b` with `"build": "1"`, sessions `18`-`45` plus `23b`. `validate_manifest` and `validate_authorizations`: 0 errors, 0 warnings (172 job tasks).
 * **Workflow:** `hybrid`; `build_root` = this SDK folder; top-level `branch` = the build-1 feature branch.
 * **Executor:** Devin as the external monitor at **level 4, as autonomous as possible** (owner, 2026-11-25). The manifest is written so Devin rarely needs the owner: every side effect a session needs is an explicit owner `authorizations` entry, `authorization_policy.monitor_may_authorize` lets Devin grant `jobs.run_now`, `bundle.deploy`, `volume.write`, `workspace.write`, `sql.ddl` and `uc_skills.publish` on a session's own `owned_assets`, accuracy thresholds are recorded rather than gated where a miss is not a defect, and conditional tuning waves avoid manifest edits. Devin still stops on the monitor skill's stop conditions and on the `manual_prereqs` below.
-* **Workspace-specific values** (skills schema, scratch schema, Pages domain id, child project path) live only in the gitignored `.local/build-1.json` and in `docs/sessions/`. Plans and the manifest refer to its keys.
+* **SDK schema (owner decision 2026-11-25):** the SDK itself is set up as a bundle at `build_root` with a **schema resource**. SDK setup asks which catalog and schema to use and recommends a new schema the bundle creates. That single schema holds the published skills, the `sdk_wheels` volume and build-only `scratch_*` pattern-check views. Session 18 deploys it in wave 1-0; later sessions resolve it with `databricks bundle summary -t dev` at `build_root`.
+* **Workspace-specific values** live only in gitignored files and in `docs/sessions/`: the SDK bundle overrides (`sdk_catalog`, `sdk_schema`, `sdk_consumer_group`, `warehouse_id`), the TPC-H overrides, and `.local/build-1.json` (`pages_domain_id`, later `customer_path_root`).
 
 ## Wave Map
 
 | Wave | Name | Sessions (mode) | Requests / observations closed |
 |---|---|---|---|
-| 1-0 | CI & dependency floor | 18 (edit) | R5, R7; obs "08: /tmp pytest copy skips validate_manifest" |
+| 1-0 | CI, dependency floor & SDK bundle bootstrap (deploy) | 18 (edit, allow_deploy) | R5, R7, R7a (SDK bundle with schema + `sdk_wheels` volume); obs "08: /tmp pytest copy skips validate_manifest" |
 | 1-1 | Library & template defects, benchmark library | 19, 20, 21, 22 (edit) | R4.1-R4.4; obs 8 (helper), 21, 22, 24, 25, 27, 28, 29, 31; obs "06: warehouse_id unused" |
 | 1-2 | Wheel & reconciled skills | 23, 24, 25, 26 (edit) | R2 (entry points), R7a (code: versioning, SDK bundle `artifacts`, wheel-first templates, opt-in vendoring, CI on the installed wheel), R8; obs 1-20, 23, 26 |
 | 1-2b | SDK wheel publish (deploy) | 23b (edit, allow_deploy) | R7a (deploy the SDK bundle: wheel built and uploaded to the UC volume, `sdk_smoke` run) |
@@ -33,7 +34,7 @@ Build 1 turns the build-0 SDK into something a customer can install and run, and
 | 1-16 | Customer path run report | 44 (edit) | R9 (after the owner-run child build) |
 | 1-17 | Build-1 docs & observations | 45 (edit) | wrap-up |
 
-Waves run in order; sessions in one wave run in parallel. Deploying waves (1-2b, 1-5, 1-7..1-13) have exactly one session (single-writer rule).
+Waves run in order; sessions in one wave run in parallel. Deploying waves (1-0, 1-2b, 1-5, 1-7..1-13) have exactly one session (single-writer rule).
 
 ### Why this order
 
@@ -66,7 +67,8 @@ Defined in `skills/ontology-tuning` and `docs/design/tuning-protocol.md` (sessio
 
 | Contract | Producer | Consumers |
 |---|---|---|
-| `.local/build-1.json` (gitignored): `skills_catalog`, `skills_schema`, `scratch_schema` (`catalog.schema`), `pages_domain_id`; later `customer_path_root` | owner (P1-2, P1-6) | 25, 27, 31, 36-41, 44 |
+| SDK schema: the SDK bundle's schema resource (catalog and schema from SDK setup; dev-prefixed in development mode), resolved with `bundle summary`; holds the six skills, the `sdk_wheels` volume and `scratch_*` views | owner answers (P1-8), 18 (deploy) | 23, 23b, 25, 27, 29 |
+| `.local/build-1.json` (gitignored): `pages_domain_id`; later `customer_path_root` | owner (P1-2, P1-6) | 31, 36-41, 44 |
 | `resolved_target.json`: `{"catalog", "schema", "warehouse_id", "source": "bundle_summary", "resolved_at"}`; written by `targets.resolve_target(bundle_dir, target)` | 21 (code), 30 (TPC-H file at `examples/tpch/docs/registration/`) | 19 (`geniespace render --params`), 28, 29, 35 |
 | `geniespace.build_space(..., benchmarks=...)` / `validate_space` accept a benchmarks section of at most 500 questions in the serialized-space format (verify the field names on an exported space) | 19 | 22 (`benchmark.to_space_benchmarks` returns that shape), 35 |
 | `benchmark` API: `load_question_set(dir)`, `coverage(questions, mv_yaml_paths) -> CoverageReport`, `assign_splits(questions, holdout=0.2)`, `to_space_benchmarks(questions)`, `run_eval(space_id, ws, question_ids=None)`, `score(results)` (adds `unit_mismatch`), `append_history(path, entry)`, `asymptote(history) -> {reached, reason, ...}`; constants `MIN_QUESTIONS=100`, `MAX_QUESTIONS=498`, `MIN_PER_VIEW=12`, `MIN_CROSS_VIEW_SHARE=0.25`, `HOLDOUT_SHARE=0.2`, `MIN_FIX_ITERATIONS=3`, `ASYMPTOTE_DELTA_PP=1.0`, `ASYMPTOTE_WINDOW=2`, `HOLDOUT_TOLERANCE_PP=2.0`, `MAX_FIX_ITERATIONS=6` | 22 | 26, 28, 32-42 |
@@ -74,7 +76,7 @@ Defined in `skills/ontology-tuning` and `docs/design/tuning-protocol.md` (sessio
 | `accuracy_history.json`: list of `{iteration, label, eval_run_id, started_at, tuning: {n, correct, accuracy}, holdout: {...}, changes: [...]}` | 35, 36-41 | `benchmark.asymptote`, gates 1-8..1-13 |
 | `pages.upsert_pages(..., domain_id, status="DRAFT")` returns created/updated ids; `pages.write_terms` bulk helper | 20 | 24 (skill text), 31, 36-41 |
 | Skill source note: every session summary from wave 1-4 on says whether skills loaded from Unity Catalog or the workspace folder (R1 spike evidence) | 27 | 28-45 |
-| SDK wheel `genie_ontology_modeled_knowledge_sdk-<version>-py3-none-any.whl` (0.1.0), built by the SDK bundle's `artifacts.sdk_wheel` and uploaded to `workspace.artifact_path` = `${var.sdk_volume_path}` (owner volume, P1-8); stable path pattern in `docs/distribution/wheel_publish.md` (CLI path, or `releases/<version>/` if the CLI path is not stable); project templates pin `sdk_version` and install `sdk_wheel` through a job environment; `vendor=False` is the scaffold default | 23 (code), 23b (publish) | 27, 28, 29, 30, 43 |
+| SDK wheel `genie_ontology_modeled_knowledge_sdk-<version>-py3-none-any.whl` (0.1.0), built by the SDK bundle's `artifacts.sdk_wheel` and uploaded to `workspace.artifact_path` = the SDK bundle's `sdk_wheels` volume; stable path pattern in `docs/distribution/wheel_publish.md` (CLI path, or `releases/<version>/` if the CLI path is not stable); project templates pin `sdk_version` and install `sdk_wheel` through a job environment; `vendor=False` is the scaffold default | 23 (code), 23b (publish) | 27, 28, 29, 30, 43 |
 
 ## Owned paths by wave
 
@@ -83,7 +85,9 @@ No two sessions in a wave share a path. Files touched in more than one wave have
 | File | Owners (wave) |
 |---|---|
 | `pyproject.toml` | 18 (1-0), 23 (1-2) |
-| `databricks.yml` (SDK root), `resources/**`, `notebooks/sdk_smoke.ipynb` | 23 (1-2), 23b (1-2b) |
+| `databricks.yml` (SDK root), `resources/**` | 18 (1-0), 23 (1-2), 23b (1-2b) |
+| `notebooks/sdk_smoke.ipynb` | 23 (1-2), 23b (1-2b) |
+| `docs/distribution/**` | 18 (1-0), 23 (1-2), 23b (1-2b) |
 | `README.md` | 23 (1-2, "Getting the SDK"), 45 (1-17) |
 | `src/.../scaffold.py` | 21 (1-1), 23 (1-2), 27 (1-3), 28 (1-4) |
 | `src/.../config.py`, `schemas/**` | 19 (1-1), 27 (1-3), 28 (1-4) |
@@ -103,10 +107,10 @@ Sessions write only inside `build_root`. The GitHub workflows and the skills map
 | Id | Before | Step | Done when |
 |---|---|---|---|
 | P1-1 | 1-0 | Update the instance vars file outside the repo (path in the [build-1 planning summary](../../sessions/2026-11-25_build-1-planning.md)) (`build_root`, `manifest_path` -> this folder; keep `instance_suffix`, `monitor_principal`, `monitor_job_level`), redeploy with `scripts/deploy_instance.py` from the web terminal, run setup | build job defaults point here, branch default = manifest `branch` |
-| P1-2 | 1-0 | Write `.local/build-1.json` (four keys); create the scratch schema (used by session 25 in wave 1-2) | file parses, is ignored; scratch schema exists |
-| P1-3 | 1-3 | Enable the Unity Gateway skills previews; create the skills schema; grant the build identity USE CATALOG, USE SCHEMA, CREATE VOLUME, READ VOLUME, WRITE VOLUME | schema exists |
-| P1-8 | 1-2b | SDK wheel volume (R7a): create the UC volume (or approve declaring it as a bundle resource); grant `WRITE VOLUME` to the build identity and the CI publishing service principal, `READ VOLUME` to project job run-as principals and the genie-build-waves run-as user; write the SDK bundle's gitignored `.databricks/bundle/dev/variable-overrides.json` with `sdk_volume_path` | overrides parse, volume exists |
-| P1-4 | 1-5 | Add `consumer_group` to both TPC-H `variable-overrides.json` files and `sdk_volume_path` to the metric-views one | keys present, untracked |
+| P1-2 | 1-0 | Write `.local/build-1.json` with `pages_domain_id` | file parses, is ignored |
+| P1-8 | 1-0 | Answer the SDK setup questions in the SDK bundle's gitignored dev overrides: `sdk_catalog` (existing catalog), `sdk_schema` (recommended: a new schema the bundle creates, e.g. `ontology_sdk`), `sdk_consumer_group`, `warehouse_id`. No SQL or grants: session 18's deploy creates the schema and volume, owned by the build identity, and the bundle grants the consumer group | overrides parse, catalog exists |
+| P1-3 | 1-3 | Confirm the Unity Gateway skills preview is on (no schema or grants: skills go into the SDK schema) | listing skills in the SDK schema works |
+| P1-4 | 1-5 | Add `consumer_group` to both TPC-H `variable-overrides.json` files and `sdk_volume_path` (the SDK `sdk_wheels` volume path, from its bundle summary) to the metric-views one | keys present, untracked |
 | P1-5 | 1-5 | Delete on the branch `examples/tpch/ontology-genie-agents/agents/ontology_agent.geniespace.json` and `examples/tpch/ontology-metric-views/src/genie_ontology_modeled_knowledge_sdk_vendored/` (TPC-H moves to the wheel) | neither in `git ls-files` |
 | P1-6 | 1-16 | Child build on the second domain per `docs/customer-path/run_plan.md` (owner, or Devin with the owner's hand-off approval) | child `build_verdict.json` exists |
 | P1-7 | after merge | GitHub: OIDC service principals for CI validate and skills publishing, `production` environment, branch protection; move `ci/` files to the repo root | workflows run on a PR |

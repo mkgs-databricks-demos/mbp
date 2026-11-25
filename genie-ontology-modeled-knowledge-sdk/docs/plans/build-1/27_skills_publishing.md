@@ -5,7 +5,7 @@ A mapping file, a staged GitHub publishing workflow, an idempotent workspace pub
 
 ## Context
 * [REQUESTS R1](REQUESTS.md#r1-publish-the-sdk-skills-to-the-unity-gateway-skills-library). Ids follow the Unity Catalog snake_case convention (`ontology_mv_synthesis`); `SKILL.md` keeps its `name`.
-* Target schema: `skills_catalog`.`skills_schema` from `.local/build-1.json` (owner-created with grants, P1-3). You are authorized for `uc_skills.publish` on the six SDK skills there; no grants (owner-only).
+* Target schema: the **SDK schema** (the SDK bundle's schema, created by session 18; resolve it with `databricks bundle summary -t dev` at `build_root`). Customers choose it in SDK setup (new schema recommended). You are authorized for `uc_skills.publish` on the six SDK skills there; no grants. P1-3 confirms the skills preview is on.
 * Publishing flow: create the skill if missing -> upload every file through the Files API under `/Skills/<catalog>/<schema>/<skill>/` -> finalize; the same flow genie-build-waves setup uses for its skills (read `genie-build-waves/src/notebooks/setup_build_waves_job` for the calls). Update an existing skill instead of creating a duplicate.
 * Root files are staged under `ci/` ([INDEX](INDEX.md#repository-root-files)).
 
