@@ -16,6 +16,7 @@ Make `templates/run/` a manifest a customer can run unchanged under genie-build-
 5. Skills: session scopes load skills by Unity Catalog id from `sdk_config.skills` with the workspace folder as fallback.
 6. Agents session renders with `geniespace render --params docs/registration/resolved_target.json --check`.
 7. Gate text: pytest commands set `GENIE_BUILD_WAVES_DIR`; the overrides-file grep is scoped to `.databricks/` paths.
+7b. **SDK wheel (R7a).** `{{sdk_version}}` token rendered from the SDK's `__version__`; the registration wave gets a `manual_prereqs` entry for the SDK wheel volume (`sdk_volume_path` in the metric-views overrides, `READ VOLUME` for the project's run-as principals and the genie-build-waves run-as user); gates check the registration job imported the installed wheel. A project scaffolded with `vendor=True` drops that prerequisite (record the mode in `sdk_config.json` as `sdk_distribution: wheel|vendored`, a new optional schema key).
 8. `tests/test_run_kit.py`: top-level `branch`; every `allow_deploy` session has `bundle.deploy` naming a project bundle; registration and tuning sessions have `jobs.run_now`; the Pages wave has its `manual_prereqs`; tuning has >= 3 mandatory iteration waves and an asymptote check; `validate_manifest` and `validate_authorizations` return 0 errors and 0 warnings on the rendered kit; a broken copy fails.
 9. `templates/run/INDEX.md`, `PROJECT_MEMORY.md` starter and `README.md` updated to match.
 
@@ -27,4 +28,4 @@ Make `templates/run/` a manifest a customer can run unchanged under genie-build-
 - `templates/run/**`, `src/genie_ontology_modeled_knowledge_sdk/{scaffold,config}.py`, `src/genie_ontology_modeled_knowledge_sdk/schemas/**`, `tests/test_run_kit.py`, `tests/test_config.py`
 
 ## Dependencies
-- Session 27 (skill ids, `skills` key), 21 (resolved target), 22 (benchmark API), 26 (tuning protocol).
+- Session 27 (skill ids, `skills` key), 21 (resolved target), 22 (benchmark API), 23/23b (wheel variables and stable path), 26 (tuning protocol).

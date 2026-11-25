@@ -13,7 +13,7 @@ A mapping file, a staged GitHub publishing workflow, an idempotent workspace pub
 1. `ci/skills.yaml`: `genie-ontology-modeled-knowledge-sdk/skills/<folder>` -> `<catalog>.<skills_schema>.<skill_id>` with catalog and schema as placeholders (`${SKILLS_CATALOG}`, `${SKILLS_SCHEMA}`).
 2. `ci/github/workflows/publish-genie-ontology-skills.yml`: `databricks/unity-gateway/actions/publish-skills` pinned to a commit SHA (leave a `# TODO(owner): pin reviewed SHA` if it cannot be verified), `production` environment, GitHub OIDC, path filter (skills, mapping, workflow), `workflow_dispatch` dry run.
 3. `skills_publish.py`: `plan_publish(skills_dir, mapping)` (diff of files vs. the published version), `publish(ws, ...)` (idempotent; returns changed files per skill), `check_schema(ws, catalog, schema)` (report, never create unless `create_schema=True`).
-4. `notebooks/publish_skills.ipynb`: widgets `skills_catalog`, `skills_schema` (empty defaults), `dry_run`; install the SDK wheel; calls the module.
+4. `notebooks/publish_skills.ipynb`: widgets `skills_catalog`, `skills_schema` (empty defaults), `dry_run`; install cell `%pip install --upgrade databricks-sdk <published wheel path>` + `dbutils.library.restartPython()` (stable path pattern from `docs/distribution/wheel_publish.md`, session 23b); calls the module.
 5. `schemas/sdk_config.schema.json` + `config.py`: optional `skills: {catalog, schema, ids}`; `scaffold.py` writes it into the project's `sdk_config.json` and `PROJECT_MEMORY.md`.
 6. `tests/test_skills.py`: each skill folder within platform limits (text files only, at most three folder levels and 50 files or folders), front matter `name` and `description`; `tests/test_skills_publish.py`: fake client, second publish is a no-op.
 7. Live: publish twice with the module; list the schema's skills; write `docs/skills/publish_results.md` (ids, file counts, second run 0 changes; catalog/schema shown as placeholders).
@@ -31,4 +31,4 @@ A mapping file, a staged GitHub publishing workflow, an idempotent workspace pub
 - The six SDK skills in the skills schema.
 
 ## Dependencies
-- Sessions 23 (wheel), 24, 25, 26 (reconciled skills).
+- Sessions 23 and 23b (wheel built and published), 24, 25, 26 (reconciled skills).

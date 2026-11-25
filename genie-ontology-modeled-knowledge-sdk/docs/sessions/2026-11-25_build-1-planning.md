@@ -44,8 +44,27 @@ The development Pages domain for `pages_domain_id` is the one chosen in [2026-11
 * SDK tests from a `/tmp` copy with `GENIE_BUILD_WAVES_DIR` set: 280 passed, none skipped.
 * Not verified: the Genie benchmark section field names in `.geniespace.json` (session 19 must read them from an exported space), whether Genie Code job tasks may call eval-runs and Pages writes (sessions 31/35 have fallbacks), and that unattended tasks load Unity Catalog skills (session 27's spike).
 
+## Addendum: SDK wheel distribution (R7a)
+
+**Request (owner, same day):** add SDK wheel distribution after R7 and fold it into the wave map. **Decision: ship both** (wheel by default, vendoring opt-in for no package egress or locked-down workspaces).
+
+**Verified before planning:** `pyproject.toml` (setuptools, `src/` layout, `schemas/*.json` package data, version 0.0.1, `databricks-sdk>=0.40`); no bundle at the SDK root; `VENDORED_MODULES` = `mv_yaml`, `manifest`, `geniespace`; the template notebooks import only `mv_yaml` and `manifest` (`manifest` imports `mv_yaml`), so the vendored set is enough today but must follow the import closure once build-1 adds modules; `load_sdk()` registers the vendored folder, else imports the installed package; the template job has no `environments`; the init notebook edits `sys.path`; the vendored-copy and loader tests exist. No test depends on `examples/tpch`'s vendored copy, so the owner can delete it before the build.
+
+**Docs checked (2026-11-25):** `artifacts.<name>: {type: whl, path, build}` builds on deploy; a `/Volumes/...` `workspace.artifact_path` makes the CLI upload referenced artifacts to the volume (no DBFS); serverless notebook tasks default to the notebook environment and accept a job-level environment with `/Volumes/...whl` dependencies (`environment_key`); classic compute uses `libraries: [{whl}]`; pure-Python wheels only. Not settled by the docs, so session 23b verifies on the platform: the upload sub-path under `artifact_path`, whether an unreferenced artifact is uploaded (the plan adds an `sdk_smoke` job that references it), and dynamic versioning.
+
+**Changes:**
+* `REQUESTS.md`: new **R7a** after R7 (current state, platform facts, 8 changes, acceptance criteria, dependencies, owner prerequisites); R2 scope note (R7a carries its distribution items, R2 keeps entry points); R9 depends on R7a and uses the wheel; sequencing step 3b.
+* Manifest: session 23 rescoped (R2 + R7a code, SDK-root bundle, wheel-first templates, `vendor=False` default) with gate checks `sdk_bundle_validate`, `installed_wheel_tests`, `vendor_modes`; new single-session deploy wave **1-2b** (session **23b**: deploy the SDK bundle, run `sdk_smoke`, verify exactly one 0.1.0 wheel, record the stable path) with prerequisite **P1-8** and explicit `bundle.deploy` / `jobs.run_now` / `volume.write` approvals; session 27 depends on 23b; session 30 drops its own wheel upload, proves identical DDL before and after the move (`ddl_identical`) and only then applies observation 30; P1-4 adds `sdk_volume_path`; P1-5 also deletes the TPC-H vendored folder; sessions 28/29 scopes cover `sdk_version`, the volume prerequisite, the `vendor` widget and "Getting the SDK" in `docs/usage.md`.
+* Plans: 23 rewritten, 23b new; 27, 28, 29, 30, 43 updated; INDEX (wave map, contracts, owned paths, prerequisites, plan list).
+* PROJECT_MEMORY: build-1 decision "ship both, wheel by default".
+
+**P1-8 (owner, not run):** create the SDK wheel UC volume (or approve it as a bundle resource); grant `WRITE VOLUME` to the build identity and the CI publishing service principal and `READ VOLUME` to project job run-as principals and the genie-build-waves run-as user; write `sdk_volume_path` in the SDK bundle's gitignored dev overrides.
+
+**Verification (addendum):** `validate_manifest` and `validate_authorizations` 0 errors, 0 warnings; 30 waves (11 archived, 19 runnable), 48 sessions, 172 job tasks; `plan_deploy_warnings` none; every authorization target is in its session's `owned_assets`; every plan file exists; relative links resolve; no workspace ids or user paths outside `docs/sessions/`; SDK tests from a `/tmp` copy: 280 passed.
+
 ## Files modified
 * `docs/plans/waves.json` (build-0 waves archived; build-1 waves, branch, policy, context files)
 * `docs/plans/build-1/INDEX.md` and 23 plan files (`18_*`..`45_*`, `36-41_tuning_iteration.md`)
 * `docs/plans/INDEX.md` (pointer to build 1), `.gitignore` (`.local/`)
 * `PROJECT_MEMORY.md`, this summary, `docs/sessions/INDEX.md`
+* Addendum: `docs/plans/build-1/REQUESTS.md`, `docs/plans/build-1/23b_wheel_publish.md` (new), plans 23, 27, 28, 29, 30, 43

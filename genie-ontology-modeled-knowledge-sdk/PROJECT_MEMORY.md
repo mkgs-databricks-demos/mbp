@@ -21,7 +21,7 @@ A developer toolkit that automates the standup of modeled knowledge for Genie On
 * History: see [docs/sessions/INDEX.md](docs/sessions/INDEX.md).
 * Code review of the build-0 SDK (best practices, genie-build-waves coupling, customer path, prioritized improvements incl. Unity Gateway skills publishing): [docs/reviews/2026-11-25_build-0-sdk-review.md](docs/reviews/2026-11-25_build-0-sdk-review.md).
 * **Build-1 requests** (owner-accepted, priority order R1-R9, each with change, files, acceptance criteria, dependencies, plus a sequencing table): [docs/plans/build-1/REQUESTS.md](docs/plans/build-1/REQUESTS.md).
-* **Build-1 planned (2026-11-25, not run):** [docs/plans/build-1/INDEX.md](docs/plans/build-1/INDEX.md). 18 waves `1-0`..`1-17`, sessions 18-45, appended to `docs/plans/waves.json` with the build-0 waves archived. R1-R9 + all build-0 observations + exhaustive MV-first tuning (100-498 questions, >= 3 tuning plans, stop at the asymptote) + an independent report simulation as the final evaluation; R9 last. `validate_manifest` / `validate_authorizations` 0/0, 163 job tasks. Owner prerequisites P1-1..P1-7 in the INDEX ([planning summary](docs/sessions/2026-11-25_build-1-planning.md)).
+* **Build-1 planned (2026-11-25, not run):** [docs/plans/build-1/INDEX.md](docs/plans/build-1/INDEX.md). 19 waves (`1-0`..`1-17` plus `1-2b`), sessions 18-45 plus 23b, appended to `docs/plans/waves.json` with the build-0 waves archived. R1-R9 + all build-0 observations + exhaustive MV-first tuning (100-498 questions, >= 3 tuning plans, stop at the asymptote) + an independent report simulation as the final evaluation; R9 last. `validate_manifest` / `validate_authorizations` 0/0, 172 job tasks. Owner prerequisites P1-1..P1-8 in the INDEX ([planning summary](docs/sessions/2026-11-25_build-1-planning.md)).
 
 ## Layout
 
@@ -112,7 +112,7 @@ The list below is kept as the historical record. Details and evidence: [2026-11-
 4. Owner review and merge of the build-0 feature branch PR (title and description drafted in the [close-out session](docs/sessions/2026-11-25_build-0-close-out.md)).
 4b. Point the genie-build-waves instance at the renamed folder (vars file `build_root` / `manifest_path`), redeploy, rerun setup (build-1 P1-1).
 5. Owner items from build-0: Pages are now session 31 of build 1 (drafts in the development domain); the placeholder deletion is build-1 P1-5.
-6. ~~Plan build 1~~ (done 2026-11-25). Next: owner reviews the plan PR, completes P1-1..P1-5, then hands build 1 to Devin (level 4).
+6. ~~Plan build 1~~ (done 2026-11-25). Next: owner reviews the plan PR, completes P1-1..P1-5 and P1-8, then hands build 1 to Devin (level 4).
 
 ## Build-1 decisions
 
@@ -120,6 +120,7 @@ The list below is kept as the historical record. Details and evidence: [2026-11-
 
 * **Build-1 executor (owner, 2026-11-25):** Devin at level 4, as autonomous as possible: explicit owner authorizations per side effect, `monitor_may_authorize` on `owned_assets` for `jobs.run_now`, `bundle.deploy`, `volume.write`, `workspace.write`, `sql.ddl`, `uc_skills.publish`; owner-only actions (grants, permissions, secrets, destroy, deletes) stay `manual_prereqs`.
 * **Build-1 defaults (proposed, owner did not object):** repo-root files staged under `ci/` and moved by the owner; asymptote = after >= 3 applied tuning plans, < 1.0 point gain in each of the last 2 iterations (or 100%) with holdout within 2.0 points of its best, at most 6 iterations; report simulation target 80%, recorded not gated.
+* **SDK distribution (owner, 2026-11-25): ship both, wheel by default.** Projects install the versioned wheel (built by an SDK-root bundle `artifacts` block, uploaded to a UC volume through `workspace.artifact_path`, pinned by `sdk_version` in project bundles). Vendoring stays as an opt-in (`scaffold_project(vendor=True)`) for customers with no package egress or locked-down workspaces; `load_sdk()` keeps vendored-first, installed fallback. Request [R7a](docs/plans/build-1/REQUESTS.md#r7a-sdk-wheel-distribution); sessions 23 (code) and 23b (publish, wave 1-2b); owner prerequisite P1-8 (volume and grants).
 * **Build-1 local targets:** workspace-specific values in gitignored `.local/build-1.json` (`skills_catalog`, `skills_schema`, `scratch_schema`, `pages_domain_id`, `customer_path_root`). The only committed file allowed a resolved dev schema name is `examples/tpch/docs/registration/resolved_target.json`.
 
 ## Build-0 open decisions (defaults applied)

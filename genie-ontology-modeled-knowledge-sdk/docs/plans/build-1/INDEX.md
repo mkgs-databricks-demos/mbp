@@ -4,7 +4,7 @@
 
 Build 1 turns the build-0 SDK into something a customer can install and run, and makes tuning exhaustive. It merges the owner-accepted [requests R1-R9](REQUESTS.md) with the [build-0 observations](../../build-0-observations.md) and adds an exhaustive tuning protocol and an independent final evaluation (owner request, 2026-11-25).
 
-* **Manifest:** [`docs/plans/waves.json`](../waves.json). Build-0 waves `0-0`..`0-10` stay as history with `"archived": true`; build-1 waves are `1-0`..`1-17` with `"build": "1"`, sessions `18`-`45`. `validate_manifest` and `validate_authorizations`: 0 errors, 0 warnings (163 job tasks).
+* **Manifest:** [`docs/plans/waves.json`](../waves.json). Build-0 waves `0-0`..`0-10` stay as history with `"archived": true`; build-1 waves are `1-0`..`1-17` plus `1-2b` with `"build": "1"`, sessions `18`-`45` plus `23b`. `validate_manifest` and `validate_authorizations`: 0 errors, 0 warnings (172 job tasks).
 * **Workflow:** `hybrid`; `build_root` = this SDK folder; top-level `branch` = the build-1 feature branch.
 * **Executor:** Devin as the external monitor at **level 4, as autonomous as possible** (owner, 2026-11-25). The manifest is written so Devin rarely needs the owner: every side effect a session needs is an explicit owner `authorizations` entry, `authorization_policy.monitor_may_authorize` lets Devin grant `jobs.run_now`, `bundle.deploy`, `volume.write`, `workspace.write`, `sql.ddl` and `uc_skills.publish` on a session's own `owned_assets`, accuracy thresholds are recorded rather than gated where a miss is not a defect, and conditional tuning waves avoid manifest edits. Devin still stops on the monitor skill's stop conditions and on the `manual_prereqs` below.
 * **Workspace-specific values** (skills schema, scratch schema, Pages domain id, child project path) live only in the gitignored `.local/build-1.json` and in `docs/sessions/`. Plans and the manifest refer to its keys.
@@ -15,10 +15,11 @@ Build 1 turns the build-0 SDK into something a customer can install and run, and
 |---|---|---|---|
 | 1-0 | CI & dependency floor | 18 (edit) | R5, R7; obs "08: /tmp pytest copy skips validate_manifest" |
 | 1-1 | Library & template defects, benchmark library | 19, 20, 21, 22 (edit) | R4.1-R4.4; obs 8 (helper), 21, 22, 24, 25, 27, 28, 29, 31; obs "06: warehouse_id unused" |
-| 1-2 | Wheel & reconciled skills | 23, 24, 25, 26 (edit) | R2, R8; obs 1-20, 23, 26 |
+| 1-2 | Wheel & reconciled skills | 23, 24, 25, 26 (edit) | R2 (entry points), R7a (code: versioning, SDK bundle `artifacts`, wheel-first templates, opt-in vendoring, CI on the installed wheel), R8; obs 1-20, 23, 26 |
+| 1-2b | SDK wheel publish (deploy) | 23b (edit, allow_deploy) | R7a (deploy the SDK bundle: wheel built and uploaded to the UC volume, `sdk_smoke` run) |
 | 1-3 | Skills publishing | 27 (edit) | R1 |
 | 1-4 | Run kit & guided setup notebook | 28, 29 (edit) | R3, R6; obs "09: gate grep", "09: main default"; owner item "run approvals" |
-| 1-5 | TPC-H metric view refresh (deploy) | 30 (edit, allow_deploy) | obs 30; R2/R4.4 dogfood |
+| 1-5 | TPC-H metric view refresh (deploy) | 30 (edit, allow_deploy) | R7a dogfood (TPC-H on the wheel, identical DDL), obs 30, R4.4 |
 | 1-6 | TPC-H draft Pages & benchmark authoring | 31, 32, 33, 34 (edit) | owner item "Pages need a domain" (13); exhaustive benchmark |
 | 1-7 | Tuning baseline (deploy) | 35 (edit, allow_deploy) | exhaustive tuning |
 | 1-8 | Tuning iteration 1 (deploy) | 36 | tuning plan 01 |
@@ -32,7 +33,7 @@ Build 1 turns the build-0 SDK into something a customer can install and run, and
 | 1-16 | Customer path run report | 44 (edit) | R9 (after the owner-run child build) |
 | 1-17 | Build-1 docs & observations | 45 (edit) | wrap-up |
 
-Waves run in order; sessions in one wave run in parallel. Deploying waves (1-5, 1-7..1-13) have exactly one session (single-writer rule).
+Waves run in order; sessions in one wave run in parallel. Deploying waves (1-2b, 1-5, 1-7..1-13) have exactly one session (single-writer rule).
 
 ### Why this order
 
@@ -40,7 +41,7 @@ The owner's priority order is R1..R9. Build order follows dependencies, as in th
 
 1. R5 + R7 first: lint, types and the SDK floor are needed to build and test everything else (R7's floor must include the skills API that R1 uses).
 2. R4 next, with the benchmark library: R2 and R4 both change `scaffold.py` and the metric-views template.
-3. R2 in parallel with R8: R1 must publish the reconciled skills, so R8 comes before R1.
+3. R2 + R7a (wheel distribution, owner decision 2026-11-25: ship both, wheel by default, vendoring opt-in) in parallel with R8; R7a needs R5 and R7 from wave 1-0. A single-session wave 1-2b then publishes the wheel, so every later install (skills publisher, guided notebook, TPC-H, the R9 child project) uses it. R1 must publish the reconciled skills, so R8 comes before R1.
 4. R1, then R3 + R6, which consume R1 (skill ids) and R4 (resolved target).
 5. TPC-H refresh, exhaustive tuning and the report simulation use the fixed SDK.
 6. R9 last, on a second domain, through the run kit that now contains the exhaustive tuning protocol.
@@ -73,7 +74,7 @@ Defined in `skills/ontology-tuning` and `docs/design/tuning-protocol.md` (sessio
 | `accuracy_history.json`: list of `{iteration, label, eval_run_id, started_at, tuning: {n, correct, accuracy}, holdout: {...}, changes: [...]}` | 35, 36-41 | `benchmark.asymptote`, gates 1-8..1-13 |
 | `pages.upsert_pages(..., domain_id, status="DRAFT")` returns created/updated ids; `pages.write_terms` bulk helper | 20 | 24 (skill text), 31, 36-41 |
 | Skill source note: every session summary from wave 1-4 on says whether skills loaded from Unity Catalog or the workspace folder (R1 spike evidence) | 27 | 28-45 |
-| Wheel `genie_ontology_modeled_knowledge_sdk-0.1.0-py3-none-any.whl`, bundle variable `sdk_wheel`, bundle-managed volume `sdk_wheels` | 23 | 29, 30 |
+| SDK wheel `genie_ontology_modeled_knowledge_sdk-<version>-py3-none-any.whl` (0.1.0), built by the SDK bundle's `artifacts.sdk_wheel` and uploaded to `workspace.artifact_path` = `${var.sdk_volume_path}` (owner volume, P1-8); stable path pattern in `docs/distribution/wheel_publish.md` (CLI path, or `releases/<version>/` if the CLI path is not stable); project templates pin `sdk_version` and install `sdk_wheel` through a job environment; `vendor=False` is the scaffold default | 23 (code), 23b (publish) | 27, 28, 29, 30, 43 |
 
 ## Owned paths by wave
 
@@ -82,6 +83,8 @@ No two sessions in a wave share a path. Files touched in more than one wave have
 | File | Owners (wave) |
 |---|---|
 | `pyproject.toml` | 18 (1-0), 23 (1-2) |
+| `databricks.yml` (SDK root), `resources/**`, `notebooks/sdk_smoke.ipynb` | 23 (1-2), 23b (1-2b) |
+| `README.md` | 23 (1-2, "Getting the SDK"), 45 (1-17) |
 | `src/.../scaffold.py` | 21 (1-1), 23 (1-2), 27 (1-3), 28 (1-4) |
 | `src/.../config.py`, `schemas/**` | 19 (1-1), 27 (1-3), 28 (1-4) |
 | `templates/ontology-metric-views/**` | 21 (1-1), 23 (1-2) |
@@ -102,12 +105,13 @@ Sessions write only inside `build_root`. The GitHub workflows and the skills map
 | P1-1 | 1-0 | Update the instance vars file outside the repo (path in the [build-1 planning summary](../../sessions/2026-11-25_build-1-planning.md)) (`build_root`, `manifest_path` -> this folder; keep `instance_suffix`, `monitor_principal`, `monitor_job_level`), redeploy with `scripts/deploy_instance.py` from the web terminal, run setup | build job defaults point here, branch default = manifest `branch` |
 | P1-2 | 1-0 | Write `.local/build-1.json` (four keys); create the scratch schema (used by session 25 in wave 1-2) | file parses, is ignored; scratch schema exists |
 | P1-3 | 1-3 | Enable the Unity Gateway skills previews; create the skills schema; grant the build identity USE CATALOG, USE SCHEMA, CREATE VOLUME, READ VOLUME, WRITE VOLUME | schema exists |
-| P1-4 | 1-5 | Add `consumer_group` to both TPC-H `variable-overrides.json` files | keys present, untracked |
-| P1-5 | 1-5 | Delete `examples/tpch/ontology-genie-agents/agents/ontology_agent.geniespace.json` on the branch | not in `git ls-files` |
+| P1-8 | 1-2b | SDK wheel volume (R7a): create the UC volume (or approve declaring it as a bundle resource); grant `WRITE VOLUME` to the build identity and the CI publishing service principal, `READ VOLUME` to project job run-as principals and the genie-build-waves run-as user; write the SDK bundle's gitignored `.databricks/bundle/dev/variable-overrides.json` with `sdk_volume_path` | overrides parse, volume exists |
+| P1-4 | 1-5 | Add `consumer_group` to both TPC-H `variable-overrides.json` files and `sdk_volume_path` to the metric-views one | keys present, untracked |
+| P1-5 | 1-5 | Delete on the branch `examples/tpch/ontology-genie-agents/agents/ontology_agent.geniespace.json` and `examples/tpch/ontology-metric-views/src/genie_ontology_modeled_knowledge_sdk_vendored/` (TPC-H moves to the wheel) | neither in `git ls-files` |
 | P1-6 | 1-16 | Child build on the second domain per `docs/customer-path/run_plan.md` (owner, or Devin with the owner's hand-off approval) | child `build_verdict.json` exists |
 | P1-7 | after merge | GitHub: OIDC service principals for CI validate and skills publishing, `production` environment, branch protection; move `ci/` files to the repo root | workflows run on a PR |
 
-Doing P1-1..P1-5 before the build starts lets Devin run waves 1-0..1-15 without stopping. All of these are listed in the [build-1 planning session summary](../../sessions/2026-11-25_build-1-planning.md).
+Doing P1-1..P1-5 and P1-8 before the build starts lets Devin run waves 1-0..1-15 without stopping. All of these are listed in the [build-1 planning session summary](../../sessions/2026-11-25_build-1-planning.md).
 
 ## Session plans
 
@@ -119,6 +123,7 @@ Doing P1-1..P1-5 before the build starts lets Devin run waves 1-0..1-15 without 
 | 21 | [21_templates_and_scaffold.md](21_templates_and_scaffold.md) |
 | 22 | [22_benchmark_library.md](22_benchmark_library.md) |
 | 23 | [23_wheel.md](23_wheel.md) |
+| 23b | [23b_wheel_publish.md](23b_wheel_publish.md) |
 | 24 | [24_discovery_skills.md](24_discovery_skills.md) |
 | 25 | [25_synthesis_curation_skills.md](25_synthesis_curation_skills.md) |
 | 26 | [26_tuning_skill.md](26_tuning_skill.md) |

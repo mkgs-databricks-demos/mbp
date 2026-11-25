@@ -1,31 +1,36 @@
-# Session 23: Wheel, Entry Points & Versioning (R2)
+# Session 23: Wheel Distribution — Versioning, SDK Bundle Artifacts, Wheel-First Templates, Opt-in Vendoring (R2, R7a)
 
 ## Scope
-Ship the SDK as a versioned pure-Python wheel with `gos-*` commands; bundles and notebooks install the wheel instead of using vendored copies or `sys.path` edits. No deploy.
+Ship the SDK as a versioned pure-Python wheel, built by a bundle `artifacts` block at the SDK root and installed by project bundles from a UC volume. Vendoring becomes opt-in. Code, tests and `bundle validate` only; session 23b deploys.
 
 ## Context
-* [REQUESTS R2](REQUESTS.md#r2-ship-a-wheel-instead-of-vendored-modules); review gaps G1, G2, G7.
-* Session 21 already changed both templates and `scaffold.py` (wave 1-1); build on its result.
-* The wheel reaches a workspace through a **bundle-managed volume** `sdk_wheels` in the metric-views template (declared under the schema resource), so no owner-created volume is needed. Session 30 uploads the wheel after the first deploy.
+* [REQUESTS R7a](REQUESTS.md#r7a-sdk-wheel-distribution) (owner decision: ship both, wheel by default, vendoring opt-in) and [R2](REQUESTS.md#r2-ship-a-wheel-instead-of-vendored-modules) item 2 (entry points); review gaps G1, G2, G7.
+* Verified current state is in R7a: no bundle at the SDK root; `VENDORED_MODULES = (mv_yaml, manifest, geniespace)`; template notebooks import `mv_yaml` and `manifest`; `load_sdk()` registers the vendored folder, else imports the installed package; the template job has no `environments`; the init notebook edits `sys.path`.
+* Platform facts (docs): `artifacts.<name>: {type: whl, path, build}` builds on `bundle deploy`; with `workspace.artifact_path` set to a `/Volumes/...` path the CLI uploads referenced artifacts there (no DBFS). Serverless notebook tasks accept a job-level environment (`environments[].spec.dependencies`, task `environment_key`); classic compute uses `libraries: [{whl: ...}]`. Pure-Python wheels only. Before writing YAML, load the `dabs` skill and check the current bundle reference for `artifacts`, `artifact_path`, `environments` and whether `dynamic_version` exists and defaults on in the installed CLI (`databricks -v`); record the CLI version and the keys used in `docs/distribution/README.md`.
+* Session 21 changed both templates and `scaffold.py` in wave 1-1; build on its result. Sessions 24-26 own `skills/` in this wave.
+* Workspace-specific values (the volume path) only in gitignored overrides: the SDK bundle's `.databricks/bundle/dev/variable-overrides.json` (`sdk_volume_path`, owner prerequisite P1-8) and the projects' overrides.
 
 ## Tasks
-1. Version `0.1.0`: `__init__.__version__` from `importlib.metadata`, setuptools reads it once; `CHANGELOG.md` (0.1.0 = build-1 changes, 0.0.1 = build-0).
-2. `[project.scripts]`: `gos-check-config`, `gos-validate-mv`, `gos-build-manifest`, `gos-render-agents`, `gos-scaffold`, `gos-resolve-target`, `gos-benchmark`. `python -m` keeps working.
-3. Metric-views template: `sdk_wheel` variable (default `/Volumes/${var.catalog}/<schema>/sdk_wheels/genie_ontology_modeled_knowledge_sdk-0.1.0-py3-none-any.whl`, schema through `${resources.schemas.<name>.name}`), the `sdk_wheels` volume resource, job environment `dependencies: [${var.sdk_wheel}]`; notebooks import `genie_ontology_modeled_knowledge_sdk`.
-4. `scaffold_project(..., vendor=False)`: no vendored folder by default; `vendor=True` writes it plus `VENDORED_VERSION`; a test fails when a vendored copy differs from the SDK at that version.
-5. `notebooks/init_ontology_project.ipynb`: install cell `%pip install <wheel path or version>` + `dbutils.library.restartPython()`; remove the `sys.path` bootstrap.
-6. CI workflow: add a `wheel` job that builds and uploads the wheel as an artifact.
-7. `tests/test_wheel.py`: builds the wheel into a temp dir and checks the entry points and package data (`schemas/*.json`) are present.
+1. **Versioning.** `version = "0.1.0"` in `pyproject.toml` only; `__init__.__version__` via `importlib.metadata.version(...)` with a fallback that reads `pyproject.toml` when running from a source tree; `CHANGELOG.md` (0.1.0 = build 1, 0.0.1 = build 0). `tests/test_version.py`: `pyproject.toml`, `__version__`, the built wheel's `METADATA` and the metric-views template's default `sdk_version` agree.
+2. **Entry points (R2 item 2).** `gos-check-config`, `gos-validate-mv`, `gos-build-manifest`, `gos-render-agents`, `gos-scaffold` (with `--vendor`), `gos-resolve-target`, `gos-benchmark`; `python -m` keeps working.
+3. **SDK bundle** (`databricks.yml` at the SDK root): `bundle.name`, `variables.sdk_volume_path` (no default), `artifacts.sdk_wheel: {type: whl, path: ., build: <command>}` with a build command available where deploys run (try `python -m build --wheel`, fall back to `pip wheel --no-deps -w dist .`; record which), static version (no dynamic versioning); targets `dev` (`mode: development`, `workspace.artifact_path: ${var.sdk_volume_path}`) and a `prod`-style target that does the same with its own volume; `sync` limited to `notebooks/sdk_smoke.ipynb` and `resources/` so deploys do not upload `examples/` or `templates/`.
+4. **Smoke job** `resources/sdk_smoke.job.yml` + `notebooks/sdk_smoke.ipynb`: serverless, a job environment whose `dependencies` reference the built wheel (`./dist/*.whl`), `environment_key` on the notebook task; the notebook imports the package, prints `__version__` and exits with it. This is what makes the artifact referenced and uploaded.
+5. **Templates** (`templates/ontology-metric-views`): variables `sdk_version` (default `0.1.0`, rendered by the scaffold from the SDK version) and `sdk_wheel` (default `${var.sdk_volume_path}/<stable sub-path>/genie_ontology_modeled_knowledge_sdk-${var.sdk_version}-py3-none-any.whl`; the stable sub-path is a variable too, `sdk_wheel_subpath`, so session 23b can confirm it without a template change), `sdk_volume_path` (no default; if the CLI rejects variable references inside a variable default, compose the path in the environment dependency instead and say so in the README); a job-level environment with `dependencies: [${var.sdk_wheel}]` and `environment_key` on every notebook task; a commented `libraries: [{whl: ${var.sdk_wheel}}]` block for classic compute; README section. Keep `load_sdk()` exactly as is.
+6. **Vendoring opt-in.** `scaffold_project(..., vendor=False)`: no vendored files by default; `vendor=True` copies the import closure of every SDK module the template notebooks import (computed by parsing the notebooks and the modules' `genie_ontology_modeled_knowledge_sdk.*` imports, replacing the fixed `VENDORED_MODULES`) and writes `VENDORED_VERSION`. Tests: `vendor=False` writes none and the notebooks resolve the installed package; `vendor=True` keeps `test_vendored_files_identical` and `test_vendored_loader_imports_sdk` passing and checks the closure.
+7. **Notebooks.** Install cells: `%pip install --upgrade databricks-sdk <wheel path or genie-ontology-modeled-knowledge-sdk==<version>>` then `dbutils.library.restartPython()` (function, not the magic). `init_ontology_project`: import the installed package; only if it is missing and the notebook runs from an SDK checkout, add `<sdk>/src` for development and print that it did (no unconditional `sys.path` edit).
+8. **CI.** Extend the staged workflow: build the wheel, install it into a clean venv, run the test suite from a directory where `src/` is not importable (assert `__file__` is under `site-packages`), for both the `databricks-sdk` floor and the latest; upload the wheel as an artifact; `bundle validate --strict` of the SDK bundle with a placeholder `sdk_volume_path`.
+9. **Docs.** `README.md` "Getting the SDK": wheel (default), vendored (opt-in, for no package egress or locked-down workspaces), editable install for SDK development (`pip install -e .`). `docs/distribution/README.md`: the bundle, the volume contract, grants, CLI version and keys. Session 29 writes the same section in `docs/usage.md`.
+10. `tests/test_sdk_bundle.py`: the SDK bundle YAML has the artifact, `artifact_path` from the variable, the smoke job's environment and the limited sync; `tests/test_wheel.py`: wheel contents (package data, entry points).
 
 ## Acceptance Criteria
-- [ ] Gate checks `wheel` and `no_vendored_paths` pass (vendored paths in `skills/` are removed by sessions 24-26 in the same wave).
-- [ ] `validate_bundles` for the metric-views template passes.
-- [ ] Scaffold tests: default writes no vendored folder; `vendor=True` passes the drift test.
+- [ ] Gate checks `wheel`, `no_vendored_paths`, `sdk_bundle_validate`, `installed_wheel_tests`, `vendor_modes` pass; `validate_bundles` for the metric-views template passes.
+- [ ] Both templates still pass `bundle validate --strict` with scratch overrides.
 
 ## Owned Paths
-- `pyproject.toml`, `CHANGELOG.md`, `src/genie_ontology_modeled_knowledge_sdk/__init__.py`, `src/genie_ontology_modeled_knowledge_sdk/scaffold.py`
-- `templates/ontology-metric-views/**`, `notebooks/init_ontology_project.ipynb`
-- `tests/test_wheel.py`, `tests/test_scaffold.py`, `tests/test_template_mv_bundle.py`, `ci/github/workflows/genie-ontology-modeled-knowledge-sdk-ci.yml`
+- `pyproject.toml`, `CHANGELOG.md`, `README.md`, `databricks.yml`, `resources/**`, `notebooks/sdk_smoke.ipynb`, `notebooks/init_ontology_project.ipynb`
+- `src/genie_ontology_modeled_knowledge_sdk/__init__.py`, `src/genie_ontology_modeled_knowledge_sdk/scaffold.py`, `templates/ontology-metric-views/**`
+- `tests/test_wheel.py`, `tests/test_version.py`, `tests/test_sdk_bundle.py`, `tests/test_scaffold.py`, `tests/test_template_mv_bundle.py`
+- `ci/github/workflows/genie-ontology-modeled-knowledge-sdk-ci.yml`, `docs/distribution/**`
 
 ## Dependencies
-- Sessions 18 (floor, CI), 21 (templates, scaffold).
+- Sessions 18 (CI, databricks-sdk floor), 21 (templates, scaffold). Session 23b deploys what this session writes.
