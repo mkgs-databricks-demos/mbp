@@ -19,7 +19,8 @@ TEMPLATE = Path(__file__).resolve().parents[1] / "templates" / "ontology-metric-
 SCHEMA_RESOURCE = TEMPLATE / "resources" / "ontology_schema.yml"
 SCHEMA_REF = "${resources.schemas.ontology_schema.name}"
 CATALOG_REF = "${resources.schemas.ontology_schema.catalog_name}"
-REQUIRED_VARS = {"catalog", "source_catalog", "source_schema", "warehouse_id"}
+REQUIRED_VARS = {"catalog", "source_catalog", "source_schema", "consumer_group"}
+DEV_PLACEHOLDER_VARS = {"catalog", "source_catalog", "source_schema"}
 TASK_KEYS = ["generate_manifest", "register_each_mv", "smoke_test", "cardinality_test"]
 
 
@@ -117,12 +118,44 @@ def test_bundle_includes_resources(bundle):
 
 def test_variables(bundle):
     variables = bundle["variables"]
-    assert set(variables) == REQUIRED_VARS | {"schema_name", "consumer_group"}
+    assert set(variables) == REQUIRED_VARS | {"schema_name", "warehouse_id"}
     for name in REQUIRED_VARS:
         assert "default" not in variables[name], f"{name} must be required (no default)"
         assert variables[name].get("description")
     assert variables["schema_name"]["default"] == "ontology"
-    assert variables["consumer_group"]["default"] == "account users"
+
+
+def test_consumer_group_has_no_default(bundle):
+    # R4.3 / G9: no broad default grant; the owner must name a group.
+    cg = bundle["variables"]["consumer_group"]
+    assert "default" not in cg
+    assert "required" in cg["description"].lower()
+    for target in bundle["targets"].values():
+        assert "consumer_group" not in (target.get("variables") or {})
+    assert "account users" not in (TEMPLATE / "databricks.yml").read_text()
+
+
+def test_warehouse_id_is_optional(bundle):
+    wh = bundle["variables"]["warehouse_id"]
+    assert wh["default"] == ""
+    assert "optional" in wh["description"].lower()
+    for target in bundle["targets"].values():
+        assert "warehouse_id" not in (target.get("variables") or {})
+
+
+def test_readme_documents_required_group_and_resolved_target():
+    readme = (TEMPLATE / "README.md").read_text()
+    assert "consumer_group" in readme and "account users" not in readme
+    assert "resolved_target.json" in readme
+    assert "genie_ontology_modeled_knowledge_sdk.targets resolve" in readme
+
+
+def test_register_notebook_exits_with_resolved_target():
+    nb = json.loads((TEMPLATE / "notebooks" / "register_single_mv.ipynb").read_text())
+    last = "".join(nb["cells"][-1]["source"])
+    assert "dbutils.notebook.exit(json.dumps(summary))" in last
+    assert '"catalog": args["target_catalog"]' in last
+    assert '"schema": args["target_schema"]' in last
 
 
 def test_targets(bundle):
@@ -130,10 +163,9 @@ def test_targets(bundle):
     assert set(targets) == {"dev", "prd"}
     dev, prd = targets["dev"], targets["prd"]
     assert dev["mode"] == "development" and dev["default"] is True
-    assert set(dev["variables"]) == REQUIRED_VARS
+    assert set(dev["variables"]) == DEV_PLACEHOLDER_VARS
     assert dev["variables"]["source_catalog"] == "samples"
     assert dev["variables"]["source_schema"] == "tpch"
-    assert dev["variables"]["warehouse_id"].startswith("<")  # obvious placeholder
     assert prd["mode"] == "production"
     assert prd["workspace"]["root_path"] == "/Workspace/.bundle/${bundle.name}/${bundle.target}"
 

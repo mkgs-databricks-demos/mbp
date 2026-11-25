@@ -61,3 +61,17 @@ The build-0 TPC-H agent was read with `GET /api/2.0/genie/spaces/{id}?include_se
 * `tests/test_geniespace.py`
 * `tests/test_config.py`
 * `tests/fixtures/geniespace/resolved_target.json` (new)
+
+## Re-run 109257611554257 (already completed)
+
+Run `109257611554257` found this session already done: run `1057400752545739` passed and its files are committed in `b16746e` (`wave(1-1): 19, 20, 22`); the owned paths have no uncommitted changes. Branch checked read-only (`mg-genie-ontology-build-1-plan`). No files edited. Re-validated in a fresh /tmp copy (which also contains the uncommitted session 21 work in the shared tree):
+
+| Check | Result |
+|---|---|
+| pytest (all, `GENIE_BUILD_WAVES_DIR` set) | pass: 403 passed |
+| pytest test_geniespace + test_config | pass: 93 passed |
+| split / benchmark / `--check` tests (`-k`) | pass: 28 passed |
+| ruff check . / ruff format --check . | pass |
+| mypy src | pass: no issues in 9 source files |
+
+The requests above (sessions 25, 22, init notebook owner, session 30) still stand.

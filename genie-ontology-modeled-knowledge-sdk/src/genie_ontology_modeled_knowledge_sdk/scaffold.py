@@ -24,6 +24,12 @@ Rules:
 * Only the run-kit tokens ``{{project_name}}``, ``{{domain_name}}`` and
   ``{{bundle_target}}`` are rendered. Every other ``{{...}}`` (Jobs dynamic value
   references such as ``{{input.name}}``) and every ``${...}`` stay as they are.
+* ``ontology-metric-views/databricks.yml``: the ``schema_name`` variable default
+  is set to ``sdk_config.target_schema`` (the template's generic ``ontology``
+  default is not kept), so DAB 1 and the resolved target agree from the start.
+* The template's placeholder agent ``agents/ontology_agent.geniespace.json`` is
+  not copied (agent curation writes the real agents); ``agents/.gitkeep`` keeps
+  the folder.
 * Existing files are never overwritten unless ``force=True``. A file whose
   content already matches is left alone (so a second run writes 0 files).
 * ``.databricks/`` (bundle state, ``variable-overrides.json``) and ``.rendered/``
@@ -48,10 +54,12 @@ from typing import Any
 from genie_ontology_modeled_knowledge_sdk.config import SdkConfig, config_from_dict, load_config
 
 __all__ = [
+    "PLACEHOLDER_FILES",
     "RUN_TOKENS",
     "VENDORED_MODULES",
     "DOCS_DIRS",
     "ScaffoldReport",
+    "render_schema_name",
     "render_tokens",
     "scaffold_project",
     "main",
@@ -87,6 +95,15 @@ _BUNDLES = (
 )
 _RUN_TO_PLANS = ("waves.json", "INDEX.md", "README.md", "plans")
 
+# Template placeholders that are not copied into a project (project-relative paths).
+PLACEHOLDER_FILES = frozenset({Path("ontology-genie-agents/agents/ontology_agent.geniespace.json")})
+_AGENTS_KEEP = Path("ontology-genie-agents/agents/.gitkeep")
+
+_MV_BUNDLE_YML = Path("ontology-metric-views/databricks.yml")
+# The `default:` line inside the `schema_name:` variable block of DAB 1.
+_SCHEMA_DEFAULT_RE = re.compile(r"(?m)^(  schema_name:[ \t]*\n(?:    [^\n]*\n)*?    default:[ \t]*)[^\n]*$")
+_PLAIN_SCALAR_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
 
 @dataclass
 class ScaffoldReport:
@@ -117,6 +134,18 @@ class ScaffoldReport:
 def render_tokens(text: str, values: dict[str, str]) -> str:
     """Replace the run-kit ``{{token}}`` placeholders; leave everything else alone."""
     return _TOKEN_RE.sub(lambda m: values.get(m.group(1), m.group(0)), text)
+
+
+def render_schema_name(text: str, schema_name: str) -> str:
+    """Set the ``schema_name`` variable default in the metric-views ``databricks.yml``.
+
+    ``ValueError`` if the variable block or its ``default:`` line is not found.
+    """
+    value = schema_name if _PLAIN_SCALAR_RE.match(schema_name) else json.dumps(schema_name)
+    new, n = _SCHEMA_DEFAULT_RE.subn(lambda m: m.group(1) + value, text, count=1)
+    if n != 1:
+        raise ValueError(f"{_MV_BUNDLE_YML.as_posix()}: no 'schema_name' variable with a 'default:' line")
+    return new
 
 
 def _render_bytes(data: bytes, values: dict[str, str]) -> bytes:
@@ -155,7 +184,15 @@ def _plan(sdk_root: Path, cfg: SdkConfig, values: dict[str, str]) -> list[tuple[
     for src_name, dst_name in _BUNDLES:
         src = templates / src_name
         for f in _iter_files(src):
-            out.append((Path(dst_name) / f.relative_to(src), _render_bytes(f.read_bytes(), values)))
+            rel = Path(dst_name) / f.relative_to(src)
+            if rel in PLACEHOLDER_FILES:
+                continue
+            content = _render_bytes(f.read_bytes(), values)
+            if rel == _MV_BUNDLE_YML:
+                content = render_schema_name(content.decode("utf-8"), cfg.target_schema).encode("utf-8")
+            out.append((rel, content))
+    if not any(rel == _AGENTS_KEEP for rel, _ in out):
+        out.append((_AGENTS_KEEP, b""))
 
     run = templates / "run"
     for name in _RUN_TO_PLANS:

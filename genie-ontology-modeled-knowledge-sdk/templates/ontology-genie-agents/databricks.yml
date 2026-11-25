@@ -17,8 +17,8 @@ variables:
   schema:
     description: Full metric view schema name in that catalog, including any dev prefix.
   consumer_group:
-    description: Group granted CAN_RUN on every Genie Agent.
-    default: account users
+    # No default on purpose: the owner must name the group that may run the agents.
+    description: Required. Group granted CAN_RUN on every Genie Agent (no default; name a group in variable-overrides.json or --var consumer_group=...).
   curator_group:
     description: Group granted CAN_EDIT on every Genie Agent. Required; a permissions entry cannot be omitted conditionally.
   genie_parent_path:
@@ -33,5 +33,5 @@ targets:
 
   prd:
     mode: production
-    # genie_parent_path, warehouse_id, catalog, schema and curator_group come from
+    # genie_parent_path, warehouse_id, catalog, schema, consumer_group and curator_group come from
     # .databricks/bundle/prd/variable-overrides.json or --var flags.

@@ -62,3 +62,17 @@ An earlier full run, made while session 21 was still editing its files, showed 3
 * Session 28: `templates/run/plans/07_uc_pages.md` documents `upsert_pages(terms, client, dry_run=True)`. Document the new `domain_id` / `status` / `only_ids` parameters and `write_terms`.
 * Session 25 (skills): the skill text that calls `upsert_pages` or writes term files one by one should use `write_terms` and the new actions.
 * Owner: `docs/plans/INDEX.md` line 116 still shows the build-0 `upsert_pages` signature (a plan file, read-only to sessions).
+
+## Re-validation: run `109257611554257` (wave 1-1 repair run)
+
+The session had already been completed in run `1057400752545739` (status `pass`). Its files are committed at `b16746e` and `git status` shows no changes under the owned paths. The wave gate failed only because session 21 was `blocked`. This run made no code changes. It re-ran the checks in a fresh `/tmp/gos-s20r` copy with `GENIE_BUILD_WAVES_DIR` set:
+
+| Check | Result |
+|---|---|
+| pytest `tests/test_pages.py` | pass: 40 passed |
+| pytest (all) | pass: 403 passed |
+| ruff check . / ruff format --check . | pass (30 files) |
+| mypy src | pass (9 source files) |
+| r4_tests (pages part) + acceptance tests | pass: the 6 named tests (other-domain never updated x2, live without domain writes nothing, not-owned skipped, link at char 150, write_terms round-trip) |
+
+The requests above still stand.

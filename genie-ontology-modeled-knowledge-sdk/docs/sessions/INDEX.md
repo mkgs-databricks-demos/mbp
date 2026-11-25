@@ -6,6 +6,10 @@ Sessions are listed in reverse chronological order.
 
 | Date | Session | Summary |
 |---|---|---|
+| 2026-11-25 | [W1-1 / 22 Benchmark Library for Exhaustive Tuning](2026-11-25_w1-1-22-benchmark-library.md) | Wave 1-1, session 22, mode edit, status pass: already completed in run 1057400752545739, re-validated (run 109257611554257) |
+| 2026-11-25 | [W1-1 / 21 Templates & Scaffold: Required consumer_group, Resolved Target (R4.3, R4.4)](2026-11-25_w1-1-21-templates-and-scaffold.md) | Wave 1-1, session 21, mode edit, status pass: 11 files inherited from run 1057400752545739, re-validated and committed (run 109257611554257) |
+| 2026-11-25 | [W1-1 / 20 Pages: Domain-Scoped Upserts, Drafts, Bulk Terms (R4.2)](2026-11-25_w1-1-20-pages-domain-scoped.md) | Wave 1-1, session 20, mode edit, status pass: already completed in run 1057400752545739, re-validated (run 109257611554257) |
+| 2026-11-25 | [W1-1 / 19 Agent Config Fixes: Split Limit, Render Params/Check, Space Benchmarks (R4.1, R4.4)](2026-11-25_w1-1-19-geniespace-and-config.md) | Wave 1-1, session 19, mode edit, status pass: already completed in run 1057400752545739, re-validated (run 109257611554257) |
 | 2026-11-25 | [W1-1 / 22 Benchmark Library for Exhaustive Tuning](2026-11-25_w1-1-22-benchmark-library.md) | Wave 1-1, session 22, mode edit, status pass (run 1057400752545739) |
 | 2026-11-25 | [W1-1 / 21 Templates & Scaffold: Required consumer_group, Resolved Target (R4.3, R4.4)](2026-11-25_w1-1-21-templates-and-scaffold.md) | Wave 1-1, session 21, mode edit, status blocked (run 1057400752545739) |
 | 2026-11-25 | [W1-1 / 20 Pages: Domain-Scoped Upserts, Drafts, Bulk Terms (R4.2)](2026-11-25_w1-1-20-pages-domain-scoped.md) | Wave 1-1, session 20, mode edit, status pass (run 1057400752545739) |

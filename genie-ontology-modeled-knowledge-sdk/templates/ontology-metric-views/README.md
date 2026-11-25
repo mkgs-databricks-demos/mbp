@@ -46,13 +46,13 @@ Metric view YAML rules: file name = view name; `source:` and `joins[].source` us
 | `catalog` | yes | - | Catalog for the ontology schema and the metric views (the environment discriminator) |
 | `source_catalog` | yes | - | Catalog of the source tables |
 | `source_schema` | yes | - | Schema of the source tables |
-| `warehouse_id` | yes | - | SQL warehouse for ad hoc checks and the Genie Agent bundle (job tasks run on serverless) |
-| `schema_name` | no | `ontology` | Ontology schema name |
-| `consumer_group` | no | `account users` | Group granted `USE_SCHEMA` + `SELECT` |
+| `consumer_group` | yes | - | Group granted `USE_SCHEMA` + `SELECT`. No default on purpose: name the group that may read the metric views. `bundle validate` fails with `no value assigned to required variable consumer_group` until you set it |
+| `warehouse_id` | no | `""` | Optional SQL warehouse. Nothing in the job uses it (every task runs on serverless); set it only for ad hoc SQL checks, and it is copied into `resolved_target.json` for the Genie Agent bundle |
+| `schema_name` | no | `ontology` | Ontology schema name. `scaffold_project` replaces the default with `sdk_config.target_schema` |
 
 ## Targets
 
-* `dev` (default): `mode: development`. It sets obvious placeholders (`catalog: main`, `source_catalog: samples`, `source_schema: tpch`, `warehouse_id: "<set-in-variable-overrides>"`) so `bundle validate` passes out of the box.
+* `dev` (default): `mode: development`. It sets obvious placeholders (`catalog: main`, `source_catalog: samples`, `source_schema: tpch`). `consumer_group` is not set: `bundle validate` passes once you name it in the overrides file (or `--var consumer_group=<group>`).
 * `prd`: `mode: production`, `root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}`. No values are set; supply them with overrides or `--var`.
 
 Neither target sets a workspace host: select the workspace with a CLI profile (`--profile` or `DATABRICKS_CONFIG_PROFILE`).
@@ -66,9 +66,12 @@ Put workspace-specific values in `.databricks/bundle/<target>/variable-overrides
   "catalog": "<your_catalog>",
   "source_catalog": "<source_catalog>",
   "source_schema": "<source_schema>",
-  "warehouse_id": "<warehouse_id>"
+  "consumer_group": "<group that may read the metric views>",
+  "warehouse_id": "<optional warehouse_id>"
 }
 ```
+
+`consumer_group` is required (there is no default grant); `warehouse_id` may be left out.
 
 The CLI reads this file for the selected target; values there override the target defaults. `--var name=value` on the command line overrides both.
 
@@ -83,5 +86,15 @@ databricks bundle run register_metric_views --target dev
 ```
 
 Re-running is idempotent: `CREATE OR REPLACE VIEW` re-registers every view in the manifest. Views removed from `metric_views/` are not dropped; drop them yourself.
+
+## Resolved target: resolved_target.json
+
+The Genie Agent bundle needs the full schema name, which in `dev` carries the `dev_<user>_` prefix. Do not write it by hand: resolve it from this bundle's `bundle summary` (after deploy) with the SDK:
+
+```bash
+python -m genie_ontology_modeled_knowledge_sdk.targets resolve --bundle . --target dev --out ../docs/registration/resolved_target.json
+```
+
+It writes `{"catalog", "schema", "warehouse_id", "source": "bundle_summary", "resolved_at"}` (`warehouse_id` is `null` when unset). Pass `--var name=value` if a variable is not in the overrides file. The agents bundle renders from this file (`geniespace render ... --params resolved_target.json --check`, see its README). Each `register_single_mv` run also ends with `catalog` and `schema` in its notebook exit value, so the job run output shows the same target.
 
 For production: `databricks bundle deploy --target prd` (with a `prd` overrides file or `--var`s), then `bundle run register_metric_views --target prd`.

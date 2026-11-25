@@ -20,25 +20,26 @@ variables:
   source_schema:
     description: Schema of the source tables, substituted for the source_schema token in metric view YAML
   warehouse_id:
-    description: SQL warehouse for ad hoc checks and the Genie Agent bundle (the job's tasks run on serverless notebooks)
+    description: Optional SQL warehouse, used only by ad hoc checks when set and reported in resolved_target.json (the job's tasks run on serverless notebooks)
+    default: ""
   schema_name:
     description: Name of the ontology schema that receives the metric views (prefixed per user in development mode)
     default: ontology
   consumer_group:
-    description: Group granted USE_SCHEMA and SELECT on the ontology schema
-    default: account users
+    # No default on purpose: the owner must name the group that may read the metric views.
+    description: Required. Group granted USE_SCHEMA and SELECT on the ontology schema (no default; name a group in variable-overrides.json or --var consumer_group=...)
 
 targets:
   dev:
     mode: development
     default: true
-    # Placeholders so `bundle validate` passes. Real values go in
-    # .databricks/bundle/dev/variable-overrides.json (gitignored).
+    # Placeholders for the source and catalog values. Real values, and the
+    # required consumer_group, go in .databricks/bundle/dev/variable-overrides.json
+    # (gitignored).
     variables:
       catalog: main
       source_catalog: samples
       source_schema: tpch
-      warehouse_id: "<set-in-variable-overrides>"
 
   prd:
     mode: production

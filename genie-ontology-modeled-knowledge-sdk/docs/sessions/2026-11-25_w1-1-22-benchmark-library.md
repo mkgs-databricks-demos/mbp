@@ -75,3 +75,15 @@ Acceptance tests from the plan:
 * Session 26 (tuning skill) and 28 (run kit): the API names and stop-rule fields are in the module docstring. Tuning sessions should write `iterations/<k>.md` with `write_iteration_md` so holdout failures stay hidden.
 * Sessions 32-34: tag questions as `type:<t>`, `view:<mv>` (the file stem), `measure:[<mv>.]<name>` and `dimension:[<mv>.]<name>`, using the metric view display names exactly as in the YAML `name`.
 * Session 35: use `run_eval(space_id, ws, questions=qs)` after loading `to_space_benchmarks(qs)` into the agent. Fall back to `run_benchmark(..., max_workers=4)` if the eval-runs API is unavailable.
+
+## Re-run: job run 109257611554257 (already completed)
+
+The session was already done: status `pass` in run `1057400752545739`, and the last commit touching `benchmark.py` is `b16746e` ("wave(1-1): 19, 20, 22"). The Git folder is on `mg-genie-ontology-build-1-plan`, and `git status` shows no changes under the session's owned paths. No files were edited in this run. Re-validated from a fresh copy at `/tmp/gos-s22-reval` (`GENIE_BUILD_WAVES_DIR` set):
+
+| Check | Result |
+|---|---|
+| pytest tests/test_benchmark.py | pass: 47 passed |
+| pytest (full suite) | pass: 403 passed |
+| ruff check / ruff format --check (owned files) | pass |
+| mypy src | pass (9 source files) |
+| benchmark coverage CLI on the fixture set | exit 1, as expected for a 3-question fixture |

@@ -68,7 +68,7 @@ def test_layout(project):
         "ontology-metric-views/metric_views/.gitkeep",
         "ontology-genie-agents/databricks.yml",
         "ontology-genie-agents/resources/genie_agents.yml",
-        "ontology-genie-agents/agents/ontology_agent.geniespace.json",
+        "ontology-genie-agents/agents/.gitkeep",
         "docs/plans/waves.json",
         "docs/plans/INDEX.md",
         "docs/plans/README.md",
@@ -193,6 +193,40 @@ def test_invalid_config_raises(tmp_path):
 def test_bad_sdk_root(tmp_path):
     with pytest.raises(FileNotFoundError):
         scaffold_project(CONFIG, tmp_path / "x", tmp_path / "nope")
+
+
+def test_placeholder_agent_not_copied(project):
+    target, report = project
+    for rel in scaffold.PLACEHOLDER_FILES:
+        assert (TEMPLATES / rel).is_file(), f"template placeholder moved: {rel}"
+        assert not (target / rel).exists(), rel
+        assert rel.as_posix() not in report.written
+    assert not list((target / "ontology-genie-agents" / "agents").glob("*.geniespace.json"))
+
+
+def test_schema_name_rendered_from_target_schema(project):
+    import yaml
+
+    target, _ = project
+    bundle = yaml.safe_load((target / "ontology-metric-views" / "databricks.yml").read_text())
+    assert bundle["variables"]["schema_name"]["default"] == CONFIG["target_schema"]
+    template = yaml.safe_load((TEMPLATES / "ontology-metric-views" / "databricks.yml").read_text())
+    assert template["variables"]["schema_name"]["default"] == "ontology"  # template keeps the generic default
+    # Nothing else in the file changes.
+    t_lines = (TEMPLATES / "ontology-metric-views" / "databricks.yml").read_text().splitlines()
+    p_lines = (target / "ontology-metric-views" / "databricks.yml").read_text().splitlines()
+    assert len(t_lines) == len(p_lines)
+    assert [(a, b) for a, b in zip(t_lines, p_lines, strict=True) if a != b] == [
+        ("    default: ontology", f"    default: {CONFIG['target_schema']}")
+    ]
+
+
+def test_render_schema_name_quotes_and_errors():
+    text = "variables:\n  schema_name:\n    description: x\n    default: ontology\n  other:\n    default: keep\n"
+    out = scaffold.render_schema_name(text, "my-schema")
+    assert '    default: "my-schema"' in out and "    default: keep" in out
+    with pytest.raises(ValueError, match="schema_name"):
+        scaffold.render_schema_name("variables:\n  other:\n    default: x\n", "s")
 
 
 def test_render_tokens_only_known():

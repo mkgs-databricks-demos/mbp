@@ -48,6 +48,23 @@ Run `1057400752545739`, branch `mg-genie-ontology-build-1-plan` (checked read-on
 * Owner / P1-4: both TPC-H `variable-overrides.json` files need `consumer_group` (already planned).
 * Session 25 (curation skill): when agents are written, replace the template's `ontology_agent` entry in the project's `resources/genie_agents.yml`.
 
+## Repair run 109257611554257 (re-validation)
+
+The wave 1-1 gate of run `1057400752545739` failed only because this session reported `blocked`: the full-suite failures it saw in `tests/test_geniespace.py` came from session 19's work in progress at the time, and the gate itself measured 403 passed. In this run the 11 files above were still uncommitted in the working tree (inherited; `git status` showed exactly these). I made no code changes; I re-ran every check on the current tree.
+
+| Check | Result |
+|---|---|
+| Branch (read-only) | `mg-genie-ontology-build-1-plan` |
+| pytest, full suite (/tmp copy) | pass: 402 passed, 1 skipped (`tests/test_run_kit.py`: genie-build-waves not next to the /tmp copy) |
+| pytest, 4 session-21 test files | pass: 69 passed |
+| `ruff check .`, `ruff format --check .`, `mypy src` | pass |
+| consumer_group_required: metric-views template validate --strict --target dev without `consumer_group` | pass: fails with `no value assigned to required variable consumer_group` |
+| metric-views template validate with `--var consumer_group=example_group` | pass: Validation OK |
+| agents template validate without / with `consumer_group` | fails naming `consumer_group` / Validation OK |
+| `target_from_summary` on a fake dev summary | pass: `{catalog: main, schema: dev_jane_doe_ontology, warehouse_id: null}` |
+
+The previous request to session 19 is resolved. The owner request (scratch overrides need `consumer_group`) and the session 25 request still stand.
+
 ## Files modified
 
 `templates/ontology-metric-views/{databricks.yml,README.md,notebooks/register_single_mv.ipynb}`, `templates/ontology-genie-agents/{databricks.yml,README.md}`, `src/genie_ontology_modeled_knowledge_sdk/{scaffold.py,targets.py}`, `tests/{test_targets.py,test_scaffold.py,test_template_mv_bundle.py,test_template_agent_bundle.py}`.

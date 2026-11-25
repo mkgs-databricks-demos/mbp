@@ -83,8 +83,10 @@ def test_variables():
     for name in ("warehouse_id", "catalog", "schema", "consumer_group", "curator_group", "genie_parent_path"):
         assert name in variables, name
         assert variables[name].get("description"), f"{name} has no description"
-    assert variables["consumer_group"]["default"] == "account users"
-    for required in ("warehouse_id", "catalog", "schema", "curator_group"):
+    # R4.3 / G9: no broad default grant; the owner must name a group.
+    assert "required" in variables["consumer_group"]["description"].lower()
+    assert "account users" not in (BUNDLE / "databricks.yml").read_text(encoding="utf-8")
+    for required in ("warehouse_id", "catalog", "schema", "consumer_group", "curator_group"):
         assert "default" not in variables[required], f"{required} must not have a default"
 
 
@@ -163,3 +165,10 @@ def test_readme_records_interpolation_result():
     assert re.search(r"CLI v\d+\.\d+\.\d+", readme)
     assert "geniespace render agents .rendered" in readme
     assert "variable-overrides.json" in readme
+
+
+def test_readme_renders_from_resolved_target():
+    readme = (BUNDLE / "README.md").read_text(encoding="utf-8")
+    assert "--params" in readme and "resolved_target.json" in readme and "--check" in readme
+    assert '"consumer_group"' in readme  # overrides example names the group
+    assert "account users" not in readme
