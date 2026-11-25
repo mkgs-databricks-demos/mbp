@@ -89,7 +89,9 @@ def test_variables():
 
 
 def test_no_hosts_or_user_names():
-    texts = [(BUNDLE / "databricks.yml").read_text(encoding="utf-8")] + [p.read_text(encoding="utf-8") for p in _resource_files()]
+    texts = [(BUNDLE / "databricks.yml").read_text(encoding="utf-8")] + [
+        p.read_text(encoding="utf-8") for p in _resource_files()
+    ]
     for text in texts:
         assert "host:" not in text
         assert "user_name" not in text
@@ -143,9 +145,7 @@ def test_agent_file_tokenized_valid_and_renders(path: Path):
     assert "${var." not in text, "bundle variables are not interpolated in file_path JSON; use SDK tokens"
     for table in doc["data_sources"]["tables"]:
         assert table["identifier"].startswith(geniespace.TOKEN_IDENTIFIER_PREFIX + ".")
-    rendered = json.loads(
-        geniespace.render_space_text(text, {"catalog": "cat", "schema": "sch", "warehouse_id": "w"})
-    )
+    rendered = json.loads(geniespace.render_space_text(text, {"catalog": "cat", "schema": "sch", "warehouse_id": "w"}))
     assert geniespace.validate_space(rendered) == []
     assert all(t["identifier"].startswith("cat.sch.") for t in rendered["data_sources"]["tables"])
 

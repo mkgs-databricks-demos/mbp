@@ -25,9 +25,10 @@ import re
 import sys
 import uuid
 from collections import Counter
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 import yaml
 
@@ -98,7 +99,7 @@ class MvRef:
         return self.fq_name or f"{TOKEN_IDENTIFIER_PREFIX}.{self.name}"
 
     @classmethod
-    def from_dict(cls, d: Mapping[str, Any]) -> "MvRef":
+    def from_dict(cls, d: Mapping[str, Any]) -> MvRef:
         return cls(
             name=str(d["name"]),
             fq_name=str(d.get("fq_name") or ""),
@@ -280,9 +281,7 @@ def build_space(
     instructions: dict[str, Any] = {}
     lines = _unique(text_instructions)
     if lines:
-        instructions["text_instructions"] = [
-            {"id": stable_id("text_instructions", plan.name), "content": lines}
-        ]
+        instructions["text_instructions"] = [{"id": stable_id("text_instructions", plan.name), "content": lines}]
 
     examples = []
     seen_q: set[str] = set()
@@ -378,7 +377,7 @@ def validate_space(doc: Any) -> list[str]:
         errors.append(f"data_sources: must have 1-{MAX_DATA_SOURCES} tables/metric views, got {len(sources)}")
     seen_ident: set[str] = set()
     for where, src in sources:
-        ident = src.get("identifier") if isinstance(src, dict) else None
+        ident: Any = src.get("identifier") if isinstance(src, dict) else None
         if not _is_three_part(ident):
             errors.append(f"{where}.identifier: must be a 3-part name catalog.schema.name, got {ident!r}")
         elif ident in seen_ident:
@@ -423,9 +422,7 @@ def validate_space(doc: Any) -> list[str]:
 # --------------------------------------------------------------------------- domain manifest
 
 
-def domain_manifest(
-    plans: Sequence[AgentPlan], descriptions: Mapping[str, str] | None = None
-) -> dict[str, Any]:
+def domain_manifest(plans: Sequence[AgentPlan], descriptions: Mapping[str, str] | None = None) -> dict[str, Any]:
     """The L200-G ``domain_manifest.yml`` structure for a list of agent plans.
 
     A single-agent plan (no subdomain) is listed as one subdomain named after the
@@ -532,7 +529,9 @@ def render_dir(src_dir: str | Path, dst_dir: str | Path, params: Mapping[str, An
     problems: list[str] = []
     for f in files:
         try:
-            rendered.append((dst_root / f.relative_to(src_root), render_space_text(f.read_text(encoding="utf-8"), params)))
+            rendered.append(
+                (dst_root / f.relative_to(src_root), render_space_text(f.read_text(encoding="utf-8"), params))
+            )
         except ValueError as exc:
             problems.append(f"{f}: {exc}")
     if problems:

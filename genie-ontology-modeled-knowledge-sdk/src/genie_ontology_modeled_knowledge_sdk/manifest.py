@@ -72,14 +72,16 @@ def build_manifest(metric_views_dir: str | Path, *, bundle_root: str | Path | No
         subdomain = _subdomain_comment(path)
         if subdomain is None and len(rel_to_mv) >= 3:
             subdomain = rel_to_mv[1]
-        entries.append({
-            "name": path.stem,
-            "yaml_path": PurePosixPath(*path.resolve().relative_to(root).parts).as_posix(),
-            "domain": rel_to_mv[0],
-            "subdomain": subdomain,
-        })
+        entries.append(
+            {
+                "name": path.stem,
+                "yaml_path": PurePosixPath(*path.resolve().relative_to(root).parts).as_posix(),
+                "domain": rel_to_mv[0],
+                "subdomain": subdomain,
+            }
+        )
     entries.sort(key=lambda e: e["name"])
-    for a, b in zip(entries, entries[1:]):
+    for a, b in zip(entries, entries[1:], strict=False):
         if a["name"] == b["name"]:
             problems.append(f"duplicate metric view name {a['name']!r}: {a['yaml_path']} and {b['yaml_path']}")
     if problems:
@@ -159,7 +161,9 @@ def write_manifest(entries: list[dict], path: str | Path, *, base_dir: str | Pat
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="python -m genie_ontology_modeled_knowledge_sdk.manifest", description="metric view manifest.json tools")
+    parser = argparse.ArgumentParser(
+        prog="python -m genie_ontology_modeled_knowledge_sdk.manifest", description="metric view manifest.json tools"
+    )
     sub = parser.add_subparsers(dest="command", required=True)
     p_build = sub.add_parser("build", help="build manifest.json from a metric_views directory")
     p_build.add_argument("metric_views_dir")

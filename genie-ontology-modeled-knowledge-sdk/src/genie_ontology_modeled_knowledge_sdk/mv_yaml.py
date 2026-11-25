@@ -30,9 +30,10 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Iterable, Iterator, Mapping
+from typing import Any
 
 import yaml
 
@@ -66,8 +67,16 @@ _FQ_NAME_RE = re.compile(rf"^{_IDENT_PART}\.{_IDENT_PART}\.{_IDENT_PART}$")
 
 ALLOWED_VERSIONS = ("0.1", "1.1")
 TOP_LEVEL_KEYS = {
-    "version", "source", "comment", "filter", "joins", "dimensions", "fields",
-    "measures", "materialization", "parameters",
+    "version",
+    "source",
+    "comment",
+    "filter",
+    "joins",
+    "dimensions",
+    "fields",
+    "measures",
+    "materialization",
+    "parameters",
 }
 COLUMN_KEYS = {"name", "expr", "comment", "display_name", "format", "synonyms", "window", "partition"}
 REFRESH_POLICIES = ("auto", "incremental", "incremental strict", "full")
@@ -81,7 +90,10 @@ MV_SUFFIXES = (".yml", ".yaml")
 _SQL_SOURCE_RE = re.compile(r"^\s*(select|with)\b", re.IGNORECASE)
 _SQL_TABLE_REF_RE = re.compile(r"\b(?:from|join)\s+([^\s,()]+)", re.IGNORECASE)
 _SQL_CTE_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s+as\s*\(", re.IGNORECASE)
-_SQL_STAR_RE = re.compile(r"\bselect\s+(?:distinct\s+)?(?:[A-Za-z_][A-Za-z0-9_]*\.)?\*|,\s*(?:[A-Za-z_][A-Za-z0-9_]*\.)?\*\s*(?:,|\bfrom\b)", re.IGNORECASE)
+_SQL_STAR_RE = re.compile(
+    r"\bselect\s+(?:distinct\s+)?(?:[A-Za-z_][A-Za-z0-9_]*\.)?\*|,\s*(?:[A-Za-z_][A-Za-z0-9_]*\.)?\*\s*(?:,|\bfrom\b)",
+    re.IGNORECASE,
+)
 _WILDCARD_EXPR_RE = re.compile(r"(?:^|\.)\*(?:\s|$)")
 # order_id, Customer ID, key, and TPC-H style surrogate keys (o_orderkey, c_custkey)
 _IDENTIFIER_SUFFIX_RE = re.compile(r"(?:^|[_\s])id$|key$", re.IGNORECASE)
@@ -127,6 +139,7 @@ def has_errors(findings: Iterable[Finding]) -> bool:
 
 # --------------------------------------------------------------------------- load
 
+
 class _MvLoader(yaml.SafeLoader):
     """SafeLoader with YAML 1.2 booleans: only true/false (any case) are booleans.
 
@@ -167,6 +180,7 @@ def load_mv(path: str | Path) -> dict:
 
 # --------------------------------------------------------------------- substitute
 
+
 def find_tokens(text: str) -> list[str]:
     """Distinct ``${...}`` token names in ``text``, in first-seen order."""
     seen: dict[str, None] = {}
@@ -187,7 +201,8 @@ def substitute(text: str, params: Mapping[str, str]) -> str:
     bad = [t for t in used if not isinstance(params[t], str) or not _SAFE_VALUE_RE.match(params[t])]
     if bad:
         raise ValueError(
-            "unsafe parameter value(s) for " + ", ".join(f"${{{t}}}" for t in bad)
+            "unsafe parameter value(s) for "
+            + ", ".join(f"${{{t}}}" for t in bad)
             + ": values must be identifiers ([A-Za-z_][A-Za-z0-9_]*) or backtick-quoted"
         )
     unresolved: dict[str, None] = {}
@@ -208,6 +223,7 @@ def substitute(text: str, params: Mapping[str, str]) -> str:
 
 
 # ----------------------------------------------------------------------- helpers
+
 
 def _columns(doc: Mapping) -> tuple[str, list]:
     """Return (key, entries) for dimensions (``fields`` is an alias)."""
@@ -252,6 +268,7 @@ def _is_token(part: str) -> bool:
 
 # ------------------------------------------------------------------------- rules
 
+
 def _rule_mv001(doc: Mapping, name: str) -> list[Finding]:
     out: list[Finding] = []
     if not name or not _MV_NAME_RE.match(name):
@@ -290,7 +307,12 @@ def _rule_mv001(doc: Mapping, name: str) -> list[Finding]:
                 out.append(_err("MV001", f"{where} has an empty or non-string 'name'"))
             extra = sorted(set(col) - COLUMN_KEYS)
             if extra:
-                out.append(_warn("MV001", f"{where} ({col.get('name', '?')}) has unrecognized key(s): {', '.join(map(str, extra))}"))
+                out.append(
+                    _warn(
+                        "MV001",
+                        f"{where} ({col.get('name', '?')}) has unrecognized key(s): {', '.join(map(str, extra))}",
+                    )
+                )
     if "joins" in doc and not isinstance(doc["joins"], list):
         out.append(_err("MV001", "'joins' must be a list"))
     for label, join in _iter_joins(doc.get("joins")):
@@ -312,7 +334,13 @@ def _rule_mv002(doc: Mapping) -> list[Finding]:
             if isinstance(col, dict) and isinstance(col.get("name"), str):
                 low = col["name"].strip().lower()
                 if low in seen:
-                    out.append(_err("MV002", f"duplicate name {col['name']!r} in {key} (already used in {seen[low]}); names are case-insensitive"))
+                    out.append(
+                        _err(
+                            "MV002",
+                            f"duplicate name {col['name']!r} in {key} (already used in {seen[low]}); "
+                            "names are case-insensitive",
+                        )
+                    )
                 else:
                     seen[low] = key
     join_names: set[str] = set()
@@ -328,7 +356,9 @@ def _rule_mv002(doc: Mapping) -> list[Finding]:
             if isinstance(p, dict) and isinstance(p.get("name"), str):
                 low = p["name"].lower()
                 if low in seen or low == "source":
-                    out.append(_err("MV002", f"parameter name {p['name']!r} collides with a column name or is reserved"))
+                    out.append(
+                        _err("MV002", f"parameter name {p['name']!r} collides with a column name or is reserved")
+                    )
     return out
 
 
@@ -341,9 +371,13 @@ def _rule_mv003(doc: Mapping) -> list[Finding]:
                 continue
             expr = col.get("expr")
             if isinstance(expr, str) and _WILDCARD_EXPR_RE.search(expr.strip()):
-                out.append(_err("MV003", f"{key}[{i}] uses a wildcard expression {expr!r}; declare each field explicitly"))
+                out.append(
+                    _err("MV003", f"{key}[{i}] uses a wildcard expression {expr!r}; declare each field explicitly")
+                )
             elif "name" not in col:
-                out.append(_err("MV003", f"{key}[{i}] (expr {expr!r}) has no 'name'; implicit (derived) names are not allowed"))
+                out.append(
+                    _err("MV003", f"{key}[{i}] (expr {expr!r}) has no 'name'; implicit (derived) names are not allowed")
+                )
     sources = [("source", doc.get("source"))] + [
         (f"{label}.source", j.get("source")) for label, j in _iter_joins(doc.get("joins")) if isinstance(j, dict)
     ]
@@ -372,13 +406,27 @@ def _check_ref(where: str, ref: str) -> list[Finding]:
     out: list[Finding] = []
     for tok in find_tokens(ref):
         if tok not in PARAMETER_NAMES:
-            out.append(_err("MV004", f"{where}: unknown parameter ${{{tok}}} in {ref!r}; allowed: " + ", ".join(f"${{{p}}}" for p in PARAMETER_NAMES)))
+            out.append(
+                _err(
+                    "MV004",
+                    f"{where}: unknown parameter ${{{tok}}} in {ref!r}; allowed: "
+                    + ", ".join(f"${{{p}}}" for p in PARAMETER_NAMES),
+                )
+            )
     parts = ref.split(".")
     if len(parts) != 3:
-        out.append(_err("MV004", f"{where}: {ref!r} must be a 3-part name like ${{source_catalog}}.${{source_schema}}.<table>"))
+        out.append(
+            _err("MV004", f"{where}: {ref!r} must be a 3-part name like ${{source_catalog}}.${{source_schema}}.<table>")
+        )
         return out
     if not _is_token(parts[0]):
-        out.append(_err("MV004", f"{where}: hardcoded catalog {parts[0]!r} in {ref!r}; use ${{source_catalog}} (or ${{target_catalog}} for a metric view source)"))
+        out.append(
+            _err(
+                "MV004",
+                f"{where}: hardcoded catalog {parts[0]!r} in {ref!r}; use ${{source_catalog}} "
+                "(or ${{target_catalog}} for a metric view source)",
+            )
+        )
     if not _is_token(parts[1]):
         out.append(_warn("MV004", f"{where}: literal schema {parts[1]!r} in {ref!r}; prefer ${{source_schema}}"))
     return out
@@ -413,7 +461,7 @@ def _join_block_has_verified_comment(text: str, join_name: str) -> bool:
             return True
         if i > 0 and lines[i - 1].strip().startswith("#") and _VERIFIED_COMMENT_RE.search(lines[i - 1]):
             return True
-        for nxt in lines[i + 1:]:
+        for nxt in lines[i + 1 :]:
             stripped = nxt.strip()
             if not stripped:
                 continue
@@ -446,11 +494,14 @@ def _rule_mv005(doc: Mapping, text: str | None) -> list[Finding]:
             jname = join.get("name")
             if text is not None and isinstance(jname, str) and _join_block_has_verified_comment(text, jname):
                 continue
-            out.append(_warn(
-                "MV005",
-                f"{label} sets rely.at_most_one_match without EDA evidence; add a '# verified: <query/result>' comment "
-                "or a 'verified_cardinality' field from the data model summary",
-            ))
+            out.append(
+                _warn(
+                    "MV005",
+                    f"{label} sets rely.at_most_one_match without EDA evidence; "
+                    "add a '# verified: <query/result>' comment "
+                    "or a 'verified_cardinality' field from the data model summary",
+                )
+            )
     return out
 
 
@@ -514,7 +565,9 @@ def _rule_mv007(doc: Mapping) -> list[Finding]:
         if policy is None:
             out.append(_err("MV007", f"{where} is missing 'refresh_policy' (use auto)"))
         elif str(policy).strip().lower() not in REFRESH_POLICIES:
-            out.append(_err("MV007", f"{where}: refresh_policy {policy!r} must be one of {', '.join(REFRESH_POLICIES)}"))
+            out.append(
+                _err("MV007", f"{where}: refresh_policy {policy!r} must be one of {', '.join(REFRESH_POLICIES)}")
+            )
         elif version != "1.1":
             out.append(_err("MV007", f"{where}: refresh_policy requires version 1.1"))
         if "cluster_by" in entry and "partition_by" in entry:
@@ -522,7 +575,9 @@ def _rule_mv007(doc: Mapping) -> list[Finding]:
         if mtype == "unaggregated":
             unaggregated += 1
             if entry.get("dimensions") or entry.get("measures"):
-                out.append(_err("MV007", f"{where}: an unaggregated materialization does not list dimensions or measures"))
+                out.append(
+                    _err("MV007", f"{where}: an unaggregated materialization does not list dimensions or measures")
+                )
             continue
         listed_dims = entry.get("dimensions") or []
         listed_measures = entry.get("measures") or []
@@ -534,7 +589,11 @@ def _rule_mv007(doc: Mapping) -> list[Finding]:
         for d in listed_dims:
             d = str(d)
             if d.strip().startswith("*"):
-                out.append(_err("MV007", f"{where}: dimensions {d!r} is a wildcard; list the categorical dimensions explicitly"))
+                out.append(
+                    _err(
+                        "MV007", f"{where}: dimensions {d!r} is a wildcard; list the categorical dimensions explicitly"
+                    )
+                )
             elif d in dims_by_name:
                 reason = _is_categorical(dims_by_name[d])
                 if reason:
@@ -621,6 +680,7 @@ def validate_path(root: str | Path) -> dict[Path, list[Finding]]:
 
 # ------------------------------------------------------------------------ render
 
+
 def strip_sdk_only_keys(text: str) -> str:
     """Remove SDK-only evidence keys (``verified_cardinality: ...`` lines) that the
     metric view YAML spec does not accept. Comments and layout are preserved."""
@@ -649,6 +709,7 @@ def render_ddl(doc_text: str, fq_name: str, params: Mapping[str, str]) -> str:
 
 # --------------------------------------------------------------------------- CLI
 
+
 def _cmd_validate(args: argparse.Namespace) -> int:
     root = Path(args.path)
     if not root.exists():
@@ -672,7 +733,9 @@ def _cmd_validate(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="python -m genie_ontology_modeled_knowledge_sdk.mv_yaml", description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        prog="python -m genie_ontology_modeled_knowledge_sdk.mv_yaml", description=__doc__.splitlines()[0]
+    )
     sub = parser.add_subparsers(dest="command", required=True)
     p_val = sub.add_parser("validate", help="validate metric view YAML files (rules MV001-MV007)")
     p_val.add_argument("path", help="a directory (searched recursively) or a single YAML file")

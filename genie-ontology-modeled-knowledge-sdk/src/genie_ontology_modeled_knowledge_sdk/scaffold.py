@@ -40,9 +40,10 @@ import argparse
 import json
 import re
 import sys
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from genie_ontology_modeled_knowledge_sdk.config import SdkConfig, config_from_dict, load_config
 
@@ -92,10 +93,10 @@ class ScaffoldReport:
     """Outcome of ``scaffold_project``. Paths are POSIX, relative to ``target_dir``."""
 
     target_dir: str
-    written: list[str] = field(default_factory=list)      # created (did not exist)
+    written: list[str] = field(default_factory=list)  # created (did not exist)
     overwritten: list[str] = field(default_factory=list)  # differed, replaced because force=True
-    unchanged: list[str] = field(default_factory=list)    # existed with identical content
-    skipped: list[str] = field(default_factory=list)      # existed with different content, kept
+    unchanged: list[str] = field(default_factory=list)  # existed with identical content
+    skipped: list[str] = field(default_factory=list)  # existed with different content, kept
 
     @property
     def files_written(self) -> int:

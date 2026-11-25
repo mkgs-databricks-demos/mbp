@@ -7,8 +7,8 @@ import json
 import jsonschema
 import pytest
 import yaml
-
 from conftest import TPCH_TABLES, FakeWorkspaceClient
+
 from genie_ontology_modeled_knowledge_sdk import __version__
 from genie_ontology_modeled_knowledge_sdk.config import (
     DEFAULT_MAX_METRIC_VIEWS_PER_AGENT,
@@ -21,8 +21,8 @@ from genie_ontology_modeled_knowledge_sdk.config import (
     validate_config,
 )
 
-
 # --- schema and validate_config -------------------------------------------------
+
 
 def test_version():
     assert __version__ == "0.0.1"
@@ -53,10 +53,12 @@ def test_empty_source_lists_count_as_missing(tpch_config):
 
 @pytest.mark.parametrize("key", ["source_catalogs", "source_schemas", "source_tables"])
 def test_any_single_source_input_is_enough(key):
-    value = {"source_catalogs": ["samples"], "source_schemas": ["samples.tpch"],
-             "source_tables": ["samples.tpch.orders"]}[key]
-    d = {"target_catalog": "main", "target_schema": "s", "domain_name": "d",
-         "domain_context": "ctx", key: value}
+    value = {
+        "source_catalogs": ["samples"],
+        "source_schemas": ["samples.tpch"],
+        "source_tables": ["samples.tpch.orders"],
+    }[key]
+    d = {"target_catalog": "main", "target_schema": "s", "domain_name": "d", "domain_context": "ctx", key: value}
     assert validate_config(d) == []
 
 
@@ -89,9 +91,7 @@ def test_table_name_with_empty_part_is_an_error(tpch_config):
 
 def test_schema_names_must_be_two_part(tpch_config):
     tpch_config["source_schemas"] = ["tpch"]
-    assert validate_config(tpch_config) == [
-        "source_schemas[0]: 'tpch' must be a 2-part name catalog.schema"
-    ]
+    assert validate_config(tpch_config) == ["source_schemas[0]: 'tpch' must be a 2-part name catalog.schema"]
 
 
 def test_unknown_keys_and_bad_types_are_rejected(tpch_config):
@@ -109,6 +109,7 @@ def test_non_dict_config():
 
 
 # --- SdkConfig, config_from_dict, load_config ---------------------------------------
+
 
 def test_config_from_dict_applies_defaults(tpch_config):
     del tpch_config["max_metric_views_per_agent"]
@@ -151,6 +152,7 @@ def test_load_config_invalid_file_raises(tmp_path):
 
 # --- expand_tables -------------------------------------------------------------
 
+
 def test_expand_tables_from_tables_is_sorted_unique(tpch_config, fake_ws):
     tpch_config["source_schemas"] = ["samples.tpch"]  # overlaps every source_tables entry
     tables = expand_tables(tpch_config, fake_ws)
@@ -172,6 +174,7 @@ def test_expand_tables_from_schemas_and_catalogs(fake_ws):
 
 
 # --- check_access ---------------------------------------------------------------
+
 
 def test_check_access_ok(tpch_config, fake_ws):
     tpch_config["supplemental_volume_dirs"] = ["/Volumes/main/ontology_tpch/context"]
@@ -198,7 +201,7 @@ def test_check_access_problem_messages(tpch_config, fake_ws):
         "target catalog 'absent_target': not found or not accessible",
         "supplemental volume dir '/Volumes/main/ontology_tpch/missing_dir': not found or not accessible",
     ]
-    for prefix, problem in zip(expected_prefixes, problems):
+    for prefix, problem in zip(expected_prefixes, problems, strict=False):
         assert problem.startswith(prefix), problem
     assert "does not exist" in problems[0]  # underlying error is kept
 

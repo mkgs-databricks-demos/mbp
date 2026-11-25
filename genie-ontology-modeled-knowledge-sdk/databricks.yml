@@ -1,0 +1,89 @@
+# Genie Ontology Modeled Knowledge SDK - SDK bundle.
+#
+# Owns the SDK's own Unity Catalog schema and the sdk_wheels volume. Later
+# builds add the wheel artifact (workspace.artifact_path points at the volume),
+# the published skills and build-only scratch_* views, all in this one schema.
+#
+# SDK setup asks three questions: which catalog (sdk_catalog), which schema
+# (sdk_schema; a NEW schema the bundle creates is recommended) and which group
+# reads the SDK assets (sdk_consumer_group). See docs/distribution/README.md.
+#
+# Modes:
+#   * new-schema (recommended): targets dev and prod create the schema
+#     (resources/sdk.schema.yml) and put the volume in it.
+#   * existing-schema: target prod_existing_schema creates only the volume, in
+#     the existing schema named by sdk_schema (resources/sdk.existing_schema.yml).
+#
+# No workspace host, user names or real catalog / warehouse values live in this
+# file. Use a CLI profile for the workspace and put real values in the
+# gitignored .databricks/bundle/<target>/variable-overrides.json.
+bundle:
+  name: genie_ontology_modeled_knowledge_sdk
+
+include:
+  - resources/*.yml
+
+# Sync only the bundle's own files (the SDK package and its metadata).
+sync:
+  exclude:
+    - "Genie Code Start Session - DO NOT EDIT.ipynb"
+    - ci/**
+    - docs/**
+    - examples/**
+    - notebooks/**
+    - skills/**
+    - templates/**
+    - tests/**
+
+variables:
+  sdk_catalog:
+    description: Existing catalog that holds the SDK schema
+  sdk_schema:
+    description: SDK schema name (new-schema mode creates it, prefixed per user in development mode; existing-schema mode uses it as is)
+    default: ontology_sdk
+  sdk_consumer_group:
+    description: Group granted USE_SCHEMA on the SDK schema and READ_VOLUME on sdk_wheels (production targets)
+  warehouse_id:
+    description: SQL warehouse for SDK setup checks and later SDK jobs
+  tags_project:
+    description: Project tag applied to taggable resources
+    default: genie-ontology-modeled-knowledge-sdk
+  tags_businessUnit:
+    description: Business unit tag applied to taggable resources
+    default: ""
+  tags_requestedBy:
+    description: Requesting team tag applied to taggable resources
+    default: ""
+
+targets:
+  dev:
+    mode: development
+    default: true
+    presets:
+      tags:
+        project: ${var.tags_project}
+        businessUnit: ${var.tags_businessUnit}
+        requestedBy: ${var.tags_requestedBy}
+        env: ${bundle.target}
+
+  prod:
+    mode: production
+    workspace:
+      root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}
+    presets:
+      tags:
+        project: ${var.tags_project}
+        businessUnit: ${var.tags_businessUnit}
+        requestedBy: ${var.tags_requestedBy}
+        env: ${bundle.target}
+
+  prod_existing_schema:
+    mode: production
+    workspace:
+      root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}
+    presets:
+      tags:
+        project: ${var.tags_project}
+        businessUnit: ${var.tags_businessUnit}
+        requestedBy: ${var.tags_requestedBy}
+        env: ${bundle.target}

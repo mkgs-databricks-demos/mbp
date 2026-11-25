@@ -10,7 +10,6 @@ import pytest
 import genie_ontology_modeled_knowledge_sdk.benchmark as bm
 from genie_ontology_modeled_knowledge_sdk.benchmark import (
     ACCURACY_GATE,
-    Question,
     Result,
     load_questions,
     run_benchmark,
@@ -51,8 +50,14 @@ class FakeGenie:
         if "sql" in a:
             atts.append(NS(attachment_id=f"a{n}", text=None, query=NS(query=a["sql"])))
             self._results[f"a{n}"] = _stmt(a.get("rows", []), state=a.get("state", "SUCCEEDED"), error=a.get("error"))
-        return NS(conversation_id=f"c{n}", message_id=f"m{n}", id=f"m{n}",
-                  status=NS(value="COMPLETED"), error=None, attachments=atts)
+        return NS(
+            conversation_id=f"c{n}",
+            message_id=f"m{n}",
+            id=f"m{n}",
+            status=NS(value="COMPLETED"),
+            error=None,
+            attachments=atts,
+        )
 
     def get_message_attachment_query_result(self, space_id, conversation_id, message_id, attachment_id):
         self.calls.append(("result", space_id, conversation_id, message_id, attachment_id))
@@ -81,7 +86,8 @@ def questions():
 GOOD_ANSWERS = {
     "What is total net revenue?": {"sql": "SELECT SUM(x) FROM t", "rows": [["1000.50"]]},
     "How many orders are there per order priority?": {
-        "sql": "SELECT p, COUNT(*) FROM o GROUP BY p", "rows": [["2-HIGH", "2"], ["1-urgent", "3"]],
+        "sql": "SELECT p, COUNT(*) FROM o GROUP BY p",
+        "rows": [["2-HIGH", "2"], ["1-urgent", "3"]],
     },
     "Which region has the most customers?": {"sql": "SELECT r, COUNT(*) FROM c GROUP BY r", "rows": [["ASIA", "30"]]},
     "Describe the supplier table.": {"text": "The supplier table has one row per supplier."},
@@ -96,13 +102,16 @@ def test_load_questions(questions):
     assert not questions[3].has_expectation and questions[3].tags == []
 
 
-@pytest.mark.parametrize("text, message", [
-    ("- id: a\n  question: x\n- id: a\n  question: y\n", "duplicate id"),
-    ("- question: x\n", "missing 'id'"),
-    ("- id: a\n  question: ''\n", "empty question"),
-    ("- id: a\n  question: x\n  answer: 1\n", "unknown keys"),
-    ("id: a\n", "expected a YAML list"),
-])
+@pytest.mark.parametrize(
+    "text, message",
+    [
+        ("- id: a\n  question: x\n- id: a\n  question: y\n", "duplicate id"),
+        ("- question: x\n", "missing 'id'"),
+        ("- id: a\n  question: ''\n", "empty question"),
+        ("- id: a\n  question: x\n  answer: 1\n", "unknown keys"),
+        ("id: a\n", "expected a YAML list"),
+    ],
+)
 def test_load_questions_rejects_bad_input(tmp_path, text, message):
     f = tmp_path / "q.yml"
     f.write_text(text)
@@ -143,7 +152,9 @@ def test_wrong_answers_failed_sql_and_errors_are_recorded(questions):
     answers = dict(GOOD_ANSWERS)
     answers["What is total net revenue?"] = {"sql": "SELECT 1", "rows": [["999"]]}
     answers["How many orders are there per order priority?"] = {
-        "sql": "SELECT bad", "state": "FAILED", "error": "UNRESOLVED_COLUMN",
+        "sql": "SELECT bad",
+        "state": "FAILED",
+        "error": "UNRESOLVED_COLUMN",
     }
     answers["Which region has the most customers?"] = {"raise": TimeoutError("timed out after 120s")}
     results = run_benchmark(SPACE, questions, _ws(answers), warehouse_id="wh")
@@ -165,19 +176,22 @@ def test_numeric_tolerance_and_scalar_in_first_row():
 
 
 def _r(qid, gen, ok, match, error=None):
-    return Result(question_id=qid, question=qid, sql_generated=gen, sql_succeeded=ok,
-                  matches_expected=match, error=error)
+    return Result(
+        question_id=qid, question=qid, sql_generated=gen, sql_succeeded=ok, matches_expected=match, error=error
+    )
 
 
 def test_score_accuracy_uses_expectations_when_present():
-    s = score([
-        _r("a", True, True, True),
-        _r("b", True, True, False),
-        _r("c", True, True, True),
-        _r("d", True, False, False, error="x"),
-        _r("e", True, True, None),
-        _r("f", False, False, None),
-    ])
+    s = score(
+        [
+            _r("a", True, True, True),
+            _r("b", True, True, False),
+            _r("c", True, True, True),
+            _r("d", True, False, False, error="x"),
+            _r("e", True, True, None),
+            _r("f", False, False, None),
+        ]
+    )
     assert (s.total, s.sql_generated, s.sql_succeeded) == (6, 5, 4)
     assert (s.with_expectations, s.matches_expected, s.errors) == (4, 2, 1)
     assert s.accuracy == pytest.approx(0.5) and s.accuracy_basis == "expected"

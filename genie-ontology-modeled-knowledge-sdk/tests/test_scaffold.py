@@ -29,7 +29,9 @@ TEMPLATES = SDK_ROOT / "templates"
 
 CONFIG = {
     "domain_name": "tpch_supply_chain",
-    "domain_context": "TPC-H supply chain: customers place orders for parts supplied by suppliers across nations and regions.",
+    "domain_context": (
+        "TPC-H supply chain: customers place orders for parts supplied by suppliers across nations and regions."
+    ),
     "source_tables": [
         f"samples.tpch.{t}"
         for t in ("customer", "orders", "lineitem", "part", "partsupp", "supplier", "nation", "region")

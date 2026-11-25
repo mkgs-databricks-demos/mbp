@@ -17,11 +17,12 @@ Pure Python: no Spark imports. Databricks access goes through an injected
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass, field, fields
 from functools import lru_cache
 from importlib import resources
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import jsonschema
 import yaml
@@ -141,7 +142,7 @@ def config_from_dict(d: dict[str, Any]) -> SdkConfig:
     if errors:
         raise ValueError("invalid sdk config:\n  " + "\n  ".join(errors))
     known = {f.name for f in fields(SdkConfig)}
-    kwargs = {k: (list(v) if isinstance(v, list) else v) for k, v in d.items() if k in known}
+    kwargs: dict[str, Any] = {k: (list(v) if isinstance(v, list) else v) for k, v in d.items() if k in known}
     return SdkConfig(**kwargs)
 
 
@@ -203,8 +204,10 @@ def check_access(cfg: SdkConfig | dict[str, Any], ws: Any) -> list[str]:
                 ws.catalogs.get,
                 c.source_catalog_for_reads,
             )
-        for kind, paths in (("supplemental volume dir", c.supplemental_volume_dirs),
-                            ("dashboard input", c.dashboard_inputs)):
+        for kind, paths in (
+            ("supplemental volume dir", c.supplemental_volume_dirs),
+            ("dashboard input", c.dashboard_inputs),
+        ):
             for path in paths:
                 if not path.startswith("/Volumes/"):
                     problems.append(f"{kind} '{path}': must be a /Volumes/ path")

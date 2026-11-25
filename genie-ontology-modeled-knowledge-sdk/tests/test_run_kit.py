@@ -28,9 +28,7 @@ SAMPLE_VALUES = {
 }
 TOKEN_RE = re.compile(r"\{\{\s*(\w+)\s*\}\}")
 KIT_FILES = ["waves.json", "INDEX.md", "PROJECT_MEMORY.md", "README.md"]
-GIT_WRITE_RE = re.compile(
-    r"\bgit\s+(checkout|commit|push|merge|rebase|reset|stash|switch|pull)\b", re.IGNORECASE
-)
+GIT_WRITE_RE = re.compile(r"\bgit\s+(checkout|commit|push|merge|rebase|reset|stash|switch|pull)\b", re.IGNORECASE)
 # Workspace-specific identifiers that must never appear in the kit.
 WORKSPACE_ID_RES = [
     re.compile(r"https?://[\w.-]*(cloud\.databricks\.com|azuredatabricks\.net|gcp\.databricks\.com)"),
@@ -120,7 +118,7 @@ def test_owned_paths_disjoint_within_each_wave(manifest):
     for wave in manifest["waves"]:
         owned = [(s["session_id"], g) for s in wave["sessions"] for g in s.get("owned_paths", [])]
         for i, (sa, ga) in enumerate(owned):
-            for sb, gb in owned[i + 1:]:
+            for sb, gb in owned[i + 1 :]:
                 if sa != sb:
                     assert not _overlap(ga, gb), f"wave {wave['wave_id']}: {sa} {ga} overlaps {sb} {gb}"
 

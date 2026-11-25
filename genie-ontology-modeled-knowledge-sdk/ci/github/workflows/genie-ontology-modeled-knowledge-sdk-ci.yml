@@ -1,0 +1,98 @@
+# CI for genie-ontology-modeled-knowledge-sdk.
+#
+# Staged under genie-ontology-modeled-knowledge-sdk/ci/github/workflows/; the
+# owner moves it to <repo root>/.github/workflows/ (see ci/README.md). All paths
+# below are relative to the repository root.
+name: genie-ontology-modeled-knowledge-sdk-ci
+
+on:
+  pull_request:
+    paths:
+      - "genie-ontology-modeled-knowledge-sdk/**"
+      - ".github/workflows/genie-ontology-modeled-knowledge-sdk-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: genie-ontology-modeled-knowledge-sdk-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: genie-ontology-modeled-knowledge-sdk
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ruff
+      - run: ruff check .
+      - run: ruff format --check .
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - run: mypy src
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # floor = the lower bound in pyproject.toml; keep the two in sync.
+        databricks-sdk: ["0.45.0", "latest"]
+    env:
+      # The run kit test validates templates/run/waves.json with the repo's genie-build-waves.
+      GENIE_BUILD_WAVES_DIR: ${{ github.workspace }}/genie-build-waves
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - name: Pin databricks-sdk
+        run: |
+          if [ "${{ matrix.databricks-sdk }}" = "latest" ]; then
+            pip install --upgrade "databricks-sdk<1"
+          else
+            pip install "databricks-sdk==${{ matrix.databricks-sdk }}"
+          fi
+          python -c "import databricks.sdk.version as v; print('databricks-sdk', v.__version__)"
+      - run: python -m pytest -q -rs
+
+  bundle-validate:
+    # Runs only when the OIDC variables for a dev workspace are configured (owner step P1-7).
+    if: ${{ vars.DATABRICKS_HOST != '' && vars.DATABRICKS_CLIENT_ID != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_AUTH_TYPE: github-oidc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - name: Validate the SDK bundle (both schema modes)
+        run: |
+          vars="--var sdk_catalog=ci_placeholder --var sdk_consumer_group=ci_placeholder --var warehouse_id=ci_placeholder"
+          databricks bundle validate --strict -t dev $vars
+          databricks bundle validate --strict -t prod $vars
+          databricks bundle validate --strict -t prod_existing_schema $vars
+      - name: Validate the metric view template bundle
+        working-directory: genie-ontology-modeled-knowledge-sdk/templates/ontology-metric-views
+        run: databricks bundle validate --strict -t dev
+      - name: Validate the Genie Agent template bundle
+        working-directory: genie-ontology-modeled-knowledge-sdk/templates/ontology-genie-agents
+        run: databricks bundle validate --strict -t dev

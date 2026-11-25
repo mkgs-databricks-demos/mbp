@@ -1,0 +1,18 @@
+# Existing-schema mode: the customer chose a schema that already exists, so the
+# bundle declares no schema resource and creates only the sdk_wheels volume in
+# ${var.sdk_catalog}.${var.sdk_schema}. Used by target prod_existing_schema.
+# (The schema is not a resource of this bundle, so it is referenced by variable.)
+targets:
+  prod_existing_schema:
+    resources:
+      volumes:
+        sdk_wheels:
+          catalog_name: ${var.sdk_catalog}
+          schema_name: ${var.sdk_schema}
+          name: sdk_wheels
+          volume_type: MANAGED
+          comment: Versioned Genie Ontology Modeled Knowledge SDK wheels
+          grants:
+            - principal: ${var.sdk_consumer_group}
+              privileges:
+                - READ_VOLUME

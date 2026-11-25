@@ -82,10 +82,16 @@ def _tasks(job: dict) -> dict:
 
 # ------------------------------------------------------------------ layout
 
+
 def test_template_files_exist():
     for rel in [
-        "databricks.yml", "resources/ontology_schema.yml", "resources/register_metric_views.job.yml",
-        "README.md", ".gitignore", "metric_views/.gitkeep", "tests/README.md",
+        "databricks.yml",
+        "resources/ontology_schema.yml",
+        "resources/register_metric_views.job.yml",
+        "README.md",
+        ".gitignore",
+        "metric_views/.gitkeep",
+        "tests/README.md",
         "src/genie_ontology_modeled_knowledge_sdk_vendored/README.md",
     ]:
         assert (TEMPLATE / rel).is_file(), rel
@@ -102,6 +108,7 @@ def test_vendored_folder_has_only_readme():
 
 
 # ------------------------------------------------------- bundle and targets
+
 
 def test_bundle_includes_resources(bundle):
     assert bundle["bundle"]["name"] == "ontology-metric-views"
@@ -140,6 +147,7 @@ def test_every_var_reference_is_declared(bundle):
 
 
 # ---------------------------------------------------------------- resources
+
 
 def test_schema_resource(resources):
     schema = resources["schemas"]["ontology_schema"]
@@ -192,9 +200,7 @@ def test_all_tasks_serverless(job):
 
 
 def test_notebook_paths_exist_with_extension(resources):
-    paths = [
-        (key_path, v) for key_path, k, v in _walk(resources) if k == "notebook_path"
-    ]
+    paths = [(key_path, v) for key_path, k, v in _walk(resources) if k == "notebook_path"]
     assert len(paths) == 4
     for key_path, rel in paths:
         assert rel.endswith(".ipynb"), f"{key_path}: {rel} must include the .ipynb extension"
@@ -204,6 +210,7 @@ def test_notebook_paths_exist_with_extension(resources):
 
 
 # ------------------------------------------------------- conventions / hygiene
+
 
 def test_no_raw_schema_var_outside_schema_resource():
     files = [f for f in _yaml_files() if f != SCHEMA_RESOURCE] + _notebooks()
@@ -225,6 +232,7 @@ def test_no_hosts_or_user_names(bundle, resources):
 
 
 # ------------------------------------------------------------------ notebooks
+
 
 @pytest.mark.parametrize("name", ["generate_manifest", "register_single_mv", "smoke_test", "cardinality_test"])
 def test_notebook_structure(name):
@@ -268,7 +276,9 @@ def test_vendored_loader_imports_sdk(tmp_path):
     code = _src(loader).replace('load_sdk(args["bundle_root"])', "load_sdk(BUNDLE_ROOT)")
 
     def is_sdk(name: str) -> bool:
-        return name == "genie_ontology_modeled_knowledge_sdk" or name.startswith("genie_ontology_modeled_knowledge_sdk.")
+        return name == "genie_ontology_modeled_knowledge_sdk" or name.startswith(
+            "genie_ontology_modeled_knowledge_sdk."
+        )
 
     saved = {k: v for k, v in sys.modules.items() if is_sdk(k)}
     for k in saved:

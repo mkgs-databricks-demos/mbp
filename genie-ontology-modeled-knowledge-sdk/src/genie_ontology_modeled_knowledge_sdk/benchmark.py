@@ -58,11 +58,11 @@ from __future__ import annotations
 
 import math
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from collections import Counter
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import yaml
 
@@ -169,13 +169,15 @@ def load_questions(path: str | Path) -> list[Question]:
         if isinstance(tags, str):
             tags = [tags]
         seen.add(qid)
-        out.append(Question(
-            id=qid,
-            question=text,
-            expected_sql=(str(item["expected_sql"]).strip() or None) if item.get("expected_sql") else None,
-            expected_answer=item.get("expected_answer"),
-            tags=[str(t) for t in tags],
-        ))
+        out.append(
+            Question(
+                id=qid,
+                question=text,
+                expected_sql=(str(item["expected_sql"]).strip() or None) if item.get("expected_sql") else None,
+                expected_answer=item.get("expected_answer"),
+                tags=[str(t) for t in tags],
+            )
+        )
     return out
 
 
@@ -214,7 +216,7 @@ def _rows_equal(actual: list[list[Any]], expected: list[list[Any]]) -> bool:
     remaining = list(actual)
     for exp in expected:
         for i, act in enumerate(remaining):
-            if len(act) == len(exp) and all(_eq(x, y) for x, y in zip(act, exp)):
+            if len(act) == len(exp) and all(_eq(x, y) for x, y in zip(act, exp, strict=True)):
                 del remaining[i]
                 break
         else:
@@ -259,7 +261,9 @@ def _statement_error(statement_response: Any) -> str | None:
 
 def _run_expected_sql(ws: Any, warehouse_id: str, sql: str, timeout_s: int) -> list[list[Any]]:
     resp = ws.statement_execution.execute_statement(
-        statement=sql, warehouse_id=warehouse_id, wait_timeout=f"{min(max(timeout_s, 5), 50)}s",
+        statement=sql,
+        warehouse_id=warehouse_id,
+        wait_timeout=f"{min(max(timeout_s, 5), 50)}s",
     )
     if _state(resp) != "SUCCEEDED":
         raise RuntimeError(f"expected_sql did not succeed ({_state(resp)}): {_statement_error(resp)}")
@@ -292,7 +296,10 @@ def _ask(space_id: str, q: Question, ws: Any, timeout_s: int, warehouse_id: str 
                 continue
             r.sql, r.sql_generated = sql, True
             qr = ws.genie.get_message_attachment_query_result(
-                space_id, r.conversation_id, r.message_id, att.attachment_id,
+                space_id,
+                r.conversation_id,
+                r.message_id,
+                att.attachment_id,
             )
             stmt = getattr(qr, "statement_response", None)
             if _state(stmt) == "SUCCEEDED":
@@ -306,7 +313,8 @@ def _ask(space_id: str, q: Question, ws: Any, timeout_s: int, warehouse_id: str 
             r.matches_expected = r.sql_succeeded and _match_answer(r.rows, q.expected_answer)
         elif q.expected_sql and warehouse_id:
             r.matches_expected = r.sql_succeeded and _rows_equal(
-                r.rows, _run_expected_sql(ws, warehouse_id, q.expected_sql, timeout_s),
+                r.rows,
+                _run_expected_sql(ws, warehouse_id, q.expected_sql, timeout_s),
             )
     except Exception as e:  # noqa: BLE001 - recorded on the result; one failing question must not stop the run
         r.error = f"{type(e).__name__}: {e}"

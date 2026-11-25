@@ -11,8 +11,8 @@ files (subclass or monkeypatch); ask session 01 for changes here.
 from __future__ import annotations
 
 import copy
+from collections.abc import Iterable, Iterator
 from types import SimpleNamespace
-from typing import Iterable, Iterator
 
 import pytest
 
@@ -20,7 +20,9 @@ TPCH_TABLES = ["customer", "orders", "lineitem", "part", "partsupp", "supplier",
 
 TPCH_CONFIG = {
     "domain_name": "tpch_supply_chain",
-    "domain_context": "TPC-H supply chain: customers place orders for parts supplied by suppliers across nations and regions.",
+    "domain_context": (
+        "TPC-H supply chain: customers place orders for parts supplied by suppliers across nations and regions."
+    ),
     "source_tables": [f"samples.tpch.{t}" for t in TPCH_TABLES],
     "target_catalog": "main",
     "target_schema": "ontology_tpch",
@@ -33,7 +35,7 @@ class FakeNotFound(Exception):
 
 
 class _Catalogs:
-    def __init__(self, ws: "FakeWorkspaceClient"):
+    def __init__(self, ws: FakeWorkspaceClient):
         self._ws = ws
 
     def get(self, name: str) -> SimpleNamespace:
@@ -47,7 +49,7 @@ class _Catalogs:
 
 
 class _Schemas:
-    def __init__(self, ws: "FakeWorkspaceClient"):
+    def __init__(self, ws: FakeWorkspaceClient):
         self._ws = ws
 
     def get(self, full_name: str) -> SimpleNamespace:
@@ -64,7 +66,7 @@ class _Schemas:
 
 
 class _Tables:
-    def __init__(self, ws: "FakeWorkspaceClient"):
+    def __init__(self, ws: FakeWorkspaceClient):
         self._ws = ws
 
     def get(self, full_name: str, **_: object) -> SimpleNamespace:
@@ -78,13 +80,15 @@ class _Tables:
             raise FakeNotFound(f"Schema '{catalog_name}.{schema_name}' does not exist.")
         for t in sorted(self._ws.data[catalog_name][schema_name]):
             yield SimpleNamespace(
-                name=t, catalog_name=catalog_name, schema_name=schema_name,
+                name=t,
+                catalog_name=catalog_name,
+                schema_name=schema_name,
                 full_name=f"{catalog_name}.{schema_name}.{t}",
             )
 
 
 class _Files:
-    def __init__(self, ws: "FakeWorkspaceClient"):
+    def __init__(self, ws: FakeWorkspaceClient):
         self._ws = ws
 
     def list_directory_contents(self, directory_path: str, **_: object) -> Iterator[SimpleNamespace]:

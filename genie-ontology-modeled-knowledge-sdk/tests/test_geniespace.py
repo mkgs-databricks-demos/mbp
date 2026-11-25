@@ -43,7 +43,11 @@ def _build(plan: AgentPlan) -> dict:
         example_sqls=[
             {
                 "question": "Top 10 customers by revenue",
-                "sql": "SELECT `Customer`, MEASURE(`Revenue`) AS revenue\nFROM ${target_catalog}.${target_schema}.mv_tpch_revenue\nGROUP BY ALL\nORDER BY revenue DESC\nLIMIT 10",
+                "sql": (
+                    "SELECT `Customer`, MEASURE(`Revenue`) AS revenue\n"
+                    "FROM ${target_catalog}.${target_schema}.mv_tpch_revenue\n"
+                    "GROUP BY ALL\nORDER BY revenue DESC\nLIMIT 10"
+                ),
             }
         ],
         join_specs=[{"left": {"identifier": "a.b.c"}, "right": {"identifier": "a.b.d"}, "sql": ["c.k = d.k"]}],
@@ -86,7 +90,12 @@ def test_oversized_subdomain_is_split_into_numbered_agents():
     mvs = _mvs(110, ["sales"]) + [MvRef(name="mv_supply_x", domain=DOMAIN, subdomain="supply")]
     plans = gs.plan_agents(mvs, max_per_agent=50)
     names = [p.name for p in plans]
-    assert names == [f"{DOMAIN}_sales_1_agent", f"{DOMAIN}_sales_2_agent", f"{DOMAIN}_sales_3_agent", f"{DOMAIN}_supply_agent"]
+    assert names == [
+        f"{DOMAIN}_sales_1_agent",
+        f"{DOMAIN}_sales_2_agent",
+        f"{DOMAIN}_sales_3_agent",
+        f"{DOMAIN}_supply_agent",
+    ]
     assert [len(p.metric_views) for p in plans] == [50, 50, 10, 1]
     placed = [n for p in plans for n in p.mv_names]
     assert len(placed) == len(set(placed)) == 111
@@ -116,7 +125,14 @@ def test_plan_agents_rejects_bad_input():
 
 
 def test_mv_refs_from_manifest_entries():
-    entries = [{"name": "mv_tpch_revenue", "yaml_path": "metric_views/x/mv_tpch_revenue.yml", "domain": DOMAIN, "subdomain": "sales"}]
+    entries = [
+        {
+            "name": "mv_tpch_revenue",
+            "yaml_path": "metric_views/x/mv_tpch_revenue.yml",
+            "domain": DOMAIN,
+            "subdomain": "sales",
+        }
+    ]
     (ref,) = gs.mv_refs_from_manifest(entries)
     assert ref == MvRef(name="mv_tpch_revenue", domain=DOMAIN, subdomain="sales")
     assert ref.identifier == "${target_catalog}.${target_schema}.mv_tpch_revenue"
@@ -143,7 +159,9 @@ def test_build_space_shape_and_tokenized_identifiers():
 def test_build_space_ids_are_deterministic_32_hex():
     doc = _build(_small_plan())
     ids = [q["id"] for q in doc["config"]["sample_questions"]]
-    ids += [x["id"] for k in ("text_instructions", "example_question_sqls", "join_specs") for x in doc["instructions"][k]]
+    ids += [
+        x["id"] for k in ("text_instructions", "example_question_sqls", "join_specs") for x in doc["instructions"][k]
+    ]
     assert all(HEX32.match(i) for i in ids)
     assert len(set(ids)) == len(ids)
     assert gs.stable_id("What was total revenue last month?") in ids
@@ -188,11 +206,16 @@ def test_sales_example_passes_validation():
         (lambda d: d["data_sources"].update(tables=[{"identifier": f"c.s.t{i}"} for i in range(31)]), "1-30"),
         (lambda d: d["data_sources"]["tables"][0].update(identifier="schema.table"), "3-part"),
         (lambda d: d["data_sources"]["tables"].append(copy.deepcopy(d["data_sources"]["tables"][0])), "duplicate"),
-        (lambda d: d["config"]["sample_questions"].append(copy.deepcopy(d["config"]["sample_questions"][0])), "duplicate id"),
+        (
+            lambda d: d["config"]["sample_questions"].append(copy.deepcopy(d["config"]["sample_questions"][0])),
+            "duplicate id",
+        ),
         (lambda d: d["config"]["sample_questions"][0].update(id="ABC"), "32-character"),
         (lambda d: d["config"]["sample_questions"][0].update(question=[]), "non-empty"),
         (
-            lambda d: d["instructions"]["text_instructions"].append({"id": "0" * 32, "content": ["round MONEY to 2 decimals."]}),
+            lambda d: d["instructions"]["text_instructions"].append(
+                {"id": "0" * 32, "content": ["round MONEY to 2 decimals."]}
+            ),
             "duplicate instruction",
         ),
         (lambda d: d.pop("data_sources"), "data_sources"),

@@ -39,9 +39,10 @@ so an endpoint change touches one class.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 import yaml
 
@@ -172,12 +173,15 @@ class RestPagesClient:
 
     def update_page(self, page_id: str, fields: dict, update_mask: list[str]) -> dict:
         body = {k: fields[k] for k in update_mask}
-        return self._api.do(
-            "PATCH",
-            f"{self.BASE}/{_page_id(page_id)}",
-            query={"update_mask": ",".join(update_mask)},
-            body=body,
-        ) or {}
+        return (
+            self._api.do(
+                "PATCH",
+                f"{self.BASE}/{_page_id(page_id)}",
+                query={"update_mask": ",".join(update_mask)},
+                body=body,
+            )
+            or {}
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -201,7 +205,7 @@ def _split_sections(body: str) -> dict[str, str]:
     matches = list(_HEADING.finditer(body))
     for i, m in enumerate(matches):
         end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
-        sections[m.group(1).strip()] = body[m.end():end].strip()
+        sections[m.group(1).strip()] = body[m.end() : end].strip()
     return sections
 
 
@@ -223,7 +227,7 @@ def parse_term_file(path: str | Path) -> Term | None:
     if not name:
         raise ValueError(f"{p}: front matter is missing 'term'")
 
-    sections = _split_sections(text[m.end():])
+    sections = _split_sections(text[m.end() :])
     known: dict[str, str] = {}
     extra: dict[str, str] = {}
     for heading, content in sections.items():
@@ -289,12 +293,39 @@ def _page_id(page: str) -> str:
 
 
 # Words ending in "." that do not end a sentence (compared lowercase, without the final dot).
-_ABBREVIATIONS = frozenset({
-    # Only unambiguous abbreviations: a word that also ends sentences ("max", "no") would make
-    # a real sentence end run on.
-    "e.g", "i.e", "etc", "vs", "approx", "incl", "excl", "cf", "mr", "mrs", "dr", "inc", "ltd",
-    "corp", "dept", "jan", "feb", "apr", "jun", "jul", "aug", "sept", "oct", "nov", "dec", "u.s", "u.k",
-})
+_ABBREVIATIONS = frozenset(
+    {
+        # Only unambiguous abbreviations: a word that also ends sentences ("max", "no") would make
+        # a real sentence end run on.
+        "e.g",
+        "i.e",
+        "etc",
+        "vs",
+        "approx",
+        "incl",
+        "excl",
+        "cf",
+        "mr",
+        "mrs",
+        "dr",
+        "inc",
+        "ltd",
+        "corp",
+        "dept",
+        "jan",
+        "feb",
+        "apr",
+        "jun",
+        "jul",
+        "aug",
+        "sept",
+        "oct",
+        "nov",
+        "dec",
+        "u.s",
+        "u.k",
+    }
+)
 _SENTENCE_END = re.compile(r"[.!?](?=\s|$)")
 
 
@@ -312,7 +343,7 @@ def _first_sentence(text: str) -> str:
     for m in _SENTENCE_END.finditer(flat):
         end = m.end()
         if flat[m.start()] == ".":
-            word = flat[:m.start()].rsplit(" ", 1)[-1].lower().lstrip("(\"'")
+            word = flat[: m.start()].rsplit(" ", 1)[-1].lower().lstrip("(\"'")
             if word in _ABBREVIATIONS:
                 continue
             nxt = flat[end:].lstrip()[:1]
@@ -389,10 +420,7 @@ def _normalize(field_name: str, value: Any) -> Any:
 
 
 def _diff(existing: dict, payload: dict) -> list[str]:
-    return [
-        f for f in PAGE_FIELDS
-        if f in payload and _normalize(f, existing.get(f)) != _normalize(f, payload[f])
-    ]
+    return [f for f in PAGE_FIELDS if f in payload and _normalize(f, existing.get(f)) != _normalize(f, payload[f])]
 
 
 def upsert_pages(
@@ -432,23 +460,41 @@ def upsert_pages(
         try:
             if len(matches) > 1:
                 ids = ", ".join(str(p.get("name")) for p in matches)
-                results.append(PageResult(term=term.term, action="error", dry_run=dry_run,
-                                          error=f"several pages titled '{term.term}': {ids}"))
+                results.append(
+                    PageResult(
+                        term=term.term,
+                        action="error",
+                        dry_run=dry_run,
+                        error=f"several pages titled '{term.term}': {ids}",
+                    )
+                )
                 continue
 
             if not matches:
                 if not domain:
-                    results.append(PageResult(term=term.term, action="error", dry_run=dry_run,
-                                              error="no existing page and no domain_id to create one in"))
+                    results.append(
+                        PageResult(
+                            term=term.term,
+                            action="error",
+                            dry_run=dry_run,
+                            error="no existing page and no domain_id to create one in",
+                        )
+                    )
                     continue
                 page_id = None
                 if not dry_run:
                     created = client.create_page(payload)
                     page_id = _page_id(str(created.get("name") or "")) or None
                     by_title[payload["display_name"].casefold()] = [created]
-                results.append(PageResult(term=term.term, action="create", page_id=page_id,
-                                          changed_fields=[f for f in PAGE_FIELDS if f in payload],
-                                          dry_run=dry_run))
+                results.append(
+                    PageResult(
+                        term=term.term,
+                        action="create",
+                        page_id=page_id,
+                        changed_fields=[f for f in PAGE_FIELDS if f in payload],
+                        dry_run=dry_run,
+                    )
+                )
                 continue
 
             page_id = _page_id(str(matches[0].get("name") or ""))
@@ -459,8 +505,9 @@ def upsert_pages(
                 continue
             if not dry_run:
                 client.update_page(page_id, {f: payload[f] for f in changed}, changed)
-            results.append(PageResult(term=term.term, action="update", page_id=page_id,
-                                      changed_fields=changed, dry_run=dry_run))
+            results.append(
+                PageResult(term=term.term, action="update", page_id=page_id, changed_fields=changed, dry_run=dry_run)
+            )
         except Exception as e:  # noqa: BLE001 - one failing term must not stop the batch; reported per term
             results.append(PageResult(term=term.term, action="error", dry_run=dry_run, error=str(e)))
     return results

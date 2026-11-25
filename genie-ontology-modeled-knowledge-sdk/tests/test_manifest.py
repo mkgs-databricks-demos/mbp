@@ -13,7 +13,10 @@ from genie_ontology_modeled_knowledge_sdk.manifest import build_manifest, valida
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "metric_views"
 GOOD = FIXTURES / "good"
 
-MV = "version: 1.1\nsource: ${source_catalog}.${source_schema}.t\nmeasures:\n  - name: N\n    expr: COUNT(1)\n    comment: n\n"
+MV = (
+    "version: 1.1\nsource: ${source_catalog}.${source_schema}.t\n"
+    "measures:\n  - name: N\n    expr: COUNT(1)\n    comment: n\n"
+)
 
 
 def make_bundle(tmp_path: Path, files: dict[str, str]) -> Path:
@@ -30,25 +33,44 @@ def make_bundle(tmp_path: Path, files: dict[str, str]) -> Path:
 def test_build_manifest_on_good_fixtures():
     entries = build_manifest(GOOD)
     assert entries == [
-        {"name": "mv_sales_returns", "yaml_path": "good/sales/mv_sales_returns.yml", "domain": "sales", "subdomain": "returns"},
-        {"name": "mv_sales_revenue", "yaml_path": "good/sales/mv_sales_revenue.yml", "domain": "sales", "subdomain": "revenue"},
-        {"name": "mv_tpch_order_lines", "yaml_path": "good/tpch_supply_chain/orders/mv_tpch_order_lines.yml",
-         "domain": "tpch_supply_chain", "subdomain": "orders"},
+        {
+            "name": "mv_sales_returns",
+            "yaml_path": "good/sales/mv_sales_returns.yml",
+            "domain": "sales",
+            "subdomain": "returns",
+        },
+        {
+            "name": "mv_sales_revenue",
+            "yaml_path": "good/sales/mv_sales_revenue.yml",
+            "domain": "sales",
+            "subdomain": "revenue",
+        },
+        {
+            "name": "mv_tpch_order_lines",
+            "yaml_path": "good/tpch_supply_chain/orders/mv_tpch_order_lines.yml",
+            "domain": "tpch_supply_chain",
+            "subdomain": "orders",
+        },
     ]
     assert validate_manifest_json(entries, base_dir=FIXTURES) == []
 
 
 def test_build_manifest_sorted_relative_posix_paths(tmp_path):
-    mv_dir = make_bundle(tmp_path, {
-        "zeta/mv_b.yml": MV,
-        "alpha/mv_c.yaml": MV,
-        "alpha/mv_a.yml": "# subdomain: pricing\n" + MV,
-        "alpha/README.md": "not yaml",
-    })
+    mv_dir = make_bundle(
+        tmp_path,
+        {
+            "zeta/mv_b.yml": MV,
+            "alpha/mv_c.yaml": MV,
+            "alpha/mv_a.yml": "# subdomain: pricing\n" + MV,
+            "alpha/README.md": "not yaml",
+        },
+    )
     entries = build_manifest(mv_dir)
     assert [e["name"] for e in entries] == ["mv_a", "mv_b", "mv_c"]
     assert [e["yaml_path"] for e in entries] == [
-        "metric_views/alpha/mv_a.yml", "metric_views/zeta/mv_b.yml", "metric_views/alpha/mv_c.yaml",
+        "metric_views/alpha/mv_a.yml",
+        "metric_views/zeta/mv_b.yml",
+        "metric_views/alpha/mv_c.yaml",
     ]
     assert [e["subdomain"] for e in entries] == ["pricing", None, None]
     assert [e["domain"] for e in entries] == ["alpha", "zeta", "alpha"]

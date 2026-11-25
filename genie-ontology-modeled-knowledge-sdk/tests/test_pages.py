@@ -39,7 +39,8 @@ class FakePagesClient:
         self.calls.append(("list_pages", domain))
         return [
             {k: p.get(k) for k in ("name", "display_name", "domain", "state")}
-            for p in self.pages.values() if domain is None or p.get("domain") == domain
+            for p in self.pages.values()
+            if domain is None or p.get("domain") == domain
         ]
 
     def get_page(self, page_id):
@@ -184,8 +185,13 @@ def test_upsert_updates_only_changed_fields_and_keeps_state(terms):
 
 def test_upsert_matches_titles_case_insensitively_and_never_deletes(terms):
     existing = {
-        "name": "pages/p1", "domain": f"domains/{DOMAIN}", "display_name": "net revenue",
-        "body": "old", "description": "old", "synonyms": [], "state": "DRAFT",
+        "name": "pages/p1",
+        "domain": f"domains/{DOMAIN}",
+        "display_name": "net revenue",
+        "body": "old",
+        "description": "old",
+        "synonyms": [],
+        "state": "DRAFT",
     }
     other = {**existing, "name": "pages/p2", "display_name": "Unrelated Term"}
     client = FakePagesClient([existing, other])
@@ -235,10 +241,12 @@ class _Ws:
 
 
 def test_rest_client_requests():
-    api = _RecordingApi([
-        {"pages": [{"name": "pages/1"}], "next_page_token": "t"},
-        {"pages": [{"name": "pages/2"}]},
-    ])
+    api = _RecordingApi(
+        [
+            {"pages": [{"name": "pages/1"}], "next_page_token": "t"},
+            {"pages": [{"name": "pages/2"}]},
+        ]
+    )
     client = RestPagesClient(_Ws(api))
     assert isinstance(client, PagesClient)
     assert [p["name"] for p in client.list_pages(DOMAIN)] == ["pages/1", "pages/2"]
@@ -252,20 +260,26 @@ def test_rest_client_requests():
     assert api.calls[0][:2] == ("GET", "/api/2.0/knowledge/pages/abc")
     assert api.calls[1] == ("POST", "/api/2.0/knowledge/pages", None, {"display_name": "X", "domain": "domains/d"})
     assert api.calls[2] == (
-        "PATCH", "/api/2.0/knowledge/pages/abc", {"update_mask": "body,synonyms"}, {"body": "b", "synonyms": ["s"]},
+        "PATCH",
+        "/api/2.0/knowledge/pages/abc",
+        {"update_mask": "body,synonyms"},
+        {"body": "b", "synonyms": ["s"]},
     )
 
 
-@pytest.mark.parametrize("text, expected", [
-    ("Rate per e.g. order. Second sentence.", "Rate per e.g. order."),
-    ("Share of orders, i.e. the fraction shipped late. More.", "Share of orders, i.e. the fraction shipped late."),
-    ("Sum of costs (approx. 10%) per part. More.", "Sum of costs (approx. 10%) per part."),
-    ("Revenue after discounts. Before tax.", "Revenue after discounts."),
-    ("Is it late? Yes when shipped after commit.", "Is it late?"),
-    ("Version 1.5 of the metric applies. More.", "Version 1.5 of the metric applies."),
-    ("No terminal punctuation", "No terminal punctuation"),
-    ("Ends at the end.", "Ends at the end."),
-])
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("Rate per e.g. order. Second sentence.", "Rate per e.g. order."),
+        ("Share of orders, i.e. the fraction shipped late. More.", "Share of orders, i.e. the fraction shipped late."),
+        ("Sum of costs (approx. 10%) per part. More.", "Sum of costs (approx. 10%) per part."),
+        ("Revenue after discounts. Before tax.", "Revenue after discounts."),
+        ("Is it late? Yes when shipped after commit.", "Is it late?"),
+        ("Version 1.5 of the metric applies. More.", "Version 1.5 of the metric applies."),
+        ("No terminal punctuation", "No terminal punctuation"),
+        ("Ends at the end.", "Ends at the end."),
+    ],
+)
 def test_first_sentence_skips_abbreviations(text, expected):
     from genie_ontology_modeled_knowledge_sdk.pages import _first_sentence
 

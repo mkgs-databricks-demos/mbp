@@ -1,0 +1,29 @@
+# New-schema mode (recommended): the sdk_wheels volume lives in the schema the
+# bundle creates (sdk.schema.yml), referenced through ${resources.schemas.sdk.*}
+# so the schema is created first. Used by targets dev and prod.
+#
+# dev declares no grants (owner decision); prod grants the consumer group READ_VOLUME.
+targets:
+  dev:
+    resources:
+      volumes:
+        sdk_wheels:
+          catalog_name: ${resources.schemas.sdk.catalog_name}
+          schema_name: ${resources.schemas.sdk.name}
+          name: sdk_wheels
+          volume_type: MANAGED
+          comment: Versioned Genie Ontology Modeled Knowledge SDK wheels
+
+  prod:
+    resources:
+      volumes:
+        sdk_wheels:
+          catalog_name: ${resources.schemas.sdk.catalog_name}
+          schema_name: ${resources.schemas.sdk.name}
+          name: sdk_wheels
+          volume_type: MANAGED
+          comment: Versioned Genie Ontology Modeled Knowledge SDK wheels
+          grants:
+            - principal: ${var.sdk_consumer_group}
+              privileges:
+                - READ_VOLUME

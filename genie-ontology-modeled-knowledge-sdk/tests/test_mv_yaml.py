@@ -68,6 +68,7 @@ BASE = mv("""
 
 # ------------------------------------------------------------------ fixtures
 
+
 def test_fixture_dirs_cover_every_rule():
     bad_rules = {p.name[:5].upper() for p in BAD.glob("*.yml")}
     warn_rules = {p.name[:5].upper() for p in WARN.glob("*.yml")}
@@ -134,6 +135,7 @@ def test_finding_shape():
 
 # ---------------------------------------------------------------------- MV001
 
+
 @pytest.mark.parametrize(
     "change",
     [
@@ -174,6 +176,7 @@ def test_mv001_invalid_view_name_and_yaml():
 
 # ---------------------------------------------------------------------- MV002
 
+
 def test_mv002_duplicate_join_names():
     text = BASE + mv("""
         joins:
@@ -196,6 +199,7 @@ def test_mv002_duplicate_dimension_names():
 
 
 # ---------------------------------------------------------------------- MV003
+
 
 @pytest.mark.parametrize("expr", ["source.*", '"*"', "source.* EXCEPT (o_comment)"])
 def test_mv003_wildcards(expr):
@@ -222,6 +226,7 @@ def test_mv003_count_star_is_not_a_wildcard():
 
 
 # ---------------------------------------------------------------------- MV004
+
 
 @pytest.mark.parametrize(
     "source",
@@ -319,13 +324,18 @@ def test_mv005_comment_of_other_join_does_not_count():
 
 
 def test_mv005_using_passes_and_both_fails():
-    using = BASE + "joins:\n  - name: customer\n    source: ${source_catalog}.${source_schema}.customer\n    using:\n      - o_custkey\n"
+    using = (
+        BASE
+        + "joins:\n  - name: customer\n    source: ${source_catalog}.${source_schema}.customer\n"
+        + "    using:\n      - o_custkey\n"
+    )
     assert validate_mv(using, name="mv_orders") == []
     both = using + "    on: source.o_custkey = customer.o_custkey\n"
     assert errors(validate_mv(both, name="mv_orders")) == {"MV005"}
 
 
 # ---------------------------------------------------------------------- MV006
+
 
 def test_mv006_blank_comment_warns():
     text = BASE.replace('comment: "Number of orders"', 'comment: "  "')
@@ -366,8 +376,17 @@ def test_mv007_valid_block_passes():
         lambda t: t + "parameters:\n  - name: min_amount\n    data_type: INT\n",
         lambda t: t + "      cluster_by:\n        auto: true\n      partition_by:\n        - x\n",
     ],
-    ids=["bad-policy", "bad-mode", "unknown-dim", "measure-as-dim", "wildcard-dims", "unknown-measure",
-         "policy-needs-1.1", "parameters", "cluster-and-partition"],
+    ids=[
+        "bad-policy",
+        "bad-mode",
+        "unknown-dim",
+        "measure-as-dim",
+        "wildcard-dims",
+        "unknown-measure",
+        "policy-needs-1.1",
+        "parameters",
+        "cluster-and-partition",
+    ],
 )
 def test_mv007_failures(change):
     assert "MV007" in errors(validate_mv(change(MAT), name="mv_orders"))
@@ -407,6 +426,7 @@ def test_mv007_categorical_heuristic(name, expr, categorical):
 
 # ---------------------------------------------------------------- substitute
 
+
 def test_substitute_replaces_all_occurrences():
     out = substitute("${source_catalog}.${source_schema}.a, ${source_catalog}.x.b", PARAMS)
     assert out == "dev_src.sales_src.a, dev_src.x.b"
@@ -439,6 +459,7 @@ def test_substitute_accepts_backticked_value():
 
 
 # ---------------------------------------------------------------- render_ddl
+
 
 def test_render_ddl_sales_snapshot():
     text = SALES.read_text()
@@ -491,6 +512,7 @@ def test_render_ddl_rejects_dollar_dollar_in_body():
 
 # ----------------------------------------------------------------------- CLI
 
+
 def test_cli_good_exits_0(capsys):
     assert mv_yaml.main(["validate", str(GOOD)]) == 0
     assert "0 error(s)" in capsys.readouterr().out
@@ -525,7 +547,17 @@ def test_cli_duplicate_names_across_folders(tmp_path):
 
 def test_cli_module_entry_point():
     env = {**os.environ, "PYTHONPATH": str(REPO / "src")}
-    good = subprocess.run([sys.executable, "-m", "genie_ontology_modeled_knowledge_sdk.mv_yaml", "validate", str(GOOD)], env=env, capture_output=True, text=True)
-    bad = subprocess.run([sys.executable, "-m", "genie_ontology_modeled_knowledge_sdk.mv_yaml", "validate", str(BAD)], env=env, capture_output=True, text=True)
+    good = subprocess.run(
+        [sys.executable, "-m", "genie_ontology_modeled_knowledge_sdk.mv_yaml", "validate", str(GOOD)],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    bad = subprocess.run(
+        [sys.executable, "-m", "genie_ontology_modeled_knowledge_sdk.mv_yaml", "validate", str(BAD)],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
     assert good.returncode == 0, good.stdout + good.stderr
     assert bad.returncode == 1, bad.stdout + bad.stderr

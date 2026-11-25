@@ -11,11 +11,13 @@ requires-python = ">=3.11"
 dependencies = [
   "pyyaml>=6.0",
   "jsonschema>=4.18",
-  "databricks-sdk>=0.40",
+  # Floor = first release with every WorkspaceClient method the SDK calls (see ci/README.md).
+  "databricks-sdk>=0.45.0,<1",
 ]
 
 [project.optional-dependencies]
 test = ["pytest>=7.4"]
+dev = ["pytest>=7.4", "ruff>=0.6", "mypy>=1.10", "types-PyYAML"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -26,3 +28,26 @@ genie_ontology_modeled_knowledge_sdk = ["schemas/*.json"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+# Lint scope is the SDK package and its tests. Notebooks, templates, examples and
+# skills are owned by other build sessions and are brought under lint separately
+# (see ci/README.md); the start-session notebook is never edited.
+extend-exclude = [
+  "Genie Code Start Session - DO NOT EDIT.ipynb",
+  "docs",
+  "examples",
+  "notebooks",
+  "skills",
+  "templates",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+strict_optional = true
