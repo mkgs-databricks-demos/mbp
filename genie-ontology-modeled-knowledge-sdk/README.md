@@ -33,6 +33,7 @@ PYTHONPATH=src python -m genie_ontology_modeled_knowledge_sdk.mv_yaml validate <
 | `notebooks/` | `init_ontology_project` init and scaffold notebook |
 | `examples/tpch/` | build-0 dogfood project on `samples.tpch` |
 | `docs/` | design, research, plans, sessions, reviews, diagrams, pitch |
+| `../genie-ontology-sdk/Genie Code Start Session - DO NOT EDIT.ipynb` | Genie Code start-session notebook for this project (still in the pre-rename folder; do not edit) |
 
 Package layout and module contracts: [docs/design/sdk-layout.md](docs/design/sdk-layout.md). Packaging: [pyproject.toml](pyproject.toml).
 
@@ -153,6 +154,7 @@ Manifest: [docs/plans/waves.json](docs/plans/waves.json). The original pipeline-
 
 | Next | Document |
 |---|---|
+| Build-0 wrap-up (verdict, owner decisions, open items) | [docs/sessions/2026-11-25_build-0-wrap-up.md](docs/sessions/2026-11-25_build-0-wrap-up.md) |
 | Build-0 code review | [docs/reviews/2026-11-25_build-0-sdk-review.md](docs/reviews/2026-11-25_build-0-sdk-review.md) |
 | Build-1 requests (R1-R9, owner-accepted) | [docs/plans/build-1/REQUESTS.md](docs/plans/build-1/REQUESTS.md) |
 | Build-0 observations (skill gaps, template fixes) | [docs/build-0-observations.md](docs/build-0-observations.md) |

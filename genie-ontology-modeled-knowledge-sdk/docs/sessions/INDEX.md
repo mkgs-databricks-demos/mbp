@@ -6,6 +6,8 @@ Sessions are listed in reverse chronological order.
 
 | Date | Session | Summary |
 |---|---|---|
+| 2026-11-25 | [Build-0 close-out (Genie Code session)](2026-11-25_build-0-close-out.md) | Review fixes (1 medium, 4 low), genie-build-waves backlog items 12/13, rename, wrap-up, PROJECT_MEMORY/README refresh, PR text; start-session notebook kept in the repo |
+| 2026-11-25 | [Build-0 wrap-up](2026-11-25_build-0-wrap-up.md) | Build-level verdict: build-0 passed, 11 waves over three runs, 3 of 8 repairs; outcomes, owner decisions per wave, follow-ups, open items for build 1 |
 | 2026-11-25 | [Rename to genie-ontology-modeled-knowledge-sdk](2026-11-25_rename-to-modeled-knowledge-sdk.md) | Folder, pip name, Python package (no alias) and title renamed; 112 files updated; history left as written; build-waves instance unchanged until build 1; 280 tests pass |
 | 2026-11-25 | [W0-10 / 17 Build-0 Documentation & Observations](2026-11-25_w0-10-17-build0-docs.md) | Wave 0-10, session 17, mode edit, status pass: README, docs/usage.md, docs/build-0-observations.md (31 rows for sessions 10a-16), PROJECT_MEMORY.md and L100 build status; link_check pass (run 440901917884797) |
 | 2026-11-25 | [W0-9 / 16 TPC-H Benchmark & Tuning](2026-11-25_w0-9-16-tpch-tuning.md) | Wave 0-9, session 16, mode edit, status pass: 15 benchmark questions, baseline accuracy 93.3% (14/15; q11 ratio-unit ambiguity), gate passed at baseline so no tuning iteration and no metric view/agent change; tuning_plan.md + benchmark_results.md (run 440901917884797) |

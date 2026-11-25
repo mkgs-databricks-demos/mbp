@@ -8,12 +8,13 @@ A developer toolkit that automates the standup of modeled knowledge for Genie On
 
 ## Status
 
-* Phase: **build-0 complete.** Waves `0-0`..`0-10` passed their gates across three build runs (waves 0-6, 0-7 and 0-8 needed owner decisions or fixes and a re-run: a missing job-run approval, the UC Pages deferral, then a drifted agents overrides `schema`). Wave `0-10` (session 17) wrote the docs. Run ids are in [docs/sessions/INDEX.md](docs/sessions/INDEX.md).
+* Phase: **build-0 complete.** Waves `0-0`..`0-10` passed their gates across three build runs (waves 0-6, 0-7 and 0-8 needed owner decisions or fixes and a re-run: a missing job-run approval, the UC Pages deferral, then a drifted agents overrides `schema`). Wave `0-10` (session 17) wrote the docs. Build-level verdict, owner decisions and open items: [build-0 wrap-up](docs/sessions/2026-11-25_build-0-wrap-up.md); run ids are in [docs/sessions/INDEX.md](docs/sessions/INDEX.md).
+* **Renamed 2026-11-25** (before merge) from `genie-ontology-sdk` / package `genie_ontology_sdk` / "Genie Ontology SDK" to the current names, with no import alias. Session summaries written before the rename and the build-0 review keep the old names as history ([rename summary](docs/sessions/2026-11-25_rename-to-modeled-knowledge-sdk.md)).
 * Build-0 delivered: library (`config`, `mv_yaml`, `manifest`, `geniespace`, `pages`, `benchmark`, `scaffold`), six `skills/ontology-*`, two bundle templates, the run kit (`templates/run/`), `notebooks/init_ontology_project`, and the TPC-H dogfood in `examples/tpch/` (23 glossary terms, 8 profiles, 7 metric views registered with smoke + cardinality pass, 1 Genie Agent with 3/3 probes, 93.3% baseline benchmark on 15 questions).
 * Not done in build-0: UC Pages were dry-run only (no Discover domain for TPC-H; owner cell in `examples/tpch/docs/pages/pages_registration.md`). The run kit itself was never dogfooded (build-1 R3, R9).
 * Guides: [README.md](README.md) (quickstart, layout) and [docs/usage.md](docs/usage.md) (end-to-end run).
 * **Build-0 observations:** [docs/build-0-observations.md](docs/build-0-observations.md): 31 skill gaps / template fixes / platform limits from sessions 10a-16, plus owner items and notes from sessions 01-09.
-* genie-build-waves instance: build, smoke and setup jobs exist under the instance's own bundle root (`instance_suffix` `-genie-ontology-modeled-knowledge-sdk`); job ids are in the [instance deployment session summary](docs/sessions/2026-11-24_build-waves-instance-deploy.md). The vars file lives outside this repo (it holds workspace paths).
+* genie-build-waves instance: build, smoke and setup jobs exist under the instance's own bundle root (`instance_suffix` `-genie-ontology-sdk`, the pre-rename name); job ids are in the [instance deployment session summary](docs/sessions/2026-11-24_build-waves-instance-deploy.md). The vars file lives outside this repo (it holds workspace paths). **Its `build_root` and `manifest_path` still point at the pre-rename folder `../genie-ontology-sdk`:** update the vars file, redeploy and rerun setup before build 1 (owner decision).
 * Build-0 executor: an external monitor agent (Devin) at **level 4** (acts for the owner: starts the build, repairs, pushes small fixes, escalates only on the monitor skill's stop conditions). Needs `monitor_principal` + `monitor_job_level=CAN_MANAGE_RUN` in the vars file, a redeploy, setup, and `CAN_READ` on `build_root` for the monitor principal.
 * Build-0 = build the reusable SDK, then dogfood it end to end on `samples.tpch` into `examples/tpch/`. 11 waves (`0-0`..`0-10`), 19 sessions, hybrid workflow. `validate_manifest`: 0 errors, 0 warnings, 100 job tasks.
 * **Manual prerequisite before wave 0-3 (done 2026-11-24):** the owner writes the gitignored `examples/tpch/ontology-metric-views/.databricks/bundle/dev/variable-overrides.json` (`catalog`, `warehouse_id`) and `examples/tpch/ontology-genie-agents/.databricks/bundle/dev/variable-overrides.json` (`catalog`, `schema` = dev-prefixed metric view schema, `warehouse_id`, `curator_group`). Workspace-specific values never go in committed files.
@@ -34,6 +35,8 @@ A developer toolkit that automates the standup of modeled knowledge for Genie On
 | `docs/diagrams/` | 5 diagrams as Mermaid source, SVG, HTML |
 | `docs/pitch/` | Customer-facing standalone HTML overview |
 | `docs/sessions/` | Session summaries + INDEX (reverse-chronological) |
+| `docs/reviews/` | Build-0 SDK code review |
+| `../genie-ontology-sdk/Genie Code Start Session - DO NOT EDIT.ipynb` | Genie Code start-session notebook for this project; kept in the repo (owner decision). It is still in the pre-rename folder; never edit it |
 | `examples/` | DAB 1 (metric view registration, forEach), DAB 2 (Genie Agents via `genie_spaces`), sample MV YAML, sample `.geniespace.json` |
 
 ## Architecture (from L100)
@@ -105,7 +108,8 @@ The list below is kept as the historical record. Details and evidence: [2026-11-
 1. ~~Owner writes the two `variable-overrides.json` files~~ (done).
 2. ~~Deploy a genie-build-waves instance~~ (done).
 3. ~~Run build-0 to completion~~ (done; waves 0-0..0-10 passed, 0-10 wrote the docs).
-4. Owner review and merge of the build-0 feature branch PR.
+4. Owner review and merge of the build-0 feature branch PR (title and description drafted in the [close-out session](docs/sessions/2026-11-25_build-0-close-out.md)).
+4b. Point the genie-build-waves instance at the renamed folder (vars file `build_root` / `manifest_path`), redeploy, rerun setup.
 5. Owner items from build-0: create or choose a TPC-H Discover domain and run the pages owner cell; delete the unreferenced `examples/tpch/ontology-genie-agents/agents/ontology_agent.geniespace.json` placeholder.
 6. Plan build 1: merge [docs/plans/build-1/REQUESTS.md](docs/plans/build-1/REQUESTS.md) (R1-R9) with [docs/build-0-observations.md](docs/build-0-observations.md), then write the build-1 plans and manifest.
 
