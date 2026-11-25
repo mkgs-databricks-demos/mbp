@@ -12,14 +12,18 @@ from genie_ontology_modeled_knowledge_sdk.pages import (
     PagesClient,
     RestPagesClient,
     Term,
+    created_ids,
+    format_registration_table,
     parse_glossary,
     parse_term_file,
     to_page_payload,
     upsert_pages,
+    write_terms,
 )
 
 GLOSSARY = Path(__file__).parent / "fixtures" / "glossary"
 DOMAIN = "11111111-2222-3333-4444-555555555555"
+OTHER_DOMAIN = "99999999-8888-7777-6666-555555555555"
 
 
 class FakePagesClient:
@@ -140,8 +144,8 @@ def test_fake_satisfies_protocol():
 def test_dry_run_makes_no_writes(terms):
     client = FakePagesClient()
     results = upsert_pages(terms, client, dry_run=True, domain_id=DOMAIN)
-    assert [r.action for r in results] == ["create"] * 3
-    assert all(r.dry_run and r.page_id is None for r in results)
+    assert [r.action for r in results] == ["created"] * 3
+    assert all(r.dry_run and r.page_id is None and r.status == "DRAFT" for r in results)
     assert client.writes == []
     assert client.pages == {}
 
@@ -155,9 +159,10 @@ def test_dry_run_is_the_default(terms):
 def test_upsert_creates_then_is_idempotent(terms):
     client = FakePagesClient()
     first = upsert_pages(terms, client, dry_run=False, domain_id=DOMAIN)
-    assert [r.action for r in first] == ["create"] * 3
-    assert all(r.page_id for r in first)
+    assert [r.action for r in first] == ["created"] * 3
+    assert all(r.page_id and r.status == "DRAFT" for r in first)
     assert len(client.writes) == 3
+    assert created_ids(first) == [r.page_id for r in first]
 
     client.calls.clear()
     second = upsert_pages(terms, client, dry_run=False, domain_id=DOMAIN)
@@ -177,8 +182,8 @@ def test_upsert_updates_only_changed_fields_and_keeps_state(terms):
 
     client.calls.clear()
     results = upsert_pages(changed, client, dry_run=False, domain_id=DOMAIN)
-    assert [r.action for r in results] == ["update", "unchanged", "unchanged"]
-    assert results[0].changed_fields == ["synonyms"]
+    assert [r.action for r in results] == ["updated", "unchanged", "unchanged"]
+    assert results[0].changed_fields == ["synonyms"] and results[0].status == "PUBLISHED"
     assert client.writes == [("update_page", pid, {"synonyms": ["disc", "price reduction"]}, ["synonyms"])]
     assert client.pages[pid]["state"] == "PUBLISHED"
 
@@ -197,17 +202,137 @@ def test_upsert_matches_titles_case_insensitively_and_never_deletes(terms):
     client = FakePagesClient([existing, other])
     results = upsert_pages(terms, client, dry_run=False, domain_id=DOMAIN)
     by_term = {r.term: r for r in results}
-    assert by_term["Net Revenue"].action == "update" and by_term["Net Revenue"].page_id == "p1"
+    assert by_term["Net Revenue"].action == "updated" and by_term["Net Revenue"].page_id == "p1"
     assert "display_name" not in by_term["Net Revenue"].changed_fields
     assert "p2" in client.pages  # pages without a term are left alone
 
 
-def test_upsert_without_domain_reports_errors_for_missing_pages(terms):
-    client = FakePagesClient()
+def _page(pid, title, domain, **extra):
+    return {
+        "name": f"pages/{pid}",
+        "domain": f"domains/{domain}",
+        "display_name": title,
+        "body": "theirs",
+        "description": "theirs",
+        "synonyms": [],
+        "state": "PUBLISHED",
+        **extra,
+    }
+
+
+def test_live_upsert_without_domain_writes_nothing(terms):
+    # same-title pages exist (in some domain): a live run without domain_id must still write nothing
+    client = FakePagesClient([_page("x1", "Net Revenue", OTHER_DOMAIN), _page("x2", "Discount", DOMAIN)])
+    before = copy.deepcopy(client.pages)
     results = upsert_pages(terms, client, dry_run=False)
-    assert {r.action for r in results} == {"error"}
-    assert all("domain_id" in r.error for r in results)
+    assert [r.action for r in results] == ["error"] * 3
+    assert all("domain_id" in r.reason and r.error == r.reason for r in results)
     assert client.writes == []
+    assert client.calls == []  # not even an account-wide listing
+    assert client.pages == before
+
+
+def test_same_title_page_in_other_domain_is_never_updated(terms):
+    theirs = _page("theirs", "Net Revenue", OTHER_DOMAIN)
+    client = FakePagesClient([theirs])
+
+    dry = upsert_pages(terms, client, dry_run=True, domain_id=DOMAIN)
+    nr = next(r for r in dry if r.term == "Net Revenue")
+    assert nr.action == "created" and nr.reason == "collision_other_domain" and nr.collisions == ["theirs"]
+    assert client.writes == []
+
+    client.calls.clear()
+    live = upsert_pages(terms, client, dry_run=False, domain_id=DOMAIN)
+    nr = next(r for r in live if r.term == "Net Revenue")
+    assert nr.action == "created" and nr.page_id != "theirs"
+    assert client.pages["theirs"] == theirs  # untouched
+    assert all(c[1] != "theirs" for c in client.calls if c[0] in {"get_page", "update_page"})
+    # live runs list only the domain, never account-wide
+    assert [c for c in client.calls if c[0] == "list_pages"] == [("list_pages", f"domains/{DOMAIN}")]
+
+
+def test_other_domain_page_is_never_updated_even_if_client_ignores_filter(terms):
+    class LeakyClient(FakePagesClient):
+        def list_pages(self, domain=None):
+            return super().list_pages(None)  # ignores the domain filter
+
+    theirs = _page("theirs", "Discount", OTHER_DOMAIN)
+    client = LeakyClient([theirs])
+    results = upsert_pages(terms, client, dry_run=False, domain_id=DOMAIN)
+    disc = next(r for r in results if r.term == "Discount")
+    assert disc.action == "created" and disc.page_id != "theirs"
+    assert client.pages["theirs"] == theirs
+    assert not [c for c in client.writes if c[0] == "update_page"]
+
+
+def test_not_owned_same_title_page_in_domain_is_skipped(terms):
+    theirs = _page("theirs", "Discount", DOMAIN)
+    client = FakePagesClient([theirs])
+    results = upsert_pages(terms, client, dry_run=False, domain_id=DOMAIN, only_ids=["pages/mine"])
+    by_term = {r.term: r for r in results}
+    assert by_term["Discount"].action == "skipped" and by_term["Discount"].reason == "exists_not_owned"
+    assert by_term["Discount"].page_id == "theirs" and by_term["Discount"].status == "PUBLISHED"
+    assert client.pages["theirs"] == theirs
+    assert [c[0] for c in client.writes] == ["create_page", "create_page"]
+
+    # the same page is updated once its id is in only_ids
+    client.calls.clear()
+    again = upsert_pages(terms, client, dry_run=False, domain_id=DOMAIN, only_ids=["theirs", *created_ids(results)])
+    assert {r.term: r.action for r in again} == {
+        "Discount": "updated",
+        "Net Revenue": "unchanged",
+        "Order Priority": "unchanged",
+    }
+    assert client.pages["theirs"]["state"] == "PUBLISHED"  # state never changed
+
+
+def test_status_option_for_new_pages(terms):
+    client = FakePagesClient()
+    upsert_pages(terms[:1], client, dry_run=False, domain_id=DOMAIN)
+    assert "state" not in client.writes[0][1]  # DRAFT is the API default
+
+    client = FakePagesClient()
+    res = upsert_pages(terms[:1], client, dry_run=False, domain_id=DOMAIN, status="published")
+    assert client.writes[0][1]["state"] == "PUBLISHED"
+    with pytest.raises(ValueError, match="status"):
+        upsert_pages(terms, FakePagesClient(), domain_id=DOMAIN, status="ARCHIVED")
+    assert res[0].action == "created"
+
+
+def test_dry_run_without_domain_reports_collisions_only(terms):
+    client = FakePagesClient([_page("x1", "Net Revenue", OTHER_DOMAIN)])
+    results = upsert_pages(terms, client)
+    assert [r.action for r in results] == ["skipped"] * 3
+    by_term = {r.term: r for r in results}
+    assert by_term["Net Revenue"].collisions == ["x1"] and "collision_other_domain" in by_term["Net Revenue"].reason
+    assert by_term["Discount"].reason == "no_domain_id"
+    assert client.writes == []
+
+
+def test_dry_run_collision_check_refused_keeps_domain_result(terms):
+    class DomainOnly(FakePagesClient):
+        def list_pages(self, domain=None):
+            if domain is None:
+                raise PermissionError("PERMISSION_DENIED: Manage Discover")
+            return super().list_pages(domain)
+
+    results = upsert_pages(terms, DomainOnly(), domain_id=DOMAIN)
+    assert [r.action for r in results] == ["created"] * 3
+    assert all("collision check unavailable" in r.reason for r in results)
+
+
+def test_format_registration_table_hides_domain(terms):
+    client = FakePagesClient()
+    results = upsert_pages(terms, client, dry_run=False, domain_id=DOMAIN)
+    table = format_registration_table(results)
+    assert DOMAIN not in table and "domains/" not in table
+    assert "development domain" in table
+    lines = table.strip().splitlines()
+    assert lines[2] == "| Term | Page id | Status | Action |"
+    assert len(lines) == 4 + 3
+    assert lines[4] == f"| Discount | {results[0].page_id} | DRAFT | created |"
+    dry = format_registration_table(upsert_pages(terms, FakePagesClient(), domain_id=DOMAIN))
+    assert "| Discount | - | DRAFT | created (dry run) |" in dry
 
 
 def test_upsert_duplicate_titles_and_failures_do_not_stop_batch(terms):
@@ -221,7 +346,7 @@ def test_upsert_duplicate_titles_and_failures_do_not_stop_batch(terms):
 
     client.create_page = boom
     results = upsert_pages(terms, client, dry_run=False, domain_id=DOMAIN)
-    assert [r.action for r in results] == ["error", "error", "create"]
+    assert [r.action for r in results] == ["error", "error", "created"]
     assert "several pages" in results[0].error and "PERMISSION_DENIED" in results[1].error
 
 
@@ -284,3 +409,75 @@ def test_first_sentence_skips_abbreviations(text, expected):
     from genie_ontology_modeled_knowledge_sdk.pages import _first_sentence
 
     assert _first_sentence(text) == expected
+
+
+def test_description_strips_link_starting_at_character_150():
+    prefix = ("x" * 9 + " ") * 15  # 150 characters
+    link = "[TPC-H specification](https://www.tpc.org/tpc_documents_current_versions/pdf/tpc-h_v3.0.1.pdf)"
+    text = prefix + link + " and more words after it."
+    assert text.index("[") == 150
+    desc = to_page_payload(Term(term="T", definition=text))["description"]
+    assert len(desc) <= 160
+    assert "](" not in desc and "http" not in desc and "[" not in desc
+    assert desc.endswith("...") and desc.startswith(prefix.strip())
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("See [the spec](https://x.org/a) for rules.", "See the spec for rules."),
+        ("Logo ![alt text](img.png) here.", "Logo alt text here."),
+        ("Ref [Net Revenue][nr] style.", "Ref Net Revenue style."),
+        ("Auto <https://x.org/a> link.", "Auto https://x.org/a link."),
+    ],
+)
+def test_description_link_forms(text, expected):
+    from genie_ontology_modeled_knowledge_sdk.pages import _first_sentence
+
+    assert _first_sentence(text) == expected
+
+
+def test_bare_url_at_the_cut_is_dropped_whole():
+    from genie_ontology_modeled_knowledge_sdk.pages import _first_sentence
+
+    text = "y " * 70 + "https://example.com/a/very/long/path/that/crosses/the/limit more"
+    desc = _first_sentence(text)
+    assert len(desc) <= 160 and "http" not in desc and desc.endswith("...")
+
+
+def test_write_terms_round_trips_through_parse_glossary(terms, tmp_path):
+    paths = write_terms(terms, tmp_path / "semantics")
+    assert [Path(p).name for p in paths] == ["discount.md", "net_revenue.md", "order_priority.md"]
+    back = parse_glossary(tmp_path / "semantics")
+    strip = [{**t.__dict__, "path": None} for t in back]
+    assert strip == [{**t.__dict__, "path": None} for t in terms]
+
+    # idempotent: a second call rewrites nothing and returns the same paths
+    mtimes = {p: Path(p).stat().st_mtime_ns for p in paths}
+    assert write_terms(terms, tmp_path / "semantics") == paths
+    assert {p: Path(p).stat().st_mtime_ns for p in paths} == mtimes
+
+
+def test_write_terms_accepts_mappings_and_updates_in_place(tmp_path):
+    (tmp_path / "custom_name.md").write_text("---\nterm: Gross Margin\n---\n## Definition\n\nOld.\n")
+    paths = write_terms(
+        [
+            {"term": "Gross Margin", "synonyms": "gm", "definition": "Revenue minus cost."},
+            {"term": "Late Shipment", "related_terms": ["Gross Margin"], "definition": "Shipped after commit."},
+        ],
+        tmp_path,
+    )
+    assert [Path(p).name for p in paths] == ["custom_name.md", "late_shipment.md"]
+    gm, late = parse_glossary(tmp_path)
+    assert gm.synonyms == ["gm"] and gm.definition == "Revenue minus cost."
+    assert late.related_terms == ["Gross Margin"]
+
+
+def test_write_terms_rejects_bad_input_before_writing(tmp_path):
+    with pytest.raises(ValueError, match="duplicate term"):
+        write_terms([{"term": "A"}, {"term": "a"}], tmp_path)
+    with pytest.raises(ValueError, match="unknown term keys"):
+        write_terms([{"term": "A", "colour": "red"}], tmp_path)
+    with pytest.raises(ValueError, match="heading"):
+        write_terms([Term(term="A", definition="x\n\n## Sneaky\n\ny")], tmp_path)
+    assert list(tmp_path.glob("*.md")) == []

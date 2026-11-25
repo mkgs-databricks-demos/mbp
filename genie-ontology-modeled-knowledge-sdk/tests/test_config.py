@@ -108,6 +108,26 @@ def test_non_dict_config():
     assert validate_config(["not", "a", "dict"]) == ["config: must be a JSON object"]
 
 
+def test_max_metric_views_above_30_warns_but_is_not_an_error(tpch_config):
+    import warnings
+
+    from genie_ontology_modeled_knowledge_sdk import geniespace
+    from genie_ontology_modeled_knowledge_sdk.config import AGENT_DATA_SOURCE_LIMIT, config_warnings
+
+    assert AGENT_DATA_SOURCE_LIMIT == geniespace.MAX_DATA_SOURCES == 30
+    tpch_config["max_metric_views_per_agent"] = 31
+    with pytest.warns(UserWarning, match="above 30"):
+        assert validate_config(tpch_config) == []
+    assert len(config_warnings(tpch_config)) == 1
+    tpch_config["max_metric_views_per_agent"] = 30
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert validate_config(tpch_config) == []
+    assert config_warnings(tpch_config) == [] and config_warnings([]) == []
+    del tpch_config["max_metric_views_per_agent"]
+    assert config_warnings(tpch_config) == []
+
+
 # --- SdkConfig, config_from_dict, load_config ---------------------------------------
 
 

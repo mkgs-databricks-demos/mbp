@@ -1,0 +1,19 @@
+# Benchmark coverage fixture (tests/test_benchmark.py): order lines.
+version: 1.1
+comment: "Order lines"
+source: ${source_catalog}.${source_schema}.orders
+dimensions:
+  - name: Order Year
+    expr: YEAR(source.order_date)
+  - name: Region
+    expr: source.region
+measures:
+  - name: Order Count
+    expr: COUNT(1)
+    comment: "Number of orders"
+  - name: Net Revenue
+    expr: SUM(source.net_amount)
+    comment: "Net revenue"
+  - name: Return Rate
+    expr: AVG(CASE WHEN source.returned THEN 1 ELSE 0 END)
+    comment: "Share of returned orders (0-1)"

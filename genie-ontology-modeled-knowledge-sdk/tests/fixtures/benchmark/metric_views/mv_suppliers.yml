@@ -1,0 +1,11 @@
+# Benchmark coverage fixture (tests/test_benchmark.py): suppliers.
+version: 1.1
+comment: "Suppliers"
+source: ${source_catalog}.${source_schema}.suppliers
+dimensions:
+  - name: Nation
+    expr: source.nation
+measures:
+  - name: Supplier Count
+    expr: COUNT(1)
+    comment: "Number of suppliers"

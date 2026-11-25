@@ -1,0 +1,11 @@
+# Benchmark coverage fixture (tests/test_benchmark.py): parts.
+version: 1.1
+comment: "Parts"
+source: ${source_catalog}.${source_schema}.parts
+dimensions:
+  - name: Brand
+    expr: source.brand
+measures:
+  - name: Part Count
+    expr: COUNT(1)
+    comment: "Number of parts"

@@ -1,0 +1,7 @@
+{
+  "catalog": "main",
+  "schema": "ontology_tpch",
+  "warehouse_id": "wh_test",
+  "source": "bundle_summary",
+  "resolved_at": "2026-11-25T00:00:00Z"
+}

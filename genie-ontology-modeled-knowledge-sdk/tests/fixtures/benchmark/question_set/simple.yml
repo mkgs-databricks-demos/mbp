@@ -1,0 +1,10 @@
+# Question-set fixture (tests/test_benchmark.py): single-view questions, ids prefixed "s".
+- id: s001
+  question: How many orders are there?
+  expected_sql: SELECT MEASURE(`Order Count`) FROM ${target_catalog}.${target_schema}.mv_orders
+  tags: [type:simple, view:mv_orders, measure:Order Count]
+- id: s002
+  question: What is the return rate by region?
+  expected_sql: SELECT `Region`, MEASURE(`Return Rate`) FROM ${target_catalog}.${target_schema}.mv_orders GROUP BY ALL
+  tags: [type:ratio, view:mv_orders, measure:Return Rate, dimension:Region, returns]
+  split: holdout

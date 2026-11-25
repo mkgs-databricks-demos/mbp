@@ -1,0 +1,10 @@
+# Question-set fixture (tests/test_benchmark.py): cross-view questions, ids prefixed "x".
+questions:
+  - id: x001
+    question: Compare order count and supplier count by nation.
+    expected_sql: |-
+      SELECT s.`Nation`, MEASURE(o.`Order Count`), MEASURE(s.`Supplier Count`)
+      FROM ${target_catalog}.${target_schema}.mv_orders o
+      JOIN ${target_catalog}.${target_schema}.mv_suppliers s USING (`Nation`)
+      GROUP BY ALL
+    tags: [type:cross_view, view:mv_orders, view:mv_suppliers, measure:mv_orders.Order Count, measure:mv_suppliers.Supplier Count, dimension:Nation]

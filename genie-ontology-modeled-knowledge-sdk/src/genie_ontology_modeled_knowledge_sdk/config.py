@@ -5,7 +5,9 @@ Public API (cross-session contract, see ``docs/plans/INDEX.md``):
 * ``SdkConfig``                         - typed view of a validated config
 * ``load_config(path) -> SdkConfig``    - read JSON (or YAML) and validate
 * ``config_from_dict(d) -> SdkConfig``  - validate a dict and apply defaults
-* ``validate_config(d) -> list[str]``   - schema + name-shape problems (empty = valid)
+* ``validate_config(d) -> list[str]``   - schema + name-shape problems (empty = valid); emits a
+  ``UserWarning`` for each ``config_warnings(d)`` item
+* ``config_warnings(d) -> list[str]``   - non-fatal advice (``max_metric_views_per_agent`` above 30)
 * ``check_access(cfg, ws) -> list[str]`` - L200-A Unity Catalog / volume checks; never raises
 * ``expand_tables(cfg, ws) -> list[str]`` - catalogs/schemas/tables -> sorted unique 3-part names
 
@@ -17,6 +19,7 @@ Pure Python: no Spark imports. Databricks access goes through an injected
 from __future__ import annotations
 
 import json
+import warnings
 from collections.abc import Iterable
 from dataclasses import dataclass, field, fields
 from functools import lru_cache
@@ -29,16 +32,21 @@ import yaml
 
 __all__ = [
     "DEFAULT_MAX_METRIC_VIEWS_PER_AGENT",
+    "AGENT_DATA_SOURCE_LIMIT",
     "SdkConfig",
     "load_schema",
     "load_config",
     "config_from_dict",
     "validate_config",
+    "config_warnings",
     "check_access",
     "expand_tables",
 ]
 
 DEFAULT_MAX_METRIC_VIEWS_PER_AGENT = 50
+# Most data sources one Genie Agent holds (= geniespace.MAX_DATA_SOURCES; kept here so
+# config does not import geniespace). plan_agents never splits above it.
+AGENT_DATA_SOURCE_LIMIT = 30
 SOURCE_KEYS = ("source_catalogs", "source_schemas", "source_tables")
 _SYSTEM_SCHEMAS = {"information_schema"}
 
@@ -116,10 +124,13 @@ def validate_config(d: Any) -> list[str]:
 
     Checks the JSON Schema, then name shapes the schema does not express:
     ``source_tables`` entries must be 3-part names, ``source_schemas`` entries
-    2-part names.
+    2-part names. Each ``config_warnings(d)`` item is emitted as a ``UserWarning``
+    and is not an error.
     """
     if not isinstance(d, dict):
         return ["config: must be a JSON object"]
+    for message in config_warnings(d):
+        warnings.warn(message, UserWarning, stacklevel=2)
     validator = jsonschema.Draft202012Validator(load_schema())
     errors = sorted(
         (_format_schema_error(e) for e in validator.iter_errors(d)),
@@ -131,6 +142,23 @@ def validate_config(d: Any) -> list[str]:
     if isinstance(schemas, list):
         errors += _name_shape_errors("source_schemas", schemas, 2, "catalog.schema")
     return errors
+
+
+def config_warnings(d: Any) -> list[str]:
+    """Non-fatal advice for a raw config dict (empty list = nothing to report).
+
+    ``max_metric_views_per_agent`` above ``AGENT_DATA_SOURCE_LIMIT`` (30): a Genie
+    Agent holds at most 30 data sources, so agents are split at 30 anyway.
+    """
+    if not isinstance(d, dict):
+        return []
+    value = d.get("max_metric_views_per_agent")
+    if isinstance(value, int) and not isinstance(value, bool) and value > AGENT_DATA_SOURCE_LIMIT:
+        return [
+            f"max_metric_views_per_agent: {value} is above {AGENT_DATA_SOURCE_LIMIT}, the most data sources "
+            f"a Genie Agent can hold; agents are split at {AGENT_DATA_SOURCE_LIMIT} metric views"
+        ]
+    return []
 
 
 def config_from_dict(d: dict[str, Any]) -> SdkConfig:
