@@ -1,6 +1,6 @@
 ---
 name: ontology-deep-eda
-description: Genie Ontology Modeled Knowledge SDK wave 3. Load when a pipeline-run session must profile every source table with read-only SQL (structure, nulls, grain, keys, cadence, lineage, usage), verify join cardinality, flag materialization candidates, and write docs/data_profiles/<table>.md plus data_model_summary.md for metric view synthesis.
+description: Genie Ontology Modeled Knowledge SDK deep EDA stage (run kit wave 3). Load only in an SDK run project (sdk_config.json at the project root) when a session must profile every source table listed there with read-only SQL (structure, nulls, grain, keys, cadence, lineage, usage), verify join cardinality, flag materialization candidates, and write docs/data_profiles/<table>.md plus data_model_summary.md for the SDK metric view synthesis stage. Not for general table exploration, sampling or data quality root cause work outside an SDK run (data-sampling, data-quality-rca).
 ---
 
 # Ontology Deep EDA
@@ -9,7 +9,7 @@ Profile every source table and verify how the tables join. Metric view synthesis
 
 ## Inputs
 
-* `sdk_config.json` at the run project root: `source_catalogs` / `source_schemas` / `source_tables` (expand to a table list with `genie_ontology_modeled_knowledge_sdk.config.expand_tables`, or `information_schema.tables` when the library is not importable), `warehouse_id`.
+* `sdk_config.json` at the run project root: `source_catalogs` / `source_schemas` / `source_tables` (expand to a table list with `genie_ontology_modeled_knowledge_sdk.config.expand_tables` from the installed SDK package, or `information_schema.tables` when the package is not installed in the session), `warehouse_id`.
 * `docs/research/02_kpi_definitions.md` and `docs/context/*.md` if present: KPI formulas and stated joins to verify.
 * Paths below are relative to the run project root.
 
@@ -18,8 +18,22 @@ Profile every source table and verify how the tables join. Metric view synthesis
 * **Read-only SQL**: `SELECT`, `DESCRIBE`, `SHOW`, `EXPLAIN` only. No `CREATE`, `INSERT`, `OPTIMIZE`, `ANALYZE`, temp tables written to UC, Git commands or file deletion.
 * **Write only** `docs/data_profiles/**`.
 * **Bound every query**: `LIMIT` result sets you print (top-N value lists at 20), and follow the sampling rules for large tables.
-* **No row-level values from sensitive columns** (names, emails, phone, address, free text) in profiles: report counts and rates only.
+* **Sensitive columns: values withheld by default.** Report null rate, distinct count and length statistics only; no top values, min/max or sample values. A column is sensitive when either holds:
+  * a `_`-separated token of its lower-cased name is one of `name`, `firstname`, `lastname`, `email`, `mail`, `phone`, `fax`, `mobile`, `address`, `street`, `city`, `zip`, `postal`, `postcode`, `ssn`, `passport`, `birth`, `dob`, `birthdate`, `ip`, `card`, `iban`, `clerk`, `user`, `username`, `login`, `comment`, `note`, `notes`, `description` (whole tokens, so `l_shipdate` does not match `ip`); or
+  * it is free text: a string column with `uniqueness_ratio > 0.5` and average length > 20 characters.
+
+  Exception: a `name`/`city`/`description` column with < 100 distinct values and average length <= 25 is a reference label (nation, region, segment names), not sensitive. Mark sensitive columns `sensitive (values withheld)` in the `## Columns` comment. Only the run plan can release a column (by name, with a reason).
 * Large table sets: profile in table order and record progress after each table, so a continuation pass resumes at the next one.
+
+## Platform skills and precedence
+
+| Platform skill | Overlap | Rule |
+|---|---|---|
+| `data-sampling` | bounded queries, sampling, truncated results | Follow it for general query hygiene; this skill's sampling rules and thresholds below decide what each profile reports. |
+| `databricks-sql` | system tables (`system.access.table_lineage`, `system.query.history`) | Use it for system table syntax; patterns E and F below fix what is reported (counts only, word-boundary match). |
+| `data-quality-rca` | lineage, freshness | Not used in this stage; lineage here is a count, never a root cause trace. |
+
+When both load in an SDK run, this skill's output contracts (profile sections, the `## Joins` table, `verified_cardinality` values) win.
 
 ## Sampling rules (tables > 10M rows)
 
@@ -45,7 +59,7 @@ Run these for every table `<t>` (fully qualified `catalog.schema.table`).
 | 4 | Distributions | pattern B for columns with < 100 distinct values; min/max/avg for numeric and date columns |
 | 5 | Grain | pattern C on the declared or candidate key; record what one row represents |
 | 6 | Declared constraints | `SELECT * FROM <catalog>.information_schema.table_constraints WHERE table_schema = '<s>' AND table_name = '<t>'` and `key_column_usage` (hints only; UC PK/FK are not enforced) |
-| 7 | Update cadence | `DESCRIBE HISTORY <t> LIMIT 20`: last write, operations (`WRITE`, `MERGE`, `STREAMING UPDATE`), interval between commits |
+| 7 | Update cadence | `DESCRIBE HISTORY <t>` (pattern H): last data write, data operations, interval between data commits; maintenance operations ignored |
 | 8 | Lineage | pattern E (system tables, with fallback) |
 | 9 | Usage | pattern F (system tables, with fallback) |
 
@@ -85,7 +99,7 @@ Try single columns with `uniqueness_ratio = 1.0` first, then the smallest column
 ## Cross-table checklist
 
 1. **Join key candidates**: same or suffix-matching column names across tables (`o_custkey` / `c_custkey`, `customer_id` / `id`), declared FKs, and joins stated in `docs/context/`. Check that the types are compatible.
-2. **Value overlap and orphans** for each candidate (pattern D).
+2. **Value overlap and orphans** for each candidate: left keys with no match (pattern D) and right keys never referenced (pattern D2).
 3. **Cardinality verification** for each candidate (pattern G). Orient each join from the many side (`left`, usually the fact) to the one side (`right`, the dimension).
 4. **Star schema detection**: a fact table has numeric additive columns, high row count and several outgoing many-to-one joins; a dimension is the `right` side of many-to-one joins with a unique key.
 
@@ -99,6 +113,19 @@ FROM samples.tpch.orders l
 LEFT JOIN (SELECT DISTINCT c_custkey FROM samples.tpch.customer) r
   ON l.o_custkey = r.c_custkey
 ```
+
+**Pattern D2: unreferenced right keys** (the reverse direction: dimension rows no fact row references, e.g. customers without orders):
+
+```sql
+SELECT count(*) AS right_keys,
+       count_if(l.o_custkey IS NULL) AS unreferenced_keys,
+       count_if(l.o_custkey IS NULL) / count(*) AS unreferenced_rate
+FROM (SELECT DISTINCT c_custkey FROM samples.tpch.customer) r
+LEFT JOIN (SELECT DISTINCT o_custkey FROM samples.tpch.orders) l
+  ON r.c_custkey = l.o_custkey
+```
+
+To list examples for a data quality flag, use `... FROM <right> r LEFT ANTI JOIN <left> l ON r.k = l.k LIMIT 5` and report the keys only (never other columns). An unreferenced rate is normal for dimensions; record it so synthesis knows a `count` over the dimension differs from a count of the dimension through the fact.
 
 **Pattern G: cardinality verification** (run exactly; this is the `query_used` you record):
 
@@ -119,15 +146,16 @@ FROM l JOIN r ON l.k = r.k
 
 For composite keys, group by every key column (or `struct(k1, k2)`). Approx fallback for timeouts: compare `approx_count_distinct(k)` to `count(*)` on the right table; equal within 1% suggests a unique right key, record `query_used` with `(approx)`, and tell synthesis not to set `rely.at_most_one_match` on that join.
 
-**Pattern E: lineage** (`system.access.table_lineage`):
+**Pattern E: lineage counts** (`system.access.table_lineage`). Report **counts only, never table, job, notebook or user names**: on shared sources most downstream objects belong to other users.
 
 ```sql
-SELECT source_table_full_name, target_table_full_name, entity_type, max(event_time) AS last_seen
+SELECT count(DISTINCT CASE WHEN target_table_full_name = '<t>' THEN source_table_full_name END) AS upstream_tables,
+       count(DISTINCT CASE WHEN source_table_full_name = '<t>' THEN target_table_full_name END) AS downstream_tables,
+       count(DISTINCT entity_type) AS entity_types,
+       max(event_time) AS last_seen
 FROM system.access.table_lineage
 WHERE (source_table_full_name = '<t>' OR target_table_full_name = '<t>')
   AND event_date >= current_date() - INTERVAL 90 DAYS
-GROUP BY ALL
-LIMIT 50
 ```
 
 **Pattern F: usage** (`system.query.history`):
@@ -137,10 +165,27 @@ SELECT count(*) AS queries_30d, count(DISTINCT executed_by) AS users_30d
 FROM system.query.history
 WHERE start_time >= current_timestamp() - INTERVAL 30 DAYS
   AND execution_status = 'FINISHED'
-  AND lower(statement_text) LIKE '%<schema>.<table>%'
+  AND lower(statement_text) rlike '<schema>\\.<table>([^a-z0-9_]|$)'
 ```
 
-For common joins and filter columns, sample up to 20 matching `statement_text` values (`LIMIT 20`) and note the `JOIN ... ON` and `WHERE` columns. Never copy statement text into a profile, only the column names.
+Use the word-boundary regex, not `LIKE '%<schema>.<table>%'`: a plain substring match counts `part` queries for every `partsupp` query. Lower-case `<schema>` and `<table>` in the pattern.
+
+Common join and filter columns: sample up to 20 matching `statement_text` values (`LIMIT 20`). First count distinct query shapes (statement text with literals and whitespace normalized, for example `regexp_replace(lower(statement_text), "'[^']*'|\\b\\d+\\b|\\s+", ' ')`). **If the sample has fewer than 5 distinct shapes, skip extraction** and write `Common join/filter columns: skipped (usage sample not diverse: <n> distinct query shapes)` in `## Usage`. Otherwise note the columns that appear in `JOIN ... ON` and `WHERE` in at least 2 shapes. Never copy statement text into a profile, only the column names.
+
+**Pattern H: update cadence** (ignore maintenance commits, which can fill the latest history entries and hide the last data write). `DESCRIBE HISTORY` cannot be a subquery, so filter its result:
+
+```python
+from pyspark.sql import functions as F
+
+MAINTENANCE = ["VACUUM START", "VACUUM END", "OPTIMIZE", "ANALYZE", "SET TBLPROPERTIES",
+               "UNSET TBLPROPERTIES", "CHANGE COLUMN", "ADD COLUMNS", "UPGRADE PROTOCOL",
+               "REORG", "FSCK", "ADD CONSTRAINT", "DROP CONSTRAINT", "SET TABLE OWNER"]
+h = spark.sql("DESCRIBE HISTORY <t> LIMIT 100").filter(~F.col("operation").isin(MAINTENANCE))
+h.agg(F.max("timestamp").alias("last_data_write"), F.count("*").alias("data_commits"),
+      F.collect_set("operation").alias("data_operations")).show(truncate=False)
+```
+
+Without Python, run `DESCRIBE HISTORY <t> LIMIT 100` and skip those operations when reading it. When no data commit remains in the window, write `Update cadence: unknown (only maintenance commits in the last 100 history entries)`.
 
 **Fallback when system tables are denied or missing** (`INSUFFICIENT_PERMISSIONS`, `TABLE_OR_VIEW_NOT_FOUND`, `SCHEMA_NOT_FOUND`): do not retry or ask for grants. Write `Lineage: not available (<error class>)` / `Usage: not available (<error class>)` in the profile, use `DESCRIBE HISTORY` for cadence, use declared constraints and name matching for joins, and continue. This is not a session failure.
 
@@ -153,7 +198,7 @@ Flag a table or join in the summary when any of these holds (thresholds are defa
 | `large_table` | `row_count > 10,000,000` |
 | `multi_join` | a KPI from `02_kpi_definitions.md` needs 3+ tables |
 | `fan_out` | a `many_to_one` join read from the one side, or any `many_to_many` (measures risk double counting) |
-| `hot_table` | `queries_30d` in the top quartile of source tables, or a KPI in `02` marked core |
+| `hot_table` | one of the top `ceil(n / 4)` source tables by `queries_30d` (`n` = number of source tables; ties at the cut-off are all included; skipped when usage is not available), or a KPI in `02` marked core |
 | `filter_columns` | columns that appear in `WHERE` in usage samples: candidate materialization dimensions (categorical only) |
 
 Synthesis turns these into `materialization:` blocks; this stage only flags them.
@@ -182,11 +227,14 @@ Synthesis turns these into `materialization:` blocks; this stage only flags them
 | column | references | orphan_rate | verified_cardinality |
 |---|---|---|---|
 
+## Coded values
+<For columns named in a glossary term's `## Values from EDA` section (docs/semantics/), and any other code-like column (< 20 distinct short values): observed values with counts. Meanings only when the data or a cited source states them; otherwise `meaning: not confirmed`. Never for sensitive columns.>
+
 ## Lineage
-<Upstream / downstream tables, or "not available (<error class>)".>
+<upstream_tables, downstream_tables, last_seen (counts only, no names), or "not available (<error class>)".>
 
 ## Usage
-<queries_30d, users_30d, common join and filter columns, or "not available (<error class>)".>
+<queries_30d, users_30d, common join and filter columns (or "skipped (usage sample not diverse: <n> distinct query shapes)"), or "not available (<error class>)".>
 
 ## Data quality flags
 <High null rates on keys, orphans, duplicates on the grain, suspicious ranges.>
@@ -238,5 +286,8 @@ The session runner verifies these before reporting `pass`:
 - [ ] Every profile states `exact` or `sampled (1%)`; tables > 10M rows used `TABLESAMPLE` / `approx_count_distinct` per the sampling rules, and exact grain checks.
 - [ ] `docs/data_profiles/data_model_summary.md` exists with `## Tables`, a Mermaid ER diagram, `## Joins` (columns `left`, `right`, `keys`, `verified_cardinality`, `orphan_rate`, `query_used`), `## Materialization candidates`.
 - [ ] Every `verified_cardinality` value is `many_to_one`, `one_to_one` or `many_to_many`, and every row has a non-empty `query_used`.
-- [ ] Lineage and usage sections are filled or say `not available (<error class>)`.
+- [ ] Lineage and usage sections are filled or say `not available (<error class>)`; lineage has counts only, no object names; usage used the word-boundary `rlike` and states when join/filter extraction was skipped.
+- [ ] Every left-to-right join has a pattern D orphan rate and a pattern D2 unreferenced rate.
+- [ ] Update cadence comes from data commits only (pattern H).
+- [ ] Sensitive columns are marked `sensitive (values withheld)` with no values shown; every column a term lists under `## Values from EDA` appears in a `## Coded values` section.
 - [ ] Only read-only SQL ran; no Git commands, no file deletion, no sensitive row values or workspace-specific identifiers in outputs.
