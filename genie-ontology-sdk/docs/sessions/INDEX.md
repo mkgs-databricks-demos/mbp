@@ -4,6 +4,7 @@ Sessions are listed in reverse chronological order.
 
 | Date | Session | Summary |
 |---|---|---|
+| 2026-11-25 | [W0-8 / 15 TPC-H Genie Agent Deployment](2026-11-25_w0-8-15-tpch-agent-deployment.md) | Wave 0-8, session 15, mode edit, status pass: dogfood ontology-genie-agents deployed to dev (attempt 1 of 4), tpch_supply_chain_agent verified (warehouse, DESCRIBE 7/7, EXPLAIN 3/3), 3 of 3 probes SQL generated + SUCCEEDED (agent_validation.md) (run 440901917884797) |
 | 2026-11-25 | [W0-8 / 15 TPC-H Genie Agent Deployment](2026-11-25_w0-8-15-tpch-agent-deployment.md) | Wave 0-8, session 15, mode edit, status blocked: dev variable-overrides.json schema does not exist (metric views are in the DAB 1 dev schema); bundle validate OK, no deploy, no probes (run 1082430844509839) |
 | 2026-11-24 | [W0-7 / 14 TPC-H Genie Agent Curation](2026-11-24_w0-7-14-tpch-agent-curation.md) | Wave 0-7, session 14, mode edit, status pass: tokenized tpch_supply_chain_agent.geniespace.json (validate_space 0 errors), resources/genie_agents.yml, domain_manifest.yml; render + bundle validate OK |
 | 2026-11-24 | [W0-7 / 13 TPC-H UC Pages Registration](2026-11-24_w0-7-13-tpch-uc-pages.md) | Wave 0-7, session 13, mode edit, status pass (owner decision 2026-11-25: UC Pages publishing deferred to build 1; was blocked): 23 glossary terms parsed, dry run only; no TPC-H Discover domain exists, so no pages written (pages_registration.md has the owner cell) |
