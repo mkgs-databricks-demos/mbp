@@ -4,6 +4,7 @@ Sessions are listed in reverse chronological order.
 
 | Date | Session | Summary |
 |---|---|---|
+| 2026-11-25 | [W0-10 / 17 Build-0 Documentation & Observations](2026-11-25_w0-10-17-build0-docs.md) | Wave 0-10, session 17, mode edit, status pass: README, docs/usage.md, docs/build-0-observations.md (31 rows for sessions 10a-16), PROJECT_MEMORY.md and L100 build status; link_check pass (run 440901917884797) |
 | 2026-11-25 | [W0-9 / 16 TPC-H Benchmark & Tuning](2026-11-25_w0-9-16-tpch-tuning.md) | Wave 0-9, session 16, mode edit, status pass: 15 benchmark questions, baseline accuracy 93.3% (14/15; q11 ratio-unit ambiguity), gate passed at baseline so no tuning iteration and no metric view/agent change; tuning_plan.md + benchmark_results.md (run 440901917884797) |
 | 2026-11-25 | [W0-8 / 15 TPC-H Genie Agent Deployment](2026-11-25_w0-8-15-tpch-agent-deployment.md) | Wave 0-8, session 15, mode edit, status pass: dogfood ontology-genie-agents deployed to dev (attempt 1 of 4), tpch_supply_chain_agent verified (warehouse, DESCRIBE 7/7, EXPLAIN 3/3), 3 of 3 probes SQL generated + SUCCEEDED (agent_validation.md) (run 440901917884797) |
 | 2026-11-25 | [W0-8 / 15 TPC-H Genie Agent Deployment](2026-11-25_w0-8-15-tpch-agent-deployment.md) | Wave 0-8, session 15, mode edit, status blocked: dev variable-overrides.json schema does not exist (metric views are in the DAB 1 dev schema); bundle validate OK, no deploy, no probes (run 1082430844509839) |
