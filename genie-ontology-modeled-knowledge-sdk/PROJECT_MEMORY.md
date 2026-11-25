@@ -36,7 +36,7 @@ A developer toolkit that automates the standup of modeled knowledge for Genie On
 | `docs/pitch/` | Customer-facing standalone HTML overview |
 | `docs/sessions/` | Session summaries + INDEX (reverse-chronological) |
 | `docs/reviews/` | Build-0 SDK code review |
-| `../genie-ontology-sdk/Genie Code Start Session - DO NOT EDIT.ipynb` | Genie Code start-session notebook for this project; kept in the repo (owner decision). It is still in the pre-rename folder; never edit it |
+| `Genie Code Start Session - DO NOT EDIT.ipynb` | Genie Code start-session notebook for this project; kept in the repo (owner decision). Never edit it |
 | `examples/` | DAB 1 (metric view registration, forEach), DAB 2 (Genie Agents via `genie_spaces`), sample MV YAML, sample `.geniespace.json` |
 
 ## Architecture (from L100)

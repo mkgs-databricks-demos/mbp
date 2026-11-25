@@ -27,7 +27,7 @@ The interactive Genie Code session that took build-0 from `BUILD_PASSED` to a me
 ## Decisions (owner)
 * Rename everything, including the Python package, with no alias; history files keep the old names.
 * Leave the genie-build-waves instance on the old folder until build 1.
-* Keep the "Genie Code Start Session - DO NOT EDIT" notebook in the project and the repo.
+* Keep the "Genie Code Start Session - DO NOT EDIT" notebook in the project and the repo; moved from the pre-rename folder into the project root.
 * Item 13 stays a backlog item instead of a direct edit to the repair guide.
 
 ## Verification

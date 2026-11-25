@@ -33,7 +33,7 @@ PYTHONPATH=src python -m genie_ontology_modeled_knowledge_sdk.mv_yaml validate <
 | `notebooks/` | `init_ontology_project` init and scaffold notebook |
 | `examples/tpch/` | build-0 dogfood project on `samples.tpch` |
 | `docs/` | design, research, plans, sessions, reviews, diagrams, pitch |
-| `../genie-ontology-sdk/Genie Code Start Session - DO NOT EDIT.ipynb` | Genie Code start-session notebook for this project (still in the pre-rename folder; do not edit) |
+| `Genie Code Start Session - DO NOT EDIT.ipynb` | Genie Code start-session notebook for this project (do not edit) |
 
 Package layout and module contracts: [docs/design/sdk-layout.md](docs/design/sdk-layout.md). Packaging: [pyproject.toml](pyproject.toml).
 
