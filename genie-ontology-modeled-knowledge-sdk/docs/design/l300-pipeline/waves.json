@@ -1,0 +1,281 @@
+{
+  "version": 1,
+  "description": "Genie Ontology Modeled Knowledge SDK \u2014 automated standup of metric views, UC Pages, and Genie Agents from Unity Catalog source assets and supplemental business context.",
+  "workflow": {
+    "mode": "hybrid"
+  },
+  "status_dir": ".build-status",
+  "plans_dir": "docs/plans",
+  "sessions_dir": "docs/sessions",
+  "context_files": [
+    "docs/design/L100-genie-ontology-modeled-knowledge-sdk.md",
+    "docs/research/metric-view-cicd-best-practices.md",
+    "docs/research/genie-agent-api-deployment.md",
+    "docs/research/semantic-metadata-strategy.md",
+    "docs/semantics/sdk-glossary.md"
+  ],
+  "waves": [
+    {
+      "wave_id": "0",
+      "name": "Initialization",
+      "concurrency": 1,
+      "gate": [
+        "Feature branch exists and is checked out",
+        "All input catalogs/schemas/tables are accessible",
+        "Repo folder structure is scaffolded",
+        "sdk_config.json is written with all input parameters"
+      ],
+      "sessions": [
+        {
+          "session_id": "01",
+          "title": "Input Validation & Repo Scaffolding",
+          "plan_file": "01_input_validation_scaffolding.md",
+          "mode": "execute",
+          "scope": "Validate all SDK inputs, create feature branch, scaffold folder structure, write sdk_config.json.",
+          "owned_assets": [
+            "sdk_config.json",
+            "ontology-metric-views/**",
+            "ontology-genie-agents/**",
+            "docs/**"
+          ],
+          "depends_on": []
+        }
+      ]
+    },
+    {
+      "wave_id": "1",
+      "name": "Domain Research",
+      "concurrency": 1,
+      "gate": [
+        "docs/research/ contains at least 3 research documents",
+        "docs/semantics/ contains glossary candidates",
+        "docs/research/05_domain_subdomain_proposal.md exists"
+      ],
+      "sessions": [
+        {
+          "session_id": "02",
+          "title": "Domain Research \u2014 Industry & Terminology",
+          "plan_file": "02_domain_research.md",
+          "mode": "execute",
+          "scope": "Web search for domain terminology, KPIs, industry trends, regulatory context. Write research docs and glossary candidates.",
+          "owned_assets": [
+            "docs/research/**",
+            "docs/semantics/**"
+          ],
+          "depends_on": [
+            "01"
+          ]
+        }
+      ]
+    },
+    {
+      "wave_id": "2",
+      "name": "Supplemental Context Extraction",
+      "concurrency": 1,
+      "gate": [
+        "docs/context/ contains extracted context from all supplemental sources",
+        "docs/semantics/ updated with additional glossary candidates from business materials"
+      ],
+      "sessions": [
+        {
+          "session_id": "03",
+          "title": "Supplemental Context Parser",
+          "plan_file": "03_supplemental_context.md",
+          "mode": "execute",
+          "scope": "Read supplemental volume directories and dashboard inputs. Extract business rules, KPI definitions, join criteria. Write context docs and additional glossary candidates.",
+          "owned_assets": [
+            "docs/context/**"
+          ],
+          "depends_on": [
+            "01"
+          ]
+        }
+      ]
+    },
+    {
+      "wave_id": "3",
+      "name": "Deep Exploratory Data Analysis",
+      "concurrency": 1,
+      "continuation_passes": 2,
+      "gate": [
+        "docs/data_profiles/ contains one profile per source table",
+        "docs/data_profiles/data_model_summary.md exists with cross-table analysis",
+        "Join key candidates are identified with cardinality verification"
+      ],
+      "sessions": [
+        {
+          "session_id": "04",
+          "title": "Deep EDA \u2014 Table Profiling & Relationship Detection",
+          "plan_file": "04_deep_eda.md",
+          "mode": "execute",
+          "scope": "Profile every source table: structure, integrity, quality, lineage, usage, grain, keys, cardinality, volume. Detect cross-table relationships. Write data profiles.",
+          "owned_assets": [
+            "docs/data_profiles/**"
+          ],
+          "depends_on": [
+            "01"
+          ]
+        }
+      ]
+    },
+    {
+      "wave_id": "4",
+      "name": "Metric View Synthesis",
+      "concurrency": 1,
+      "continuation_passes": 2,
+      "gate": [
+        "ontology-metric-views/metric_views/ contains at least one YAML per identified domain",
+        "ontology-metric-views/metric_views/manifest.json exists and is valid JSON array",
+        "Every YAML has parameterized source references (no hardcoded catalogs)",
+        "Every join has rely annotation matching Wave 3 cardinality verification",
+        "Materialization blocks present on MVs meeting threshold criteria"
+      ],
+      "sessions": [
+        {
+          "session_id": "05",
+          "title": "Metric View YAML Synthesis",
+          "plan_file": "05_metric_view_synthesis.md",
+          "mode": "edit",
+          "scope": "Synthesize all context (research + supplemental + EDA) into parameterized metric view YAMLs. Generate manifest.json. Include materialization blocks where appropriate.",
+          "owned_paths": [
+            "ontology-metric-views/metric_views/**"
+          ],
+          "depends_on": [
+            "02",
+            "03",
+            "04"
+          ]
+        }
+      ]
+    },
+    {
+      "wave_id": "5",
+      "name": "Metric View Registration",
+      "concurrency": 1,
+      "gate": [
+        "All metric views registered in target_catalog.target_schema",
+        "Smoke test passes: every MV queryable with MEASURE() syntax",
+        "Join cardinality tests pass"
+      ],
+      "sessions": [
+        {
+          "session_id": "06",
+          "title": "Metric View Registration & Smoke Tests",
+          "plan_file": "06_metric_view_registration.md",
+          "mode": "execute",
+          "scope": "Execute CREATE OR REPLACE VIEW WITH METRICS for each metric view YAML. Run smoke tests and cardinality tests.",
+          "owned_assets": [
+            "${var.target_catalog}.${var.target_schema}.*"
+          ],
+          "depends_on": [
+            "05"
+          ]
+        }
+      ]
+    },
+    {
+      "wave_id": "5.5",
+      "name": "UC Pages Registration",
+      "concurrency": 1,
+      "gate": [
+        "UC Pages registered for all glossary candidates",
+        "Pages associated with appropriate domain/subdomain"
+      ],
+      "sessions": [
+        {
+          "session_id": "07",
+          "title": "UC Pages Registration",
+          "plan_file": "07_pages_registration.md",
+          "mode": "execute",
+          "scope": "Register UC Pages from docs/semantics/ glossary candidates via the Pages API. Associate with domains/subdomains.",
+          "owned_assets": [
+            "UC Pages in target catalog"
+          ],
+          "depends_on": [
+            "06"
+          ]
+        }
+      ]
+    },
+    {
+      "wave_id": "6",
+      "name": "Genie Agent Curation",
+      "concurrency": 1,
+      "continuation_passes": 2,
+      "gate": [
+        "ontology-genie-agents/agents/ contains at least one .geniespace.json",
+        "Agent organization follows 50 MV threshold rule",
+        "Each agent references only registered metric views",
+        "docs/domain_manifest.yml exists with proposed domain structure"
+      ],
+      "sessions": [
+        {
+          "session_id": "08",
+          "title": "Genie Agent Curation & Configuration",
+          "plan_file": "08_genie_agent_curation.md",
+          "mode": "edit",
+          "scope": "Determine agent organization (single vs split by subdomain). Generate .geniespace.json for each agent. Generate domain manifest.",
+          "owned_paths": [
+            "ontology-genie-agents/agents/**",
+            "docs/domain_manifest.yml"
+          ],
+          "depends_on": [
+            "06",
+            "07"
+          ]
+        }
+      ]
+    },
+    {
+      "wave_id": "7",
+      "name": "Genie Agent Deployment",
+      "concurrency": 1,
+      "gate": [
+        "All Genie Agents deployed and accessible",
+        "Each agent responds to at least one sample question"
+      ],
+      "sessions": [
+        {
+          "session_id": "09",
+          "title": "Genie Agent Deployment & Validation",
+          "plan_file": "09_genie_agent_deployment.md",
+          "mode": "execute",
+          "scope": "Deploy DAB 2 with generated .geniespace.json files. Validate each agent is accessible and responds to sample questions.",
+          "owned_assets": [
+            "Genie Agents in target workspace"
+          ],
+          "depends_on": [
+            "08"
+          ]
+        }
+      ]
+    },
+    {
+      "wave_id": "8",
+      "name": "Tuning",
+      "concurrency": 1,
+      "continuation_passes": 3,
+      "gate": [
+        "docs/tuning/tuning_plan.md exists",
+        "docs/tuning/benchmark_results.md exists with accuracy scores",
+        "Benchmark accuracy >= 70% across all agents"
+      ],
+      "sessions": [
+        {
+          "session_id": "10",
+          "title": "Tuning Plan & Benchmark Execution",
+          "plan_file": "10_tuning_engine.md",
+          "mode": "execute",
+          "scope": "Generate tuning plan. Run benchmark questions. Iterate on MV definitions (not agent instructions) for failures. Update YAMLs and re-register as needed.",
+          "owned_assets": [
+            "docs/tuning/**",
+            "ontology-metric-views/metric_views/**"
+          ],
+          "depends_on": [
+            "09"
+          ]
+        }
+      ]
+    }
+  ]
+}

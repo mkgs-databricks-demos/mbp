@@ -1,0 +1,37 @@
+# Genie Ontology Modeled Knowledge SDK - DAB 2: Genie Agents.
+# Deploys one Genie Agent per agents/<name>.geniespace.json with the genie_spaces resource.
+# Space files are tokenized; render them into .rendered/ before validate/deploy (see README.md).
+# No workspace hosts here: use your CLI profile (DATABRICKS_CONFIG_PROFILE or --profile).
+bundle:
+  name: ontology-genie-agents
+  engine: direct  # genie_spaces is supported by the direct deployment engine only (CLI >= 1.3.0)
+
+include:
+  - resources/*.yml
+
+variables:
+  warehouse_id:
+    description: SQL warehouse id the Genie Agents run their queries on.
+  catalog:
+    description: Catalog that holds the metric views (environment discriminator, e.g. dev / prd catalog).
+  schema:
+    description: Full metric view schema name in that catalog, including any dev prefix.
+  consumer_group:
+    description: Group granted CAN_RUN on every Genie Agent.
+    default: account users
+  curator_group:
+    description: Group granted CAN_EDIT on every Genie Agent. Required; a permissions entry cannot be omitted conditionally.
+  genie_parent_path:
+    description: Workspace folder the Genie Agents are created in.
+
+targets:
+  dev:
+    mode: development
+    default: true
+    variables:
+      genie_parent_path: ${workspace.root_path}/genie
+
+  prd:
+    mode: production
+    # genie_parent_path, warehouse_id, catalog, schema and curator_group come from
+    # .databricks/bundle/prd/variable-overrides.json or --var flags.

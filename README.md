@@ -8,6 +8,6 @@ Matt's Best Practices for Working with Databricks
 | [sdlc-best-practices](sdlc-best-practices/README.md) | SDLC deep dive with Declarative Automation Bundles and GitHub Actions, including a complete example bundle and a bundle vs Terraform vs REST API comparison |
 | [genie-build-waves](genie-build-waves) | Bundle for orchestrating parallel build waves |
 | [unity-gateway](unity-gateway/README.md) | Registering and governing external MCP servers in Unity Gateway: auth options, permissions, invocation, pitfalls. Includes a Robinhood MCP example (proxy app for providers that only accept a loopback OAuth redirect) |
-| [genie-ontology-sdk](genie-ontology-sdk/README.md) | SDK for automating Genie Ontology standup: metric view synthesis and registration, Genie Agent curation, UC Pages and tuning, run with genie-build-waves and Declarative Automation Bundles |
+| [genie-ontology-modeled-knowledge-sdk](genie-ontology-modeled-knowledge-sdk/README.md) | SDK for automating Genie Ontology standup: metric view synthesis and registration, Genie Agent curation, UC Pages and tuning, run with genie-build-waves and Declarative Automation Bundles |
 
 Suggested reading order: workspace architecture, then UC naming, then SDLC best practices.
