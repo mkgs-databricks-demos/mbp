@@ -44,10 +44,14 @@ All three have `deployment.metadata_file_path` = `/Workspace/Users/matthew.gigli
 
 ## SDK code review
 * Read-only review written to [docs/reviews/2026-11-25_build-0-sdk-review.md](../reviews/2026-11-25_build-0-sdk-review.md) (pytest not run).
+* Owner accepted the review's 9 improvements in priority order; documented as build-1 requests R1-R9 in [docs/plans/build-1/REQUESTS.md](../plans/build-1/REQUESTS.md). Session 17: link it from `docs/build-0-observations.md`.
+
+## Wave 0-8 fix (2026-11-25)
+* Owner instruction: Genie Code set `schema` in the gitignored `examples/tpch/ontology-genie-agents/.databricks/bundle/dev/variable-overrides.json` to `dev_matthew_giglia_ontology` (the existing dev metric view schema), then asked Devin to repair from `w0-8_sessions` so session 15 runs again (repair 3 of 8).
 
 ## Files modified
 * `docs/plans/waves.json` (branch, authorization_policy)
-* `docs/reviews/2026-11-25_build-0-sdk-review.md` (new), `PROJECT_MEMORY.md` (review link)
+* `docs/reviews/2026-11-25_build-0-sdk-review.md` (new), `docs/plans/build-1/REQUESTS.md` (new), `PROJECT_MEMORY.md` (review and requests links)
 * `PROJECT_MEMORY.md` (status, executor, next steps, monitor decision)
 * this summary, `docs/sessions/INDEX.md`
 * outside the repo: `~/genie-build-waves-instances/genie-ontology-sdk.vars.json`
