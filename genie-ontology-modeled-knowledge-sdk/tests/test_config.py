@@ -25,7 +25,7 @@ from genie_ontology_modeled_knowledge_sdk.config import (
 
 
 def test_version():
-    assert __version__ == "0.0.1"
+    assert __version__ == "0.1.0"
 
 
 def test_schema_is_draft_2020_12_and_accepts_tpch_config(tpch_config):

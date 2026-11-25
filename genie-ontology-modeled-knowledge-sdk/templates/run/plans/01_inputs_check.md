@@ -6,7 +6,7 @@ Confirm the run inputs for `{{project_name}}` (domain `{{domain_name}}`) are val
 ## Context
 * Skill: none (uses the SDK library only).
 * SDK functions (`genie_ontology_modeled_knowledge_sdk.config`): `load_config(path)`, `validate_config(d) -> list[str]`, `expand_tables(cfg, ws) -> list[str]`, `check_access(cfg, ws) -> list[str]`.
-* Import path: the vendored copy at `ontology-metric-views/src/genie_ontology_modeled_knowledge_sdk_vendored/` (add `ontology-metric-views/src` to `sys.path`) or an installed `genie_ontology_modeled_knowledge_sdk`. If `config` is not vendored, read the input contract from `sdk_config.json` and check access with `readTable` / `information_schema` instead, and say so in the summary.
+* Import path: the installed `genie_ontology_modeled_knowledge_sdk` wheel (the default), or, for a project scaffolded with `vendor=True`, the vendored copy at `ontology-metric-views/src/genie_ontology_modeled_knowledge_sdk_vendored/` loaded by the notebooks' `load_sdk()` cell. If `config` is not vendored, read the input contract from `sdk_config.json` and check access with `readTable` / `information_schema` instead, and say so in the summary.
 * `sdk_config.json` is input, not output: never edit it. Report problems; the owner fixes them.
 
 ## Tasks
