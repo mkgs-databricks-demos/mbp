@@ -1,0 +1,132 @@
+# TPC-H dogfood benchmark (session 16, build 0).
+# Contract: list of {id, question, expected_sql?, expected_answer?, tags}.
+# expected_answer values were computed with read-only SQL over samples.tpch
+# (queries listed in benchmark_results.md). expected_sql uses tokenized names and
+# documents the intended metric view; when both are given, benchmark.score uses
+# expected_answer. Wording intentionally differs from the agent's sample_questions.
+- id: q01
+  question: "What was total net revenue for orders placed in 1995?"
+  expected_sql: |
+    SELECT MEASURE(`Revenue`) AS revenue
+    FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue
+    WHERE `Order Year` = 1995
+  expected_answer: 165028893111.8535
+  tags: ["agent:tpch_supply_chain_agent", simple]
+- id: q02
+  question: "How much were total bookings in 1996?"
+  expected_sql: |
+    SELECT MEASURE(`Order Total Price`) AS bookings
+    FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders
+    WHERE `Order Year` = 1996
+  expected_answer: 172605588830.66
+  tags: ["agent:tpch_supply_chain_agent", synonym, simple]
+- id: q03
+  question: "Which customer region generated the most net revenue in 1994?"
+  expected_sql: |
+    SELECT `Customer Region`, MEASURE(`Revenue`) AS revenue
+    FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue
+    WHERE `Order Year` = 1994
+    GROUP BY `Customer Region`
+    ORDER BY revenue DESC
+    LIMIT 1
+  expected_answer: "MIDDLE EAST"
+  tags: ["agent:tpch_supply_chain_agent", breakdown]
+- id: q04
+  question: "What was the AOV in 1997?"
+  expected_sql: |
+    SELECT MEASURE(`Average Order Value`) AS aov
+    FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue
+    WHERE `Order Year` = 1997
+  expected_answer: 145293.9571
+  tags: ["agent:tpch_supply_chain_agent", ratio, synonym]
+- id: q05
+  question: "How many high-priority orders were placed in 1993?"
+  expected_sql: |
+    SELECT MEASURE(`Order Count`) AS orders
+    FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders
+    WHERE `Order Year` = 1993 AND `High Priority`
+  expected_answer: 455364
+  tags: ["agent:tpch_supply_chain_agent", filter]
+- id: q06
+  question: "In which year were the most orders placed?"
+  expected_sql: |
+    SELECT `Order Year`, MEASURE(`Order Count`) AS orders
+    FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders
+    GROUP BY `Order Year`
+    ORDER BY orders DESC
+    LIMIT 1
+  expected_answer: 1996
+  tags: ["agent:tpch_supply_chain_agent", time, breakdown]
+- id: q07
+  question: "What was the on-time delivery rate for line items received in 1996?"
+  expected_sql: |
+    SELECT MEASURE(`On-Time Delivery Rate`) AS otd
+    FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment
+    WHERE `Receipt Year` = 1996
+  expected_answer: 0.3677598081618798
+  tags: ["agent:tpch_supply_chain_agent", ratio, time]
+- id: q08
+  question: "What is the average order cycle time in days?"
+  expected_sql: |
+    SELECT MEASURE(`Average Fulfillment Cycle Days`) AS cycle_days
+    FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment
+  expected_answer: 76.49805303669575
+  tags: ["agent:tpch_supply_chain_agent", synonym, simple]
+- id: q09
+  question: "What was the overall profit margin in 1996?"
+  expected_sql: |
+    SELECT MEASURE(`Profit Margin`) AS margin
+    FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit
+    WHERE `Order Year` = 1996
+  expected_answer: 0.648703
+  tags: ["agent:tpch_supply_chain_agent", ratio]
+- id: q10
+  question: "Which supplier region holds the largest stock value?"
+  expected_sql: |
+    SELECT `Supplier Region`, MEASURE(`Inventory Value`) AS stock_value
+    FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost
+    GROUP BY `Supplier Region`
+    ORDER BY stock_value DESC
+    LIMIT 1
+  expected_answer: "ASIA"
+  tags: ["agent:tpch_supply_chain_agent", synonym, breakdown]
+- id: q11
+  question: "What share of shipped quantity was returned for AUTOMOBILE segment customers?"
+  expected_sql: |
+    SELECT MEASURE(`Return Rate`) AS return_rate
+    FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns
+    WHERE `Market Segment` = 'AUTOMOBILE'
+  expected_answer: 0.2468763007
+  tags: ["agent:tpch_supply_chain_agent", filter, ratio]
+- id: q12
+  question: "What was net revenue in August 1998, the last month with orders?"
+  expected_sql: |
+    SELECT MEASURE(`Revenue`) AS revenue
+    FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue
+    WHERE `Order Month` = DATE'1998-08-01'
+  expected_answer: 909368702.339
+  tags: ["agent:tpch_supply_chain_agent", edge, time]
+- id: q13
+  question: "In 1996, what fraction of market volume for ASIA customers was supplied by Chinese suppliers?"
+  expected_sql: |
+    SELECT MEASURE(`Market Volume`) FILTER (WHERE `Supplier Nation` = 'CHINA') / MEASURE(`Market Volume`) AS share
+    FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share
+    WHERE `Customer Region` = 'ASIA' AND `Order Year` = 1996
+  expected_answer: 0.04
+  tags: ["agent:tpch_supply_chain_agent", ratio, filter]
+- id: q14
+  question: "How much revenue was given up through discounts on orders from 1994?"
+  expected_sql: |
+    SELECT MEASURE(`Discount Revenue`) AS discount_revenue
+    FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue
+    WHERE `Order Year` = 1994
+  expected_answer: 8702939704.3524
+  tags: ["agent:tpch_supply_chain_agent", synonym, simple]
+- id: q15
+  question: "How many distinct customers placed at least one order in 1995?"
+  expected_sql: |
+    SELECT MEASURE(`Ordering Customer Count`) AS customers
+    FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders
+    WHERE `Order Year` = 1995
+  expected_answer: 432892
+  tags: ["agent:tpch_supply_chain_agent", simple, filter]
