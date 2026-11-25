@@ -35,6 +35,24 @@ def job_parameter_default(parameters, name: str) -> str:
     return ""
 
 
+def setup_branch(manifest_branch, job_default) -> tuple[str, str]:
+    """Branch setup pulls, and where it came from: ("manifest" | "job_default" | "none").
+
+    The manifest's top-level `branch` wins: setup patches the build job's `branch` default from
+    it, so reading the job default first would sync to a stale or empty value (setup read the
+    default before patching the job, and an empty default failed the sync until a second setup
+    run). Both values are deployed or committed, never a run-time job parameter. The folder must
+    still already be on that branch (branch_problem); the sync never switches branches.
+    """
+    mb = manifest_branch.strip() if isinstance(manifest_branch, str) else ""
+    if mb:
+        return mb, "manifest"
+    jd = (job_default or "").strip()
+    if jd:
+        return jd, "job_default"
+    return "", "none"
+
+
 def setup_sync_message(result: dict) -> str:
     """One-line summary of setup's pull, in the same style as the wave sync."""
     if result.get("skipped"):

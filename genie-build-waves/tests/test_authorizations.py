@@ -215,3 +215,69 @@ def test_validate_does_not_mutate():
     validate_manifest(m)
     az.filter_monitor_grants(m, [])
     assert m == before
+
+
+def _deploy_m(**session):
+    s = {"session_id": "12", "title": "Register", "plan_file": "12.md", "mode": "edit", "allow_deploy": True,
+         "owned_paths": ["examples/mv/**"], "scope": "deploy the metric views bundle"}
+    s.update(session)
+    return {"version": 1, "workflow": {"mode": "git"}, "branch": "feature-x",
+            "waves": [{"wave_id": "0-6", "gate": ["ok"], "sessions": [s]}]}
+
+
+def test_allow_deploy_without_named_bundle_or_run_approval_warns():
+    # The case that failed a real wave: deploy approved, `bundle run` of the job refused.
+    m = _deploy_m(scope="deploy examples/mv and bundle run register_metric_views -t dev")
+    _, warnings = az.validate_authorizations(m)
+    assert any("bundle.deploy only for the bundle at build_root" in w for w in warnings)
+    assert any("no jobs.run_now authorization" in w for w in warnings)
+
+
+def test_named_deploy_and_run_approvals_silence_the_warnings():
+    m = _deploy_m(scope="deploy examples/mv and bundle run register_metric_views -t dev", authorizations=[
+        {"action": "bundle.deploy", "target": "bundle:examples/mv"},
+        {"action": "jobs.run_now", "target": "register_metric_views (dev)"}])
+    errors, warnings = az.validate_authorizations(m)
+    assert errors == [] and az.deploy_approval_warnings(m, m["waves"][0]["sessions"][0]) == []
+    assert not [w for w in warnings if "session 12" in w]
+
+
+def test_run_words_in_owned_assets_or_notes_count_and_non_deploy_sessions_are_ignored():
+    m = _deploy_m(owned_assets=["dev job register_metric_views (run-now)"],
+                  authorizations=[{"action": "bundle.deploy", "target": "bundle:examples/mv"}])
+    assert [w for w in az.deploy_approval_warnings(m, m["waves"][0]["sessions"][0]) if "jobs.run_now" in w]
+    s = {"session_id": "13", "mode": "edit", "scope": "bundle run something"}  # no allow_deploy
+    assert az.deploy_approval_warnings(m, s) == []
+
+
+def test_converge_session_with_its_own_job_target_needs_nothing_more():
+    m = _m()
+    s = _session(m, "06")
+    s["scope"] = "deploy and bundle run setup_demo"
+    assert az.deploy_approval_warnings(m, s) == []
+
+
+def test_scope_run_of_a_snake_case_job_counts():
+    m = _deploy_m(scope="deploy examples/mv to dev, run register_metric_views, fix until it passes")
+    assert [w for w in az.deploy_approval_warnings(m, m["waves"][0]["sessions"][0]) if "jobs.run_now" in w]
+
+
+def test_plan_text_finds_a_run_the_manifest_does_not_mention():
+    m = _deploy_m(scope="tune the metric views with re-registration",
+                  authorizations=[{"action": "bundle.deploy", "target": "bundle:examples/mv"}])
+    assert az.deploy_approval_warnings(m, m["waves"][0]["sessions"][0]) == []
+    plans = {"12.md": "Re-register with `bundle run register_metric_views -t dev`."}
+    warnings = az.plan_deploy_warnings(m, lambda s: plans.get(s["plan_file"]))
+    assert len(warnings) == 1 and "jobs.run_now" in warnings[0] and "(found in plan 12.md)" in warnings[0]
+    # Missing or unreadable plans are skipped, and manifest-level warnings are not repeated.
+    assert az.plan_deploy_warnings(m, lambda s: None) == []
+    assert az.plan_deploy_warnings(m, lambda s: (_ for _ in ()).throw(OSError("x"))) == []
+    m2 = _deploy_m(scope="bundle run register_metric_views",
+                   authorizations=[{"action": "bundle.deploy", "target": "bundle:examples/mv"}])
+    assert az.plan_deploy_warnings(m2, lambda s: plans.get(s["plan_file"])) == []
+
+
+def test_archived_waves_skip_deploy_approval_warnings():
+    m = _deploy_m(scope="bundle run register_metric_views")
+    m["waves"][0]["archived"] = True
+    assert not [w for w in az.validate_authorizations(m)[1] if "session 12" in w]

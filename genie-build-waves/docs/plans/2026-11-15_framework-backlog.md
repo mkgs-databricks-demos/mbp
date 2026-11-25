@@ -16,9 +16,11 @@ State on `main` is as of the date above.
 | 4 | Sessions cannot edit dashboard objects | Open | Adopt (planner guidance) | Only if the project has dashboards |
 | 5 | One request schema and routing to later sessions | Schema and grouping done 2026-11-15; warn/fail option open | Adopt | Done (schema) |
 | 6 | Non-standard session status values | Partly | Adopt (small) | Optional |
-| 7 | Failed or blocked sessions end SUCCESS | Documented; design note | Defer (design note) | No |
+| 7 | Failed or blocked sessions end SUCCESS | Documented; design note; monitor handles it with fresh runs (2026-11-25) | **Adopt** (raised 2026-11-25 after a consumer build: biggest remaining monitor-autonomy gap) | No, but next framework build |
 | 8 | Error patterns that match the redaction placeholder | Open | Adopt (planner note) | Only if telemetry gates are used |
 | 9 | Tooling versions (CLI, Node) | Partly | Defer | Only for JS projects |
+| 10 | Owner decisions recorded in Git (added 2026-11-25) | Open | Adopt (design) | No |
+| 11 | Machine-checked wave preconditions (added 2026-11-25) | Open | Adopt (design) | No |
 
 ## 1. Freshness is measured from the run start
 
@@ -74,7 +76,14 @@ Proposed: the runner skill states the allowed values explicitly next to its stat
 
 A session that writes `fail` or `blocked` still ends its `for_each` iteration SUCCESS, so repairing `w<wave>_sessions` re-runs nothing. README "Why not repair?" documents it, the level 4 monitor starts a fresh run instead (monitor skill section 8 step 4), and `2026-11-15_failing-session-iterations-design.md` describes how to make such iterations fail.
 
-Proposed: defer to the design note.
+Proposed (updated 2026-11-25): **adopt**, as the next framework change after the current consumer build finishes. Evidence from that build: a gitignored overrides file was fixed by the owner, the owner asked for a repair from `w<w>_sessions`, and the monitor had to stop and ask because that repair would rerun nothing; the fix cost a round trip with the owner even though the cause was gone. The 2026-11-25 monitor rules (fresh run for owner fixes outside Git, goal over mechanism) work around it; making a `blocked` / `fail` iteration end FAILED would let a plain repair rerun the session and remove the repair-versus-fresh-run distinction for people and monitors.
+
+Before building, decide from the design note:
+
+* **How the iteration fails.** The Genie Code task itself cannot set its own outcome, so either a small per-iteration check task (for_each inner task becomes runner + check) or `find_incomplete` treats `blocked` / `fail` as incomplete and routes them to the continuation pass.
+* **Cascade.** A failed iteration must still let the integrator and gate run (`run_if` on the integrator, or the If/else pattern already used after the gate) so the wave reports why it failed.
+* **Budget.** Repairs that now rerun sessions count against the monitor's `max_repairs` exactly like fresh runs do.
+* **Test it** with a scratch instance (a second genie-build-waves instance on a test manifest), since the job graph changes.
 
 ## 8. Error patterns that match the redaction placeholder
 
@@ -87,6 +96,29 @@ Proposed (planner and examples): use a negative lookahead, for example `api_toke
 An integrator once ran a Databricks CLI older than the bundle's fields required (`workspace.sync_mode` needs v1.23.0), and downloading a newer CLI was blocked. On serverless, `npm` and `npx` were broken symlinks; a working route was `pip install nodejs-wheel-binaries` plus `npm-cli.js`. The smoke job's `capability_probe` checks CLI access, not its version.
 
 Proposed: defer. When picked up, add the CLI version (and, for JS projects, a working Node route) to `capability_probe`, and a planner note on toolchain setup.
+
+## 10. Owner decisions recorded in Git
+
+An owner decision that changes a wave's outcome (defer a blocked session, accept a gate line, waive a check) is applied today by hand-editing `.build-status/<run>/<session>.json` in the workspace. An external monitor never writes workspace files (guardrail 2), so every such decision needs a person or an agent with workspace access, and the change is invisible in Git history. In a 2026-11-25 consumer build, deferring a UC Pages session (no Discover domain) needed a workspace edit by another agent before the monitor could repair.
+
+Proposed:
+
+* A tracked file, by default `<plans_dir>/owner_decisions.json`, next to the monitor grants file: entries `{wave, session_id, decision: "pass_deferred" | "waive_gate_line" | "waive_check", gate_line or check, reason, decided_by, request_id, expires_build}`.
+* The monitor may commit an entry only when the owner states the decision in their reply (quoted in the commit message), never on its own; an `authorization_policy` switch (`monitor_may_record_decisions`) turns this on.
+* The integrator and gate apply entries for the current build: a deferred session counts as `pass` with `deferred: true`; a waived line is reported as `waived`, not `pass`, in the gate file and the build verdict (folds in item 2's `waivers` block).
+* `validate_manifest` checks the file's shape; setup prints the active decisions.
+* With this, the monitor repairs from `w<w>_sync` (the sync pulls the decision) instead of waiting for a workspace edit.
+
+## 11. Machine-checked wave preconditions
+
+`manual_prereqs` are prose. When one is not met, the wave's sessions discover it at run time, after 5-10 minutes per session, and end `blocked`. In the 2026-11-25 consumer build two waves stopped that way: no Discover domain for a UC Pages session, and an agents bundle's overrides file naming a schema that did not exist (it was created by an earlier wave under another name).
+
+Proposed:
+
+* An optional per-wave `preconditions` list of machine checks, each `{name, check, hint}`, where `check` is one of a small set: `uc_object_exists` (catalog / schema / table / volume name), `discover_domain_exists` (name or id), `file_exists` (relative to `build_root`, gitignored files included), `json_value_matches` (file, key, `uc_object_exists` of its value), `bundle_validates` (bundle path, target).
+* A `w<w>_preconditions` notebook task between `w<w>_synced` and `w<w>_sessions` (like the sync task: never raises, writes `wave_<w>_preconditions.json`, sets a task value). A failed check excludes the wave's sessions and `build_verdict` reports `PRECONDITION_FAILED: <name>: <hint>` within seconds.
+* The monitor's decision table gets a row: a failed precondition is an owner step (escalate with the hint), or, when the owner then fixes it, a repair from `w<w>_preconditions` (no session ran, so a repair is enough).
+* Values that must not be committed (catalog names, schema names) are read from the files the check names, so manifests stay workspace-neutral.
 
 ## Done when
 

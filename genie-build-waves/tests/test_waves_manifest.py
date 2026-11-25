@@ -580,3 +580,31 @@ def test_find_incomplete_path_override_and_extension():
     assert wm.find_incomplete_notebook_path("/a/b/wave_gate_check") == "/a/b/find_incomplete_sessions"
     by = _by_key(wm.generate_wave_tasks(_manifest(), CFG, GATE, find_incomplete_path="/x/f.ipynb"))
     assert by["w2-0_find_incomplete"]["notebook_task"]["notebook_path"] == "/x/f.ipynb"
+
+
+def _branch_warnings(warnings):
+    return [w for w in warnings if "no top-level branch" in w]
+
+
+def test_top_level_branch_checks():
+    m = _manifest()
+    errors, warnings = wm.validate_manifest(m)
+    assert not _branch_warnings(warnings) and not [e for e in errors if e.startswith("branch ")]
+
+    del m["branch"]  # git workflow with sync on and no branch: warn
+    _, warnings = wm.validate_manifest(m)
+    assert len(_branch_warnings(warnings)) == 1
+
+    m["workflow"] = {"mode": "git", "sync_branch": False}  # no sync: no warning
+    assert not _branch_warnings(wm.validate_manifest(m)[1])
+    m["workflow"] = {"mode": "workspace"}
+    assert not _branch_warnings(wm.validate_manifest(m)[1])
+
+    for bad in ("", "  ", 7):
+        m = _manifest()
+        m["branch"] = bad
+        assert any(e.startswith("branch must be a non-empty string") for e in wm.validate_manifest(m)[0])
+    for protected in ("main", "master"):
+        m = _manifest()
+        m["branch"] = protected
+        assert any("never run on main/master" in e for e in wm.validate_manifest(m)[0])

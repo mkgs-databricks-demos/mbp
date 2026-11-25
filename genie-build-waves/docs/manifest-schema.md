@@ -34,7 +34,7 @@ The manifest supports three workflow modes that control how sessions operate and
 | `workflow` | Workflow | No | Workflow mode and Git settings. Defaults to `{"mode": "git"}`. |
 | `repo_root` | string | No | Absolute workspace path of the Git folder root. Only used in `git`/`hybrid` modes. Defaults to `build_root` if omitted. |
 | `bundle_root` | string | No | Absolute workspace path of the project root. Informational; the job parameter `build_root` is the runtime authority. |
-| `branch` | string | No | Default feature branch. Only used in `git`/`hybrid` modes. Informational; the job parameter `branch` is the runtime authority. |
+| `branch` | string | No (warned when missing with branch sync on) | The build's feature branch, `git`/`hybrid` modes. Setup pulls this branch before rendering (falling back to the build job's `branch` default) and patches the job's default from it; the job parameter `branch` is the runtime authority for wave tasks. Never `main`/`master` (error). Without it, setup can sync to an empty or stale job default (`SETUP_SYNC_FAILED`). |
 | `bundle_target` | string | No | The DABs target for validation and deploy checks (e.g. `dev`). Required for `git`/`hybrid` modes when sessions touch bundle YAML. |
 | `status_dir` | string | Yes | Directory for status and gate files, relative to `build_root`. Convention: `.build-status`. Never committed to Git. |
 | `plans_dir` | string | Yes | Directory containing plan files, relative to `build_root`. Convention: `docs/plans`. |
