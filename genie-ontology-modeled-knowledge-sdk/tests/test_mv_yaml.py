@@ -546,7 +546,8 @@ def test_cli_duplicate_names_across_folders(tmp_path):
 
 
 def test_cli_module_entry_point():
-    env = {**os.environ, "PYTHONPATH": str(REPO / "src")}
+    # Prepend src/ instead of replacing PYTHONPATH, so the test also passes against an installed wheel.
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join([str(REPO / "src"), os.environ.get("PYTHONPATH", "")])}
     good = subprocess.run(
         [sys.executable, "-m", "genie_ontology_modeled_knowledge_sdk.mv_yaml", "validate", str(GOOD)],
         env=env,

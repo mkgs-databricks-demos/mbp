@@ -662,7 +662,7 @@
         "All session status files have status pass",
         "pytest from a /tmp copy (same command as wave 1-0, directory /tmp/gos-gate-1-2); report as check 'pytest'",
         "In the /tmp copy: python -m pip wheel --no-deps -w dist . builds genie_ontology_modeled_knowledge_sdk-0.1.0-py3-none-any.whl; installing it in a fresh venv gives working gos-check-config, gos-validate-mv, gos-build-manifest, gos-render-agents and gos-scaffold (--help exits 0); report as check 'wheel'",
-        "grep finds no sys.path manipulation in templates/, and in notebooks/ only the init notebook's guarded developer fallback (runs only when the installed package is missing and the notebook sits in an SDK checkout); no PYTHONPATH=...vendored form in skills/ or templates/; report as check 'no_vendored_paths'",
+        "grep finds no sys.path manipulation in templates/, and in notebooks/ only the init notebook's guarded developer fallback (runs only when the installed package is missing and the notebook sits in an SDK checkout); no PYTHONPATH=...vendored form in skills/ or templates/, excluding templates/run/** (owned by session 28 and checked in wave 1-4); report as check 'no_vendored_paths'",
         "Every skills/ontology-*/SKILL.md has front matter name equal to its folder and a description that names the Genie Ontology Modeled Knowledge SDK stage; skills/README.md lists all six with stage, platform skills relied on and precedence; report as check 'skills_reconciled'",
         "databricks bundle validate --strict --target dev of the SDK bundle (root databricks.yml at build_root) passes with its gitignored dev overrides (the sdk_wheels volume exists since wave 1-0; the CLI requires the /Volumes artifact_path to exist, so placeholder values cannot validate); the existing-schema mode is checked by tests/test_sdk_bundle.py; report as check 'sdk_bundle_validate'",
         "In a fresh venv with only the built wheel (plus pytest, pyyaml, jsonschema) installed, the test suite run from a directory where src/ is not importable passes, and genie_ontology_modeled_knowledge_sdk.__file__ is under site-packages; tests/test_version.py shows pyproject.toml, __version__, the wheel metadata and the template sdk_version default all equal 0.1.0; report as check 'installed_wheel_tests'",
@@ -854,9 +854,10 @@
         "pytest from a /tmp copy (same command as wave 1-0, directory /tmp/gos-gate-1-4); report as check 'pytest'",
         "A run kit rendered by scaffold_project into /tmp has validate_manifest and validate_authorizations with 0 errors and 0 warnings; report as check 'run_kit_validate'",
         "test_run_kit.py fails on a deliberately broken copy (no top-level branch, or a deploying session without bundle.deploy); report as check 'run_kit_negative'",
-        "setup_project writes both overrides files with matching catalog and schema for a /tmp scratch project, a second run changes nothing, and notebooks/init_ontology_project.ipynb has empty required widget defaults; report as check 'guided_setup'"
+        "setup_project writes both overrides files with matching catalog and schema for a /tmp scratch project, a second run changes nothing, and notebooks/init_ontology_project.ipynb has empty required widget defaults; report as check 'guided_setup'",
+        "grep finds no PYTHONPATH=...vendored form and no sys.path instruction in templates/run/** (the run kit uses the installed wheel by default; the vendored copy only with vendor=True via load_sdk()); report as check 'run_kit_no_vendored_paths'"
       ],
-      "required_checks": ["pytest", "run_kit_validate", "run_kit_negative", "guided_setup"],
+      "required_checks": ["pytest", "run_kit_validate", "run_kit_negative", "guided_setup", "run_kit_no_vendored_paths"],
       "sessions": [
         {
           "session_id": "28",
