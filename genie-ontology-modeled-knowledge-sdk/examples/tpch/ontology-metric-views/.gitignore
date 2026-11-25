@@ -1,0 +1,6 @@
+# Bundle state and variable-overrides.json (workspace-specific values)
+.databricks/
+
+# Python
+__pycache__/
+*.pyc

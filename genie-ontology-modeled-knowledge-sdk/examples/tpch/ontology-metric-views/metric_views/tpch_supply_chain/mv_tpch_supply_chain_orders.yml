@@ -1,0 +1,116 @@
+# subdomain: sales
+# Order-grain metrics. One row of source = one order header.
+# KPIs: Order Volume. Header-basis order value lives here; line-item AOV is in mv_tpch_supply_chain_revenue.
+version: 1.1
+comment: "Order header metrics at order grain: order volume, order total price and ordering customers, by order date, status, priority, customer segment and customer geography. Customer counts here cover only customers who ordered (one third of customers have no orders)."
+
+source: ${source_catalog}.${source_schema}.orders
+
+joins:
+  # verified: orders -> customer on o_custkey = c_custkey, orphan_rate 0.0
+  - name: customer
+    source: ${source_catalog}.${source_schema}.customer
+    on: source.o_custkey = customer.c_custkey
+    cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+    joins:
+      # verified: customer -> nation on c_nationkey = n_nationkey, orphan_rate 0.0
+      - name: customer_nation
+        source: ${source_catalog}.${source_schema}.nation
+        on: customer.c_nationkey = customer_nation.n_nationkey
+        cardinality: many_to_one
+        rely:
+          at_most_one_match: true
+        joins:
+          # verified: nation -> region on n_regionkey = r_regionkey, orphan_rate 0.0
+          - name: customer_region
+            source: ${source_catalog}.${source_schema}.region
+            on: customer_nation.n_regionkey = customer_region.r_regionkey
+            cardinality: many_to_one
+            rely:
+              at_most_one_match: true
+
+dimensions:
+  - name: Order Date
+    expr: source.o_orderdate
+    comment: "Date the order was placed (1992-01-01 to 1998-08-02)"
+    format:
+      type: date
+      date_format: year_month_day
+  - name: Order Month
+    expr: DATE_TRUNC('MONTH', source.o_orderdate)
+    comment: "Calendar month the order was placed"
+  - name: Order Year
+    expr: YEAR(source.o_orderdate)
+    comment: "Calendar year the order was placed"
+  - name: Order Status
+    expr: source.o_orderstatus
+    comment: "Order status code ('F' all lines fulfilled, 'O' all lines open, 'P' partially fulfilled)"
+  - name: Order Priority
+    expr: source.o_orderpriority
+    synonyms:
+      - priority
+  - name: High Priority
+    expr: source.o_orderpriority IN ('1-URGENT', '2-HIGH')
+    comment: "True for 1-URGENT and 2-HIGH orders (TPC-H Q12 high-priority definition)"
+  - name: Market Segment
+    expr: customer.c_mktsegment
+    synonyms:
+      - customer segment
+  - name: Customer Nation
+    expr: customer.customer_nation.n_name
+    comment: "Nation of the ordering customer"
+    synonyms:
+      - customer country
+  - name: Customer Region
+    expr: customer.customer_nation.customer_region.r_name
+    comment: "Region of the ordering customer"
+
+measures:
+  - name: Order Count
+    expr: COUNT(1)
+    comment: "Number of orders (one source row per order)"
+    synonyms:
+      - order volume
+      - number of orders
+  - name: Order Total Price
+    expr: SUM(source.o_totalprice)
+    comment: "Sum of order header totals in USD (after discount, including tax). Never sum this through line items"
+    synonyms:
+      - order value
+      - bookings
+    format:
+      type: currency
+      currency_code: USD
+      abbreviation: compact
+  - name: Average Order Total
+    expr: MEASURE(`Order Total Price`) / MEASURE(`Order Count`)
+    comment: "Header-basis average order total in USD; the line-item-basis Average Order Value is in mv_tpch_supply_chain_revenue"
+    format:
+      type: currency
+      currency_code: USD
+  - name: Ordering Customer Count
+    expr: COUNT(DISTINCT source.o_custkey)
+    comment: "Distinct customers with at least one order in scope"
+  - name: Orders per Customer
+    expr: MEASURE(`Order Count`) / MEASURE(`Ordering Customer Count`)
+    comment: "Average orders per ordering customer"
+
+materialization:
+  mode: relaxed
+  schedule: every 6 hours
+  materialized_views:
+    - name: orders_by_month_segment_region
+      type: aggregated
+      dimensions:
+        - Order Month
+        - Order Status
+        - Order Priority
+        - Market Segment
+        - Customer Region
+      measures:
+        - "*"
+      refresh_policy: auto
+      cluster_by:
+        auto: true

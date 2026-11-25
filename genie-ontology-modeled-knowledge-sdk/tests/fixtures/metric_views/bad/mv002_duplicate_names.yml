@@ -1,0 +1,12 @@
+# Bad fixture for MV002: a dimension and a measure share a name (case-insensitive).
+version: 1.1
+source: ${source_catalog}.${source_schema}.orders
+
+dimensions:
+  - name: Region
+    expr: source.region
+
+measures:
+  - name: region
+    expr: COUNT(DISTINCT source.region)
+    comment: "Distinct regions"

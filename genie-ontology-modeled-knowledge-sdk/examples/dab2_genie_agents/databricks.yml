@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=bundle_config_schema.json
+bundle:
+  name: ontology-genie-agents
+  engine: direct  # Required for genie_spaces resource
+
+include:
+  - resources/*.yml
+
+variables:
+  warehouse_id:
+    description: SQL warehouse for Genie Agent
+  domain_name:
+    description: Domain label for the agent
+    default: sales
+  consumer_group:
+    description: UC group for CAN_RUN access
+  curator_group:
+    description: UC group for CAN_EDIT access
+
+targets:
+  dev:
+    mode: development
+    default: true
+    variables:
+      warehouse_id: ${var.dev_warehouse_id}
+      consumer_group: dev-analysts
+      curator_group: dev-bi-engineering
+    workspace:
+      host: ${var.dev_workspace_host}
+
+  prd:
+    mode: production
+    variables:
+      warehouse_id: ${var.prd_warehouse_id}
+      consumer_group: analysts
+      curator_group: bi-engineering
+    workspace:
+      host: ${var.prd_workspace_host}
+    permissions:
+      - user_name: deployer@company.com
+        level: CAN_MANAGE

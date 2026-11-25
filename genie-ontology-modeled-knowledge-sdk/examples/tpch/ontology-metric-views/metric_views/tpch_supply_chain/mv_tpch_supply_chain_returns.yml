@@ -1,0 +1,116 @@
+# subdomain: fulfillment
+# Line-item-grain return metrics (TPC-H Q10, SCOR AM.3.8 proxy).
+# KPIs: Return Rate, Returned Item Revenue Lost.
+version: 1.1
+comment: "Return metrics at order-line grain: returned revenue lost, returned quantity and return rates by quantity and by line, by customer, customer nation, ship mode and order month. A line is returned when its return flag is 'R'; TPC-H has no weight column, so return rate uses quantity or line count."
+
+source: ${source_catalog}.${source_schema}.lineitem
+
+joins:
+  # verified: lineitem -> orders on l_orderkey = o_orderkey, orphan_rate 0.0
+  - name: orders
+    source: ${source_catalog}.${source_schema}.orders
+    on: source.l_orderkey = orders.o_orderkey
+    cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+    joins:
+      # verified: orders -> customer on o_custkey = c_custkey, orphan_rate 0.0
+      - name: customer
+        source: ${source_catalog}.${source_schema}.customer
+        on: orders.o_custkey = customer.c_custkey
+        cardinality: many_to_one
+        rely:
+          at_most_one_match: true
+        joins:
+          # verified: customer -> nation on c_nationkey = n_nationkey, orphan_rate 0.0
+          - name: customer_nation
+            source: ${source_catalog}.${source_schema}.nation
+            on: customer.c_nationkey = customer_nation.n_nationkey
+            cardinality: many_to_one
+            rely:
+              at_most_one_match: true
+
+dimensions:
+  - name: Order Month
+    expr: DATE_TRUNC('MONTH', orders.o_orderdate)
+    comment: "Calendar month the order was placed (Q10 filters one order quarter)"
+  - name: Order Quarter
+    expr: DATE_TRUNC('QUARTER', orders.o_orderdate)
+    comment: "Calendar quarter the order was placed"
+  - name: Return Flag
+    expr: source.l_returnflag
+    comment: "'R' = returned"
+    synonyms:
+      - returned indicator
+  - name: Ship Mode
+    expr: source.l_shipmode
+    synonyms:
+      - shipping mode
+  - name: Customer Key
+    expr: orders.o_custkey
+    comment: "Customer identifier (Q10 ranks customers by returned revenue)"
+  - name: Customer Name
+    expr: orders.customer.c_name
+    comment: "Synthetic customer name"
+  - name: Market Segment
+    expr: orders.customer.c_mktsegment
+    synonyms:
+      - customer segment
+  - name: Customer Nation
+    expr: orders.customer.customer_nation.n_name
+    comment: "Nation of the ordering customer"
+
+measures:
+  - name: Returned Revenue
+    expr: SUM(source.l_extendedprice * (1 - source.l_discount)) FILTER (WHERE source.l_returnflag = 'R')
+    comment: "Discounted revenue in USD on returned lines (TPC-H Q10 revenue lost)"
+    synonyms:
+      - revenue lost to returns
+      - returned item revenue
+    format:
+      type: currency
+      currency_code: USD
+      abbreviation: compact
+  - name: Returned Quantity
+    expr: SUM(source.l_quantity) FILTER (WHERE source.l_returnflag = 'R')
+    comment: "Units on returned lines"
+  - name: Shipped Quantity
+    expr: SUM(source.l_quantity)
+    comment: "Units on all lines in scope"
+  - name: Return Rate
+    expr: MEASURE(`Returned Quantity`) / MEASURE(`Shipped Quantity`)
+    comment: "Returned units over all units (quantity proxy for SCOR return rate, which is weight based)"
+    synonyms:
+      - product return rate
+      - returns percentage
+    format:
+      type: percentage
+  - name: Returned Line Count
+    expr: COUNT(1) FILTER (WHERE source.l_returnflag = 'R')
+    comment: "Number of returned lines"
+  - name: Line Item Count
+    expr: COUNT(1)
+    comment: "Number of order lines"
+  - name: Return Line Rate
+    expr: MEASURE(`Returned Line Count`) / MEASURE(`Line Item Count`)
+    comment: "Returned lines over all lines (line-count basis)"
+    format:
+      type: percentage
+
+materialization:
+  mode: relaxed
+  schedule: every 6 hours
+  materialized_views:
+    - name: returns_by_quarter_nation_segment
+      type: aggregated
+      dimensions:
+        - Order Quarter
+        - Customer Nation
+        - Market Segment
+        - Return Flag
+      measures:
+        - "*"
+      refresh_policy: auto
+      cluster_by:
+        auto: true

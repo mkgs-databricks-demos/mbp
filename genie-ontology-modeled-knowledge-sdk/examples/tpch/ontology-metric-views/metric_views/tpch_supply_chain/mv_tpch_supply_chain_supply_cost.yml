@@ -1,0 +1,130 @@
+# subdomain: procurement
+# Part-supplier-offer-grain supply and inventory metrics (TPC-H Q2, Q11). One row of source = one offer.
+# KPIs: Inventory Value, Supply Cost. Offer and stock counts must come from partsupp (1,950 offers have no line items).
+version: 1.1
+comment: "Supply and inventory metrics at part-supplier offer grain: available stock, inventory value at supply cost, and unit supply cost, by part attributes and supplier geography. Snapshot data: there is no date column."
+
+source: ${source_catalog}.${source_schema}.partsupp
+
+joins:
+  # verified: partsupp -> part on ps_partkey = p_partkey, orphan_rate 0.0
+  - name: part
+    source: ${source_catalog}.${source_schema}.part
+    on: source.ps_partkey = part.p_partkey
+    cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+  # verified: partsupp -> supplier on ps_suppkey = s_suppkey, orphan_rate 0.0
+  - name: supplier
+    source: ${source_catalog}.${source_schema}.supplier
+    on: source.ps_suppkey = supplier.s_suppkey
+    cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+    joins:
+      # verified: supplier -> nation on s_nationkey = n_nationkey, orphan_rate 0.0
+      - name: supplier_nation
+        source: ${source_catalog}.${source_schema}.nation
+        on: supplier.s_nationkey = supplier_nation.n_nationkey
+        cardinality: many_to_one
+        rely:
+          at_most_one_match: true
+        joins:
+          # verified: nation -> region on n_regionkey = r_regionkey, orphan_rate 0.0
+          - name: supplier_region
+            source: ${source_catalog}.${source_schema}.region
+            on: supplier_nation.n_regionkey = supplier_region.r_regionkey
+            cardinality: many_to_one
+            rely:
+              at_most_one_match: true
+
+dimensions:
+  - name: Part Key
+    expr: source.ps_partkey
+    comment: "Part identifier (Q11 computes inventory value per part)"
+  - name: Part Type
+    expr: part.p_type
+    synonyms:
+      - product type
+  - name: Part Brand
+    expr: part.p_brand
+    synonyms:
+      - brand
+  - name: Manufacturer
+    expr: part.p_mfgr
+    synonyms:
+      - mfgr
+  - name: Part Size
+    expr: part.p_size
+    comment: "Part size (1 to 50); Q2 filters one size"
+  - name: Supplier Name
+    expr: supplier.s_name
+    comment: "Synthetic supplier name"
+    synonyms:
+      - vendor
+  - name: Supplier Nation
+    expr: supplier.supplier_nation.n_name
+    comment: "Nation of the supplier (Q11 filters one supplier nation)"
+    synonyms:
+      - vendor country
+  - name: Supplier Region
+    expr: supplier.supplier_nation.supplier_region.r_name
+    comment: "Region of the supplier (Q2 filters one supplier region)"
+
+measures:
+  - name: Offer Count
+    expr: COUNT(1)
+    comment: "Number of part-supplier offers"
+  - name: Available Quantity
+    expr: SUM(source.ps_availqty)
+    comment: "Units available across offers"
+    synonyms:
+      - stock on hand
+      - available stock
+  - name: Inventory Value
+    expr: SUM(source.ps_supplycost * source.ps_availqty)
+    comment: "Value in USD of available stock at supply cost (TPC-H Q11 important stock value)"
+    synonyms:
+      - stock value
+      - available stock value
+    format:
+      type: currency
+      currency_code: USD
+      abbreviation: compact
+  - name: Average Supply Cost
+    expr: AVG(source.ps_supplycost)
+    comment: "Mean unit supply cost in USD per offer"
+    synonyms:
+      - supplier cost
+      - unit cost
+    format:
+      type: currency
+      currency_code: USD
+  - name: Minimum Supply Cost
+    expr: MIN(source.ps_supplycost)
+    comment: "Lowest unit supply cost in USD (TPC-H Q2 minimum cost supplier)"
+    format:
+      type: currency
+      currency_code: USD
+  - name: Supplier Count
+    expr: COUNT(DISTINCT source.ps_suppkey)
+    comment: "Distinct suppliers with offers in scope"
+  - name: Part Count
+    expr: COUNT(DISTINCT source.ps_partkey)
+    comment: "Distinct parts with offers in scope"
+
+materialization:
+  mode: relaxed
+  schedule: every 6 hours
+  materialized_views:
+    - name: inventory_by_nation_mfgr
+      type: aggregated
+      dimensions:
+        - Supplier Region
+        - Supplier Nation
+        - Manufacturer
+      measures:
+        - "*"
+      refresh_policy: auto
+      cluster_by:
+        auto: true

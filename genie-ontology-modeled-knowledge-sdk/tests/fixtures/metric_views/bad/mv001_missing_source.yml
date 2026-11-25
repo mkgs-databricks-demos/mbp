@@ -1,0 +1,8 @@
+# Bad fixture for MV001: no `source`, and a bare-integer version.
+version: 1
+comment: "Orders without a source"
+
+measures:
+  - name: Order Count
+    expr: COUNT(1)
+    comment: "Number of orders"

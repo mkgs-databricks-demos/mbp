@@ -1,0 +1,12 @@
+# Bad fixture for MV004: a literal catalog in `source:`.
+version: 1.1
+source: samples.${source_schema}.orders
+
+dimensions:
+  - name: Order Priority
+    expr: source.o_orderpriority
+
+measures:
+  - name: Order Count
+    expr: COUNT(1)
+    comment: "Number of orders"

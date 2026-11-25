@@ -1,0 +1,15 @@
+domains:
+- name: tpch_supply_chain
+  description: 'TPC-H supply chain: customers order parts supplied by suppliers across
+    nations and regions.'
+  subdomains:
+  - name: tpch_supply_chain
+    metric_views:
+    - mv_tpch_supply_chain_fulfillment
+    - mv_tpch_supply_chain_market_share
+    - mv_tpch_supply_chain_orders
+    - mv_tpch_supply_chain_profit
+    - mv_tpch_supply_chain_returns
+    - mv_tpch_supply_chain_revenue
+    - mv_tpch_supply_chain_supply_cost
+    agent: tpch_supply_chain_agent

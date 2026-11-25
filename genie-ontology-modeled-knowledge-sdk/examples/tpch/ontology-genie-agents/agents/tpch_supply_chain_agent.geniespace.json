@@ -1,0 +1,151 @@
+{
+  "config": {
+    "sample_questions": [
+      {
+        "id": "15d45527d883587092f63a8683e68f42",
+        "question": [
+          "What share of market volume in the AMERICA region came from BRAZIL suppliers in 1995 and 1996?"
+        ]
+      },
+      {
+        "id": "214bbcba2bf95ed2952629962f8e61ed",
+        "question": [
+          "What is the on-time shipping rate by ship mode?"
+        ]
+      },
+      {
+        "id": "34b73b965cee57e4a52666907a97ec9c",
+        "question": [
+          "Which part types had the highest profit margin in 1997?"
+        ]
+      },
+      {
+        "id": "6cc2595aa71b53178cf68e7e4411d865",
+        "question": [
+          "What is the return rate by customer nation?"
+        ]
+      },
+      {
+        "id": "715a69b42c9451d58241b527c4822966",
+        "question": [
+          "What was revenue by market segment for each order year?"
+        ]
+      },
+      {
+        "id": "9b4946a9fed95de198ba4769ed6bb94e",
+        "question": [
+          "What is the inventory value at supply cost by supplier nation?"
+        ]
+      },
+      {
+        "id": "d2f92d7c8c425abc92b3133d339c260c",
+        "question": [
+          "How did order count and average order total change year over year?"
+        ]
+      },
+      {
+        "id": "ebbacd6a5cb85bd7acbd588fa126fb13",
+        "question": [
+          "Which 10 customers lost the most revenue to returns in the fourth quarter of 1993?"
+        ]
+      }
+    ]
+  },
+  "data_sources": {
+    "tables": [
+      {
+        "identifier": "${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment"
+      },
+      {
+        "identifier": "${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share"
+      },
+      {
+        "identifier": "${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders"
+      },
+      {
+        "identifier": "${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit"
+      },
+      {
+        "identifier": "${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns"
+      },
+      {
+        "identifier": "${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue"
+      },
+      {
+        "identifier": "${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost"
+      }
+    ]
+  },
+  "instructions": {
+    "example_question_sqls": [
+      {
+        "id": "3cdeaa4a5cf75a82b5201fb3b722f900",
+        "question": [
+          "Which 10 customers lost the most revenue to returns in the fourth quarter of 1993?"
+        ],
+        "sql": [
+          "SELECT\n",
+          "  `Customer Key`,\n",
+          "  `Customer Name`,\n",
+          "  `Customer Nation`,\n",
+          "  MEASURE(`Returned Revenue`) AS returned_revenue\n",
+          "FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns\n",
+          "WHERE `Order Quarter` = DATE'1993-10-01'\n",
+          "GROUP BY `Customer Key`, `Customer Name`, `Customer Nation`\n",
+          "ORDER BY returned_revenue DESC\n",
+          "LIMIT 10"
+        ]
+      },
+      {
+        "id": "f0562c16013550ca8e3a514caef155cb",
+        "question": [
+          "How did order count and average order total change year over year?"
+        ],
+        "sql": [
+          "WITH yearly AS (\n",
+          "  SELECT\n",
+          "    `Order Year`,\n",
+          "    MEASURE(`Order Count`) AS order_count,\n",
+          "    MEASURE(`Average Order Total`) AS average_order_total\n",
+          "  FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders\n",
+          "  GROUP BY `Order Year`\n",
+          ")\n",
+          "SELECT\n",
+          "  `Order Year`,\n",
+          "  order_count,\n",
+          "  order_count / LAG(order_count) OVER (ORDER BY `Order Year`) - 1 AS order_count_yoy_change,\n",
+          "  average_order_total,\n",
+          "  average_order_total / LAG(average_order_total) OVER (ORDER BY `Order Year`) - 1 AS average_order_total_yoy_change\n",
+          "FROM yearly\n",
+          "ORDER BY `Order Year`"
+        ]
+      },
+      {
+        "id": "f55d34ec8149540a9ce2093e4f571913",
+        "question": [
+          "What share of market volume in the AMERICA region came from BRAZIL suppliers in 1995 and 1996?"
+        ],
+        "sql": [
+          "SELECT\n",
+          "  `Order Year`,\n",
+          "  MEASURE(`Market Volume`) FILTER (WHERE `Supplier Nation` = 'BRAZIL') / MEASURE(`Market Volume`) AS brazil_market_share\n",
+          "FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share\n",
+          "WHERE `Customer Region` = 'AMERICA'\n",
+          "  AND `Order Year` IN (1995, 1996)\n",
+          "GROUP BY `Order Year`\n",
+          "ORDER BY `Order Year`"
+        ]
+      }
+    ],
+    "text_instructions": [
+      {
+        "content": [
+          "Revenue means the discounted Revenue measure (extended price after discount). Order Total Price in the orders view is the order header total including tax; use it only when the user asks for order totals.",
+          "A nation's market share is that supplier nation's Market Volume divided by the total Market Volume for the same customer region and order year (TPC-H Q8)."
+        ],
+        "id": "b200d35b402d585e880ef874d4d97a3c"
+      }
+    ]
+  },
+  "version": 2
+}

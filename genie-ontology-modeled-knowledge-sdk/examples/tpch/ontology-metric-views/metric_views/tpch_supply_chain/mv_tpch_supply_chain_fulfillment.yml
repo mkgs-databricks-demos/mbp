@@ -1,0 +1,117 @@
+# subdomain: fulfillment
+# Line-item-grain shipping and delivery metrics (TPC-H Q12, SCOR RL.3.1 / RS.3.111 proxies).
+# KPIs: On-Time Shipping Rate, Late Receipt, Order Fulfillment Cycle Time.
+version: 1.1
+comment: "Fulfillment metrics at order-line grain: on-time shipping and delivery against the commit date, late receipts and order-to-receipt cycle time, by ship mode, order priority and ship/receipt month. Commit date stands in for the customer request date (TPC-H has no request date)."
+
+source: ${source_catalog}.${source_schema}.lineitem
+
+joins:
+  # verified: lineitem -> orders on l_orderkey = o_orderkey, orphan_rate 0.0
+  - name: orders
+    source: ${source_catalog}.${source_schema}.orders
+    on: source.l_orderkey = orders.o_orderkey
+    cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+
+dimensions:
+  - name: Ship Date
+    expr: source.l_shipdate
+    comment: "Date the line item shipped"
+    format:
+      type: date
+      date_format: year_month_day
+  - name: Ship Month
+    expr: DATE_TRUNC('MONTH', source.l_shipdate)
+    comment: "Calendar month the line item shipped"
+  - name: Receipt Date
+    expr: source.l_receiptdate
+    comment: "Date the customer received the line item"
+    format:
+      type: date
+      date_format: year_month_day
+  - name: Receipt Month
+    expr: DATE_TRUNC('MONTH', source.l_receiptdate)
+    comment: "Calendar month the line item was received"
+  - name: Receipt Year
+    expr: YEAR(source.l_receiptdate)
+    comment: "Calendar year the line item was received (Q12 filters one receipt year)"
+  - name: Ship Mode
+    expr: source.l_shipmode
+    synonyms:
+      - shipping mode
+      - transport mode
+  - name: Line Status
+    expr: source.l_linestatus
+    comment: "Line status code ('O' open, 'F' fulfilled)"
+  - name: Order Priority
+    expr: orders.o_orderpriority
+    synonyms:
+      - priority
+  - name: High Priority
+    expr: orders.o_orderpriority IN ('1-URGENT', '2-HIGH')
+    comment: "True for 1-URGENT and 2-HIGH orders (TPC-H Q12 high-priority definition)"
+
+measures:
+  - name: Line Item Count
+    expr: COUNT(1)
+    comment: "Number of order lines"
+  - name: On-Time Shipped Line Count
+    expr: COUNT(1) FILTER (WHERE source.l_shipdate <= source.l_commitdate)
+    comment: "Lines shipped on or before their commit date"
+  - name: On-Time Shipping Rate
+    expr: MEASURE(`On-Time Shipped Line Count`) / MEASURE(`Line Item Count`)
+    comment: "Share of lines shipped on or before the commit date (ship-based proxy for SCOR delivery performance; seed definition)"
+    synonyms:
+      - on-time shipping
+      - OTS
+    format:
+      type: percentage
+  - name: Late Receipt Count
+    expr: COUNT(1) FILTER (WHERE source.l_receiptdate > source.l_commitdate)
+    comment: "Lines received after their commit date"
+    synonyms:
+      - late deliveries
+      - received after commit date
+  - name: On-Time Delivery Rate
+    expr: 1 - MEASURE(`Late Receipt Count`) / MEASURE(`Line Item Count`)
+    comment: "Share of lines received on or before the commit date (receipt-based proxy for SCOR RL.3.1; line basis, not order basis)"
+    synonyms:
+      - on-time delivery rate
+      - delivery performance
+      - OTD
+    format:
+      type: percentage
+  - name: Q12 Late Receipt Count
+    expr: COUNT(1) FILTER (WHERE source.l_receiptdate > source.l_commitdate AND source.l_shipdate < source.l_commitdate)
+    comment: "Lines shipped before the commit date but still received after it (TPC-H Q12 basis); group by Ship Mode and High Priority"
+  - name: Average Fulfillment Cycle Days
+    expr: AVG(DATEDIFF(source.l_receiptdate, orders.o_orderdate))
+    comment: "Mean days from order date to line receipt (proxy for SCOR order fulfillment cycle time, line basis)"
+    synonyms:
+      - order cycle time
+      - lead time
+      - OFCT
+  - name: Average Ship Lag Days
+    expr: AVG(DATEDIFF(source.l_shipdate, orders.o_orderdate))
+    comment: "Mean days from order date to line shipment"
+  - name: Average Transit Days
+    expr: AVG(DATEDIFF(source.l_receiptdate, source.l_shipdate))
+    comment: "Mean days from shipment to receipt"
+
+materialization:
+  mode: relaxed
+  schedule: every 6 hours
+  materialized_views:
+    - name: fulfillment_by_ship_month_mode_priority
+      type: aggregated
+      dimensions:
+        - Ship Month
+        - Ship Mode
+        - Order Priority
+      measures:
+        - "*"
+      refresh_policy: auto
+      cluster_by:
+        auto: true

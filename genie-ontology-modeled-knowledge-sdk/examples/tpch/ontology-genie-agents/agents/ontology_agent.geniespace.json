@@ -1,0 +1,39 @@
+{
+  "config": {
+    "sample_questions": [
+      {
+        "id": "799c8400d0c159a794002737a7783fc4",
+        "question": [
+          "What are the key measures in this domain?"
+        ]
+      },
+      {
+        "id": "ce4c921e59f35850b576ff7ddc006a1c",
+        "question": [
+          "Show the main measures by month."
+        ]
+      }
+    ]
+  },
+  "data_sources": {
+    "tables": [
+      {
+        "description": [
+          "Placeholder metric view. Replace with the metric views from the domain manifest."
+        ],
+        "identifier": "${target_catalog}.${target_schema}.mv_placeholder"
+      }
+    ]
+  },
+  "instructions": {
+    "text_instructions": [
+      {
+        "content": [
+          "Use the measures defined in the metric views; do not recompute them from raw tables."
+        ],
+        "id": "56df1fc8cf4251b98ce8bce891154e39"
+      }
+    ]
+  },
+  "version": 2
+}

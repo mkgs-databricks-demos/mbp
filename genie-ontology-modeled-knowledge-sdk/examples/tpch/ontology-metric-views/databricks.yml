@@ -1,0 +1,46 @@
+# Genie Ontology Modeled Knowledge SDK - metric view bundle (DAB 1).
+#
+# Owns the metric view YAML files under metric_views/<domain>/ and the
+# register_metric_views job that registers them (forEach) and tests them.
+#
+# No workspace host, user names or real catalog / warehouse values live in this
+# file. Use a CLI profile for the workspace and put real values in the
+# gitignored .databricks/bundle/<target>/variable-overrides.json (see README.md).
+bundle:
+  name: ontology-metric-views
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Catalog that holds the ontology schema and the registered metric views (the environment discriminator)
+  source_catalog:
+    description: Catalog of the source tables, substituted for the source_catalog token in metric view YAML
+  source_schema:
+    description: Schema of the source tables, substituted for the source_schema token in metric view YAML
+  warehouse_id:
+    description: SQL warehouse for ad hoc checks and the Genie Agent bundle (the job's tasks run on serverless notebooks)
+  schema_name:
+    description: Name of the ontology schema that receives the metric views (prefixed per user in development mode)
+    default: ontology
+  consumer_group:
+    description: Group granted USE_SCHEMA and SELECT on the ontology schema
+    default: account users
+
+targets:
+  dev:
+    mode: development
+    default: true
+    # Placeholders so `bundle validate` passes. Real values go in
+    # .databricks/bundle/dev/variable-overrides.json (gitignored).
+    variables:
+      catalog: main
+      source_catalog: samples
+      source_schema: tpch
+      warehouse_id: "<set-in-variable-overrides>"
+
+  prd:
+    mode: production
+    workspace:
+      root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}

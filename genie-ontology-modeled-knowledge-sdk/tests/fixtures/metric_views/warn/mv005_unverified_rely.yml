@@ -1,0 +1,19 @@
+# Warning fixture for MV005: rely.at_most_one_match without EDA evidence.
+version: 1.1
+source: ${source_catalog}.${source_schema}.orders
+
+joins:
+  - name: customer
+    source: ${source_catalog}.${source_schema}.customer
+    on: source.o_custkey = customer.c_custkey
+    rely:
+      at_most_one_match: true
+
+dimensions:
+  - name: Market Segment
+    expr: customer.c_mktsegment
+
+measures:
+  - name: Order Count
+    expr: COUNT(1)
+    comment: "Number of orders"

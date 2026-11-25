@@ -1,0 +1,11 @@
+# Warning fixture for MV006: a measure without a comment.
+version: 1.1
+source: ${source_catalog}.${source_schema}.orders
+
+dimensions:
+  - name: Order Priority
+    expr: source.o_orderpriority
+
+measures:
+  - name: Order Count
+    expr: COUNT(1)
