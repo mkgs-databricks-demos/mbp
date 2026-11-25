@@ -4,6 +4,7 @@
 
 | Session | Summary |
 |---|---|
+| [backlog-build-verdict-repair-guide](2026-11-25_backlog-build-verdict-repair-guide.md) | Backlog items 12 (no build-level verdict across runs: build ledger + `BUILD_COMPLETE` line) and 13 (repair guide still says a `w<w>_sessions` repair reruns a failed session; split into fresh run vs repair). |
 | [monitor-slack-escalation](2026-11-25_monitor-slack-escalation.md) | Draft: optional Slack escalation inputs for the monitor (channel/thread, owner Slack user id, `native_sync` or bounded `poll`); only the owner's Slack user can answer; Slack answers cannot widen authority. Needs the Devin Slack integration or MCP first. |
 | [branch-and-approval-checks](2026-11-25_branch-and-approval-checks.md) | Setup pulls the manifest's top-level `branch` (job default as fallback); `validate_manifest` warns without it and rejects main/master; setup warns when a deploying session runs a job or deploys a subfolder bundle without a matching approval (manifest and plan text). Backlog: item 7 adopt, new items 10 (owner decisions in Git) and 11 (machine-checked wave preconditions). |
 | [monitor-owner-fixes](2026-11-25_monitor-owner-fixes.md) | Monitor skill: level 4 starts a fresh run from `w<w>_sync` without asking when the owner reports a fix outside Git (gitignored file, workspace setting, grant); "goal over mechanism" rule for owner answers whose named repair would not reach their stated goal. |
