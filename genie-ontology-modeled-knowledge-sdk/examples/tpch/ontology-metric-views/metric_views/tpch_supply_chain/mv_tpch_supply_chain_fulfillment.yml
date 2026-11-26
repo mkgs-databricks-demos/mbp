@@ -39,6 +39,7 @@ dimensions:
     comment: "Calendar year the line item was received (Q12 filters one receipt year)"
   - name: Ship Mode
     expr: source.l_shipmode
+    comment: "Exact ship mode code, one of AIR, FOB, MAIL, RAIL, REG AIR, SHIP, TRUCK. AIR and REG AIR are different modes: filter with = or IN on the exact codes, never with LIKE or ILIKE. A question about several modes is answered with one row per mode (group by Ship Mode)"
     synonyms:
       - shipping mode
       - transport mode
@@ -51,7 +52,7 @@ dimensions:
       - priority
   - name: High Priority
     expr: orders.o_orderpriority IN ('1-URGENT', '2-HIGH')
-    comment: "True for 1-URGENT and 2-HIGH orders (TPC-H Q12 high-priority definition)"
+    comment: "Boolean: true for 1-URGENT and 2-HIGH orders, false for all other priorities (TPC-H Q12 high-priority definition). To compare high-priority orders with all other orders, group by High Priority and return it as the grouping column (true / false rows)"
 
 measures:
   - name: Line Item Count
@@ -62,7 +63,7 @@ measures:
     comment: "Lines shipped on or before their commit date"
   - name: On-Time Shipping Rate
     expr: MEASURE(`On-Time Shipped Line Count`) / MEASURE(`Line Item Count`)
-    comment: "Share of lines shipped on or before the commit date (ship-based proxy for SCOR delivery performance; seed definition)"
+    comment: "Share of lines shipped on or before the commit date, a fraction 0-1 (0.25 = 25%; the percentage format is display only). Return the value as is when a share or fraction is asked; do not multiply by 100. Ship-based proxy for SCOR delivery performance (seed definition)"
     synonyms:
       - on-time shipping
       - OTS
@@ -76,7 +77,7 @@ measures:
       - received after commit date
   - name: On-Time Delivery Rate
     expr: 1 - MEASURE(`Late Receipt Count`) / MEASURE(`Line Item Count`)
-    comment: "Share of lines received on or before the commit date (receipt-based proxy for SCOR RL.3.1; line basis, not order basis)"
+    comment: "Share of lines received on or before the commit date, a fraction 0-1 (0.25 = 25%; the percentage format is display only). Return the value as is when a share or fraction is asked; do not multiply by 100. Receipt-based proxy for SCOR RL.3.1 (line basis, not order basis)"
     synonyms:
       - on-time delivery rate
       - delivery performance

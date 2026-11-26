@@ -53,7 +53,7 @@ dimensions:
       - priority
   - name: High Priority
     expr: source.o_orderpriority IN ('1-URGENT', '2-HIGH')
-    comment: "True for 1-URGENT and 2-HIGH orders (TPC-H Q12 high-priority definition)"
+    comment: "Boolean: true for 1-URGENT and 2-HIGH orders, false for all other priorities (TPC-H Q12 high-priority definition). To compare high-priority orders with all other orders, group by High Priority and return it as the grouping column (true / false rows)"
   - name: Market Segment
     expr: customer.c_mktsegment
     synonyms:
@@ -92,7 +92,7 @@ measures:
       currency_code: USD
   - name: Ordering Customer Count
     expr: COUNT(DISTINCT source.o_custkey)
-    comment: "Distinct customers with at least one order in scope"
+    comment: "Distinct customers with at least one order in scope. For 'are there any nations with ...' comparisons, list the matching nations with both counts (one row per nation), not a yes/no flag"
   - name: Orders per Customer
     expr: MEASURE(`Order Count`) / MEASURE(`Ordering Customer Count`)
     comment: "Average orders per ordering customer"

@@ -3,7 +3,7 @@
 # composite lineitem -> partsupp join (many_to_one), so partsupp measures are not fanned out.
 # KPIs: Profit (product type profit).
 version: 1.1
-comment: "Profit metrics at order-line grain: discounted revenue minus supply cost of goods (supply cost x quantity), by part type, brand, manufacturer, supplier nation and order year (TPC-H Q9 product type profit)."
+comment: "Profit metrics at order-line grain: discounted revenue minus supply cost of goods (supply cost x quantity), by part type, brand, manufacturer, supplier nation and order year (TPC-H Q9 product type profit). A year-over-year 'change' is the absolute difference from the prior year (value minus the previous year's value) unless a percent change is asked."
 
 source: ${source_catalog}.${source_schema}.lineitem
 
@@ -92,7 +92,7 @@ measures:
       abbreviation: compact
   - name: Profit
     expr: MEASURE(`Revenue`) - MEASURE(`Cost of Goods Sold`)
-    comment: "Net revenue minus cost of goods sold in USD (TPC-H Q9 amount)"
+    comment: "Net revenue minus cost of goods sold in USD (TPC-H Q9 amount). A selection with no lines (for example a part name no part has) returns NULL; report the NULL, do not COALESCE it to 0. When combined with other views by Order Year, join the per-year results with an inner join on Order Year"
     synonyms:
       - product type profit
       - gross profit

@@ -2,7 +2,7 @@
 # Line-item-grain market volume with both customer and supplier geography (TPC-H Q8).
 # KPIs: National Market Share (supplier nation volume / total volume).
 version: 1.1
-comment: "Market volume at order-line grain with supplier geography and customer geography side by side, for national market share analysis (TPC-H Q8): the share of volume supplied by one supplier nation within a customer region, by order year and part type."
+comment: "Market volume at order-line grain with supplier geography and customer geography side by side, for national market share analysis (TPC-H Q8): the share of volume supplied by one supplier nation within a customer region, by order year and part type. National market share is MEASURE(`Market Volume`) FILTER (WHERE `Supplier Nation` = '<nation>') / MEASURE(`Market Volume`), a fraction 0-1; a share of total volume per group is the group's Market Volume over the total Market Volume. 'Across all years' means no Order Year grouping (one row when no breakdown is asked)."
 
 source: ${source_catalog}.${source_schema}.lineitem
 
@@ -86,7 +86,7 @@ dimensions:
 measures:
   - name: Market Volume
     expr: SUM(source.l_extendedprice * (1 - source.l_discount))
-    comment: "Discounted line revenue in USD used as market volume (TPC-H Q8 volume)"
+    comment: "Discounted line revenue in USD used as market volume (TPC-H Q8 volume). Shares built from it (national market share, share of total volume) are fractions 0-1: return them as is, do not multiply by 100. A selection with no lines (for example a year with no orders) returns NULL; report the NULL, do not COALESCE it to 0"
     synonyms:
       - volume
       - market revenue
@@ -96,7 +96,12 @@ measures:
       abbreviation: compact
   - name: Line Item Count
     expr: COUNT(1)
-    comment: "Number of order lines in the market"
+    comment: "Number of order lines in the market; for anything 'per order' use Order Count"
+  - name: Order Count
+    expr: COUNT(DISTINCT source.l_orderkey)
+    comment: "Distinct orders with at least one line in the selection; the denominator for market volume per order"
+    synonyms:
+      - number of orders
 
 materialization:
   mode: relaxed

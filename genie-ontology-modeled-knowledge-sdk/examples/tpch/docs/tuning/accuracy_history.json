@@ -15,5 +15,78 @@
       "correct": 160,
       "n": 191
     }
+  },
+  {
+    "changes": [
+      {
+        "step": 1,
+        "view": "mv_tpch_supply_chain_returns",
+        "what": "Return Rate / Return Line Rate comments (fraction, overall average), Returned Revenue NULL comment, Ship Mode comment"
+      },
+      {
+        "step": 2,
+        "view": "mv_tpch_supply_chain_returns",
+        "what": "Return Line Rate synonyms: refund rate on lines, share of lines returned"
+      },
+      {
+        "step": 1,
+        "view": "mv_tpch_supply_chain_fulfillment",
+        "what": "Ship Mode exact codes comment; High Priority boolean comment; On-Time Shipping/Delivery Rate fraction comments"
+      },
+      {
+        "step": 1,
+        "view": "mv_tpch_supply_chain_market_share",
+        "what": "view + Market Volume comments: national share formula, 0-1 fraction, across all years, NULL on empty"
+      },
+      {
+        "step": 6,
+        "view": "mv_tpch_supply_chain_market_share",
+        "what": "new measure Order Count (distinct l_orderkey)"
+      },
+      {
+        "step": 6,
+        "view": "mv_tpch_supply_chain_revenue",
+        "what": "new measure Discount Share = Discount Revenue / Gross Sales"
+      },
+      {
+        "step": 4,
+        "view": "mv_tpch_supply_chain_revenue",
+        "what": "Average Discount percentage format, exact 2 places"
+      },
+      {
+        "step": 1,
+        "view": "mv_tpch_supply_chain_revenue",
+        "what": "Revenue (ratio vs Order Total Price, NULL), Order Count, Average Discount comments"
+      },
+      {
+        "step": 1,
+        "view": "mv_tpch_supply_chain_profit",
+        "what": "view comment YoY absolute change; Profit NULL + inner join on Order Year"
+      },
+      {
+        "step": 1,
+        "view": "mv_tpch_supply_chain_orders",
+        "what": "High Priority boolean comment; Ordering Customer Count list-matching-nations comment"
+      },
+      {
+        "step": 8,
+        "view": "glossary",
+        "what": "National Market Share term (0-1 fraction, MV formula) + DRAFT page 05defcc6 re-upserted"
+      }
+    ],
+    "eval_run_id": "01f1e99cec631b77b86afd76cfd9923e",
+    "holdout": {
+      "accuracy": 0.9285714285714286,
+      "correct": 39,
+      "n": 42
+    },
+    "iteration": 1,
+    "label": "tuning_plan_01",
+    "started_at": "2026-11-26T13:26:01+00:00",
+    "tuning": {
+      "accuracy": 0.9267015706806283,
+      "correct": 177,
+      "n": 191
+    }
   }
 ]

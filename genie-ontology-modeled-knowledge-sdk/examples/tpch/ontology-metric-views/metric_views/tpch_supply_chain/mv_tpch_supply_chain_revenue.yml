@@ -94,7 +94,7 @@ dimensions:
 measures:
   - name: Revenue
     expr: SUM(source.l_extendedprice * (1 - source.l_discount))
-    comment: "Net revenue in USD: extended price after discount, before tax (TPC-H sum_disc_price)"
+    comment: "Net revenue in USD: extended price after discount, before tax (TPC-H sum_disc_price). To compare it with the order-header Order Total Price (mv_tpch_supply_chain_orders), show both and their ratio Revenue / Order Total Price. A selection with no lines returns NULL; report the NULL, do not COALESCE it to 0"
     synonyms:
       - net revenue
       - discounted revenue
@@ -143,7 +143,7 @@ measures:
     comment: "Number of order lines"
   - name: Order Count
     expr: COUNT(DISTINCT source.l_orderkey)
-    comment: "Distinct orders with at least one line in scope"
+    comment: "Distinct orders with at least one line in the selection. For order volume (orders placed) by order date, use Order Count in mv_tpch_supply_chain_orders"
   - name: Average Order Value
     expr: MEASURE(`Revenue`) / MEASURE(`Order Count`)
     comment: "Net revenue per order (line-item basis); differs from the header-basis Average Order Total in mv_tpch_supply_chain_orders by discount and tax"
@@ -155,7 +155,18 @@ measures:
       currency_code: USD
   - name: Average Discount
     expr: AVG(source.l_discount)
-    comment: "Mean line discount rate (0.00 to 0.10)"
+    comment: "Mean line discount rate, a fraction 0.00 to 0.10 (0.05 = 5%; the percentage format is display only); report it to 4 decimal places"
+    format:
+      type: percentage
+      decimal_places:
+        type: exact
+        places: 2
+  - name: Discount Share
+    expr: MEASURE(`Discount Revenue`) / MEASURE(`Gross Sales`)
+    comment: "Fraction 0-1 of gross sales given up through discounts: Discount Revenue / Gross Sales. Return it as is when a fraction or share is asked; do not multiply by 100"
+    synonyms:
+      - discount share of gross sales
+      - share of sales given up to discounts
     format:
       type: percentage
 

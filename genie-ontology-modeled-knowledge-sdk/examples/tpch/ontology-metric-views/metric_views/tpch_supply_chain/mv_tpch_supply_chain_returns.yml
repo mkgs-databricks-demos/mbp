@@ -45,6 +45,7 @@ dimensions:
       - returned indicator
   - name: Ship Mode
     expr: source.l_shipmode
+    comment: "Exact ship mode code, one of AIR, FOB, MAIL, RAIL, REG AIR, SHIP, TRUCK. AIR and REG AIR are different modes: filter with = or IN on the exact codes, never with LIKE or ILIKE. A question about several modes is answered with one row per mode (group by Ship Mode)"
     synonyms:
       - shipping mode
   - name: Customer Key
@@ -64,7 +65,7 @@ dimensions:
 measures:
   - name: Returned Revenue
     expr: SUM(source.l_extendedprice * (1 - source.l_discount)) FILTER (WHERE source.l_returnflag = 'R')
-    comment: "Discounted revenue in USD on returned lines (TPC-H Q10 revenue lost)"
+    comment: "Discounted revenue in USD on returned lines (TPC-H Q10 revenue lost). A selection with no returned lines returns NULL; report the NULL, do not COALESCE it to 0"
     synonyms:
       - revenue lost to returns
       - returned item revenue
@@ -80,7 +81,7 @@ measures:
     comment: "Units on all lines in scope"
   - name: Return Rate
     expr: MEASURE(`Returned Quantity`) / MEASURE(`Shipped Quantity`)
-    comment: "Returned units over all units, a fraction 0-1 (0.25 = 25%; the percentage format is display only). Quantity proxy for SCOR return rate, which is weight based"
+    comment: "Returned units over all units, a fraction 0-1 (0.25 = 25%; the percentage format is display only). Return the value as is when a share or fraction is asked; do not multiply by 100. Quantity proxy for SCOR return rate, which is weight based"
     synonyms:
       - product return rate
       - returns percentage
@@ -94,7 +95,10 @@ measures:
     comment: "Number of order lines"
   - name: Return Line Rate
     expr: MEASURE(`Returned Line Count`) / MEASURE(`Line Item Count`)
-    comment: "Returned lines over all lines (line-count basis), a fraction 0-1 (0.25 = 25%; the percentage format is display only)"
+    comment: "Returned lines over all lines (line-count basis), a fraction 0-1 (0.25 = 25%; the percentage format is display only). Return the value as is when a share or fraction of lines is asked; do not multiply by 100. The average across nations (or any other grouping) is the overall rate: this measure with no grouping, not the mean of the per-group rates"
+    synonyms:
+      - refund rate on lines
+      - share of lines returned
     format:
       type: percentage
 
