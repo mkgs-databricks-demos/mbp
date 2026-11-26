@@ -629,7 +629,7 @@ class FakeApi:
                 "expected_response": [_sql_resp("SELECT 0.25", [["0.25"]])],
             },
             "r3": {"assessment": "NEEDS_REVIEW", "actual_response": [{"response": "No SQL", "response_type": "TEXT"}]},
-            "r4": {"assessment": "BAD", "manual_assessment": True, "actual_response": []},
+            "r4": {"assessment": "GOOD", "manual_assessment": True, "actual_response": []},
         }
 
     def do(self, method, path, body=None, query=None):
@@ -677,12 +677,26 @@ def test_run_eval_polls_pages_and_maps_results(no_sleep):
     assert s2.matches_expected is False and s2.unit_mismatch is True and s2.text == "Rate"
     assert s2.split == "holdout" and s1.split == assign_splits([Question("s001", "x")])["s001"]
     assert x1.matches_expected is False and x1.needs_review is True and not x1.sql_generated
-    assert unknown.matches_expected is True and unknown.assessment == "GOOD"  # manual assessment wins
+    assert unknown.matches_expected is True and unknown.assessment == "GOOD"  # a reviewed verdict is in assessment
     assert run.needs_review == ["x001"]
     # poll sleeps grow; the 429 on the first poll was retried with backoff
     assert no_sleep[0] == 10 and 2.0 in no_sleep and 15.0 in no_sleep
     s = score(run.results)
     assert (s.total, s.matches_expected, s.needs_review, s.unit_mismatch) == (4, 2, 1, 1)
+
+
+@pytest.mark.parametrize("assessment", ["GOOD", "BAD", "NEEDS_REVIEW"])
+@pytest.mark.parametrize("manual", [False, True])
+def test_manual_assessment_is_a_flag_not_a_verdict(no_sleep, assessment, manual):
+    # Real API (wave 1-7): every result had manual_assessment=false next to the real verdict.
+    qs = load_question_set(QUESTION_SET)
+    api = FakeApi(qs, throttle_first_get=False)
+    for d in api.details.values():
+        d["assessment"], d["manual_assessment"] = assessment, manual
+    run = run_eval(SPACE, NS(api_client=api), questions=qs)
+    assert {r.assessment for r in run.results} == {assessment}
+    assert all(r.matches_expected is (assessment == "GOOD") for r in run.results)
+    assert score(run.results).matches_expected == (len(run.results) if assessment == "GOOD" else 0)
 
 
 def test_run_eval_without_question_ids_runs_all_and_fails_loud():

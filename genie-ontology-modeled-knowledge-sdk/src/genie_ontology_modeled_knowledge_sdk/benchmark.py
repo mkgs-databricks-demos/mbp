@@ -133,8 +133,9 @@ SDK floor 0.45 has no wrapper): ``POST /api/2.0/genie/spaces/{id}/eval-runs``
 all), polls ``GET .../eval-runs/{run}`` with growing intervals until
 ``eval_run_status`` leaves ``NOT_STARTED``/``RUNNING``, then pages
 ``GET .../eval-runs/{run}/results`` (100 per page) and reads
-``GET .../results/{result_id}`` for each. Per result: ``manual_assessment``
-(a reviewer's true/false) wins over ``assessment``; ``GOOD`` is a match,
+``GET .../results/{result_id}`` for each. Per result: ``assessment`` is the verdict
+(a reviewer's edit in the UI updates it; ``manual_assessment`` is only a
+flag saying whether that happened, never a verdict); ``GOOD`` is a match,
 ``BAD`` a miss, ``NEEDS_REVIEW`` or no assessment a miss with
 ``needs_review``. The ``SQL`` actual response gives ``sql``; its
 ``sql_execution_result`` gives ``sql_succeeded``, columns and rows (and
@@ -958,11 +959,9 @@ def _eval_result(item: Mapping[str, Any], details: Mapping[str, Any], q: Questio
         split=q.split if q else None,
         status=_enum_value(details.get("eval_run_status") or item.get("status")),
     )
-    manual = details.get("manual_assessment")
-    if isinstance(manual, bool):
-        assessment: str | None = "GOOD" if manual else "BAD"
-    else:
-        assessment = _enum_value(details.get("assessment"))
+    # ``assessment`` is the verdict. ``manual_assessment`` only says whether a
+    # reviewer set it (API: "Whether this evaluation was manually assessed").
+    assessment: str | None = _enum_value(details.get("assessment"))
     r.assessment = assessment
     r.matches_expected = assessment == "GOOD"
     r.needs_review = assessment not in ("GOOD", "BAD")
