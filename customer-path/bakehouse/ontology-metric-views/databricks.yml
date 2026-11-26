@@ -1,0 +1,75 @@
+# Genie Ontology Modeled Knowledge SDK - metric view bundle (DAB 1).
+#
+# Owns the metric view YAML files under metric_views/<domain>/ and the
+# register_metric_views job that registers them (forEach) and tests them.
+#
+# No workspace host, user names or real catalog / warehouse values live in this
+# file. Use a CLI profile for the workspace and put real values in the
+# gitignored .databricks/bundle/<target>/variable-overrides.json (see README.md).
+bundle:
+  name: ontology-metric-views
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Catalog that holds the ontology schema and the registered metric views (the environment discriminator)
+  source_catalog:
+    description: Catalog of the source tables, substituted for the source_catalog token in metric view YAML
+  source_schema:
+    description: Schema of the source tables, substituted for the source_schema token in metric view YAML
+  warehouse_id:
+    description: Optional SQL warehouse, used only by ad hoc checks when set and reported in resolved_target.json (the job's tasks run on serverless notebooks)
+    default: ""
+  schema_name:
+    description: Name of the ontology schema that receives the metric views (prefixed per user in development mode)
+    default: bakehouse_ontology
+  schema_grants:
+    description: >-
+      Unity Catalog grants on the ontology schema, a list of {principal,
+      privileges}. Default `account users`; dev defaults to the deploying
+      developer. Override the whole list per target in variable-overrides.json
+      to use a group or add a service principal (application id). Groups must
+      be account-level (workspace-local groups such as `admins` cannot hold
+      Unity Catalog grants).
+    type: complex
+    default:
+      - principal: account users
+        privileges: [USE_SCHEMA, SELECT]
+  # SDK wheel installed by every job task through the job environment (see
+  # README.md "SDK wheel"). The scaffold renders sdk_version from the SDK.
+  sdk_version:
+    description: Genie Ontology Modeled Knowledge SDK version to install (rendered by the scaffold from the SDK version)
+    default: 0.1.1
+  sdk_volume_path:
+    # No default on purpose: the /Volumes/<catalog>/<schema>/sdk_wheels path of
+    # the SDK bundle's volume differs per workspace.
+    description: Required. /Volumes path of the SDK bundle's sdk_wheels volume (set it in variable-overrides.json)
+  sdk_wheel_subpath:
+    description: Sub-path under sdk_volume_path where the SDK bundle publishes the wheel (confirmed by the SDK publish step)
+    default: .internal
+  sdk_wheel:
+    description: Full path of the SDK wheel the job environment installs
+    default: ${var.sdk_volume_path}/${var.sdk_wheel_subpath}/genie_ontology_modeled_knowledge_sdk-${var.sdk_version}-py3-none-any.whl
+
+targets:
+  dev:
+    mode: development
+    default: true
+    # Placeholders for the source and catalog values. Real values go in
+    # .databricks/bundle/dev/variable-overrides.json (gitignored).
+    variables:
+      catalog: main
+      source_catalog: samples
+      source_schema: tpch
+      sdk_volume_path: /Volumes/main/ontology_sdk/sdk_wheels
+      # The deploying developer by default; override in variable-overrides.json.
+      schema_grants:
+        - principal: ${workspace.current_user.userName}
+          privileges: [USE_SCHEMA, SELECT]
+
+  prd:
+    mode: production
+    workspace:
+      root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}

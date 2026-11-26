@@ -1,0 +1,586 @@
+{
+  "version": 1,
+  "description": "Genie Ontology Modeled Knowledge SDK pipeline run for project bakehouse, domain bakehouse_retail_sales: inputs check, parallel discovery (research, supplemental context, deep EDA), metric view synthesis, registration, UC Pages + Genie Agent curation, agent deployment, tuning. Rendered by genie_ontology_modeled_knowledge_sdk.scaffold from templates/run/.",
+  "workflow": {
+    "mode": "hybrid"
+  },
+  "branch": "genie-build-bakehouse",
+  "bundle_target": "dev",
+  "authorization_policy": {
+    "monitor_may_authorize": [
+      {"action": "jobs.run_now", "scope": "owned_assets"},
+      {"action": "bundle.deploy", "scope": "owned_assets"},
+      {"action": "volume.write", "scope": "owned_assets"},
+      {"action": "workspace.write", "scope": "owned_assets"}
+    ]
+  },
+  "status_dir": ".build-status",
+  "plans_dir": "docs/plans",
+  "sessions_dir": "docs/sessions",
+  "context_files": [
+    "sdk_config.json",
+    "PROJECT_MEMORY.md",
+    "docs/inputs_report.md"
+  ],
+  "waves": [
+    {
+      "wave_id": "0",
+      "name": "Inputs Check",
+      "gate": [
+        "All session status files have status pass",
+        "sdk_config.json passes genie_ontology_modeled_knowledge_sdk.config.validate_config with 0 errors (installed genie_ontology_modeled_knowledge_sdk 0.1.1: python -m genie_ontology_modeled_knowledge_sdk.config, or gos-* CLIs)",
+        "docs/inputs_report.md exists, lists every expanded source table, and its '## Access problems' section says 'none'"
+      ],
+      "sessions": [
+        {
+          "session_id": "01",
+          "title": "Inputs Check & Report",
+          "plan_file": "plans/01_inputs_check.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan 01: load and validate sdk_config.json, expand source tables, run config.check_access, write docs/inputs_report.md. Read-only on Unity Catalog. No Git commands.",
+          "owned_paths": [
+            "docs/inputs_report.md"
+          ],
+          "depends_on": []
+        }
+      ]
+    },
+    {
+      "wave_id": "1",
+      "name": "Discovery (research, context, EDA in parallel)",
+      "concurrency": 3,
+      "continuation_passes": 2,
+      "gate": [
+        "All session status files have status pass",
+        "docs/research/ has 01-04 research docs plus 05_domain_subdomain_proposal.md, each with at least one URL",
+        "docs/semantics/ has at least one glossary term file and genie_ontology_modeled_knowledge_sdk.pages.parse_glossary('docs/semantics') parses all of them without error",
+        "docs/context/00_source_inventory.md exists (it may state 'no supplemental inputs provided')",
+        "docs/data_profiles/ has one profile per table listed in docs/inputs_report.md plus data_model_summary.md, whose join table has a verified_cardinality for every row"
+      ],
+      "sessions": [
+        {
+          "session_id": "02",
+          "title": "Domain Research & Glossary",
+          "plan_file": "plans/02_domain_research.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan 02 using the ontology-domain-research skill (load it by its Unity Catalog id from sdk_config.json skills; fallback: skills/ontology-domain-research/SKILL.md in the SDK checkout): docs/research/01-05 and glossary term files in docs/semantics/ for bakehouse_retail_sales. Metadata-only table reads. No Git commands.",
+          "owned_paths": [
+            "docs/research/**",
+            "docs/semantics/**"
+          ],
+          "depends_on": ["01"]
+        },
+        {
+          "session_id": "03",
+          "title": "Supplemental Context Extraction",
+          "plan_file": "plans/03_supplemental_context.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan 03 using the ontology-context-extraction skill (load it by its Unity Catalog id from sdk_config.json skills; fallback: skills/ontology-context-extraction/SKILL.md in the SDK checkout): read supplemental_volume_dirs and dashboard_inputs (read-only) and write docs/context/**, including the no-inputs path. No Git commands.",
+          "owned_paths": [
+            "docs/context/**"
+          ],
+          "depends_on": ["01"]
+        },
+        {
+          "session_id": "04",
+          "title": "Deep EDA & Join Cardinality",
+          "plan_file": "plans/04_deep_eda.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan 04 using the ontology-deep-eda skill (load it by its Unity Catalog id from sdk_config.json skills; fallback: skills/ontology-deep-eda/SKILL.md in the SDK checkout): one profile per source table and data_model_summary.md with verified join cardinalities. Read-only SQL. No Git commands.",
+          "owned_paths": [
+            "docs/data_profiles/**"
+          ],
+          "depends_on": ["01"]
+        }
+      ]
+    },
+    {
+      "wave_id": "2",
+      "name": "Metric View Synthesis",
+      "continuation_passes": 2,
+      "gate": [
+        "All session status files have status pass",
+        "python -m genie_ontology_modeled_knowledge_sdk.mv_yaml validate ontology-metric-views/metric_views exits 0 (installed SDK wheel 0.1.1)",
+        "ontology-metric-views/metric_views/manifest.json exists, is a JSON array sorted by name, and lists every *.yml under metric_views/",
+        "No YAML under ontology-metric-views/metric_views/ contains a literal catalog in source: or joins[].source (rule MV004)",
+        "ontology-genie-agents passes bundle validate --strict after the render step its README documents, if any"
+      ],
+      "validate_bundles": [
+        {"root": "ontology-metric-views", "target": "dev"},
+        {"root": "ontology-genie-agents", "target": "dev"}
+      ],
+      "sessions": [
+        {
+          "session_id": "05",
+          "title": "Metric View YAML Synthesis",
+          "plan_file": "plans/05_metric_view_synthesis.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan 05 using the ontology-mv-synthesis skill (load it by its Unity Catalog id from sdk_config.json skills; fallback: skills/ontology-mv-synthesis/SKILL.md in the SDK checkout): parameterized metric view YAML per business process and grain, materialization blocks where the EDA signals call for them, and manifest.json. Read-only SQL. No registration, no Git commands.",
+          "owned_paths": [
+            "ontology-metric-views/metric_views/**"
+          ],
+          "depends_on": ["02", "03", "04"]
+        }
+      ]
+    },
+    {
+      "wave_id": "3",
+      "name": "Metric View Registration",
+      "manual_prereqs": [
+        {"session_id": "P-wheel", "title": "Owner publishes the SDK wheel genie_ontology_modeled_knowledge_sdk-0.1.1-py3-none-any.whl to the SDK sdk_wheels volume, sets sdk_volume_path in ontology-metric-views/.databricks/bundle/dev/variable-overrides.json, and grants READ VOLUME on it to the project's run-as principals and the genie-build-waves run-as user", "plan_file": "plans/06_metric_view_registration.md", "done_when": "<sdk_volume_path>/.internal/genie_ontology_modeled_knowledge_sdk-0.1.1-py3-none-any.whl exists and the build's run-as user can read it"}
+      ],
+      "gate": [
+        "All session status files have status pass",
+        "docs/registration/registration_results.md exists and records a register_metric_views job run that finished SUCCESS after this build run started; report as check 'registration_job'",
+        "docs/registration/registration_results.md shows every manifest.json entry registered and the smoke_test and cardinality_test tasks SUCCESS, and the job imported the installed SDK wheel 0.1.1 (not a vendored copy); report as check 'mv_smoke'",
+        "docs/registration/resolved_target.json exists with the resolved catalog, schema and warehouse_id of the dev target (from bundle summary); report as check 'resolved_target'",
+        "ontology-genie-agents passes bundle validate --strict after the render step its README documents, if any"
+      ],
+      "validate_bundles": [
+        {"root": "ontology-metric-views", "target": "dev"},
+        {"root": "ontology-genie-agents", "target": "dev"}
+      ],
+      "required_checks": ["registration_job", "mv_smoke", "resolved_target"],
+      "sessions": [
+        {
+          "session_id": "06",
+          "title": "Metric View Registration & Smoke Tests",
+          "plan_file": "plans/06_metric_view_registration.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "scope": "All tasks in plan 06: deploy the ontology-metric-views bundle to dev, run its register_metric_views job, and record results and resolved_target.json in docs/registration/. Deploy only that bundle and target. No Git commands.",
+          "owned_paths": [
+            "docs/registration/**"
+          ],
+          "owned_assets": [
+            "bundle:ontology-metric-views (dev target)",
+            "register_metric_views job of the ontology-metric-views bundle (dev target)"
+          ],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:ontology-metric-views (dev target)", "reason": "plan 06: bundle deploy of the project metric-views bundle"},
+            {"action": "jobs.run_now", "target": "register_metric_views job of the ontology-metric-views bundle (dev target)", "reason": "Registration is this session's deliverable; the job is run with bundle run register_metric_views."}
+          ],
+          "depends_on": ["05"]
+        }
+      ]
+    },
+    {
+      "wave_id": "4",
+      "name": "UC Pages + Genie Agent Curation",
+      "concurrency": 2,
+      "manual_prereqs": [
+        {"session_id": "P-pages", "title": "Owner sets sdk_config.json pages_domain_id to an existing Discover domain id the owner controls (or approves creating one). Without it session 07 runs the dry run only and ends pass with 'publishing deferred'", "plan_file": "plans/07_uc_pages.md", "done_when": "sdk_config.json has pages_domain_id, or the owner accepted the dry-run-only path"}
+      ],
+      "continuation_passes": 2,
+      "gate": [
+        "All session status files have status pass",
+        "docs/pages/pages_results.md exists and lists one page per glossary term parsed from docs/semantics/ and docs/context/glossary_candidates/, with the page id and status (DRAFT unless sdk_config.json pages_status says otherwise), or states 'publishing deferred' after a dry run when sdk_config.json has no pages_domain_id",
+        "ontology-genie-agents/agents/ has at least one *.geniespace.json and each passes genie_ontology_modeled_knowledge_sdk.geniespace.validate_space",
+        "No agent references more than max_metric_views_per_agent metric views, and every referenced view is registered per docs/registration/registration_results.md",
+        "Committed agent files are tokenized: no literal catalog, schema or warehouse id",
+        "docs/domain_manifest.yml exists",
+        "ontology-genie-agents passes bundle validate --strict after the render step its README documents, if any"
+      ],
+      "validate_bundles": [
+        {"root": "ontology-metric-views", "target": "dev"},
+        {"root": "ontology-genie-agents", "target": "dev"}
+      ],
+      "sessions": [
+        {
+          "session_id": "07",
+          "title": "UC Pages Registration",
+          "plan_file": "plans/07_uc_pages.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan 07: parse glossary terms, dry-run the UC Pages upsert with genie_ontology_modeled_knowledge_sdk.pages, then, only when sdk_config.json has pages_domain_id, upsert the pages in that domain with domain_id set and status DRAFT (or sdk_config.json pages_status); without it end pass with 'publishing deferred'. Write docs/pages/. No Git commands.",
+          "owned_paths": [
+            "docs/pages/**"
+          ],
+          "owned_assets": [
+            "UC Pages for the bakehouse_retail_sales glossary terms in the Discover domain sdk_config.json pages_domain_id"
+          ],
+          "authorizations": [
+            {"action": "workspace.write", "target": "UC Pages for the bakehouse_retail_sales glossary terms in the Discover domain sdk_config.json pages_domain_id", "reason": "Creating and updating UC Pages through the Pages API is this session's deliverable."}
+          ],
+          "depends_on": ["02", "03", "06"]
+        },
+        {
+          "session_id": "08",
+          "title": "Genie Agent Curation",
+          "plan_file": "plans/08_agent_curation.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan 08 using the ontology-agent-curation skill (load it by its Unity Catalog id from sdk_config.json skills; fallback: skills/ontology-agent-curation/SKILL.md in the SDK checkout): plan agents with the max_metric_views_per_agent rule, write tokenized .geniespace.json files, one genie_spaces resource entry per agent, and docs/domain_manifest.yml. No deploy, no Git commands.",
+          "owned_paths": [
+            "ontology-genie-agents/agents/**",
+            "ontology-genie-agents/resources/**",
+            "docs/domain_manifest.yml"
+          ],
+          "depends_on": ["05", "06"]
+        }
+      ]
+    },
+    {
+      "wave_id": "5",
+      "name": "Genie Agent Deployment",
+      "gate": [
+        "All session status files have status pass",
+        "docs/deployment/deployment_results.md lists every agent with its deployed Genie space id, deployed after this build run started",
+        "docs/deployment/deployment_results.md shows every agent answered its first sample question with a SUCCEEDED query attachment; report as check 'agent_probe'"
+      ],
+      "validate_bundles": [
+        {"root": "ontology-metric-views", "target": "dev"},
+        {"root": "ontology-genie-agents", "target": "dev"}
+      ],
+      "required_checks": ["agent_probe"],
+      "sessions": [
+        {
+          "session_id": "09",
+          "title": "Genie Agent Deployment & Probe",
+          "plan_file": "plans/09_agent_deployment.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "scope": "All tasks in plan 09: render the agents with geniespace render --params docs/registration/resolved_target.json --check, deploy the ontology-genie-agents bundle to dev, probe each agent with one sample question, and record space ids and results in docs/deployment/. Deploy only that bundle and target. No Git commands.",
+          "owned_paths": [
+            "docs/deployment/**"
+          ],
+          "owned_assets": [
+            "bundle:ontology-genie-agents (dev target)"
+          ],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:ontology-genie-agents (dev target)", "reason": "plan 09: bundle deploy of the project Genie Agents bundle"}
+          ],
+          "depends_on": ["08"]
+        }
+      ]
+    },
+    {
+      "wave_id": "6",
+      "name": "Benchmark Authoring (parallel by view group + cross-view)",
+      "concurrency": 3,
+      "continuation_passes": 2,
+      "gate": [
+        "All session status files have status pass",
+        "genie_ontology_modeled_knowledge_sdk.benchmark.coverage over docs/tuning/benchmark/*.yml and ontology-metric-views/metric_views/*.yml passes: 100-498 questions, at least 12 per metric view, every measure and dimension at least once, at least 25% cross-view; report as check 'benchmark_coverage'",
+        "Every question has expected_sql, and each authoring session's notes file lists every question id with statement state SUCCEEDED; report as check 'expected_sql_runs'"
+      ],
+      "required_checks": ["benchmark_coverage", "expected_sql_runs"],
+      "sessions": [
+        {
+          "session_id": "10a",
+          "title": "Benchmark Questions: View Group A",
+          "plan_file": "plans/10_benchmark_authoring.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan 10 for view group A (the first half of ontology-metric-views/metric_views/manifest.json by name) using the ontology-tuning skill (load it by its Unity Catalog id from sdk_config.json skills; fallback: skills/ontology-tuning/SKILL.md in the SDK checkout): single-view questions with expected_sql run read-only. No Git commands.",
+          "owned_paths": ["docs/tuning/benchmark/group_a.yml", "docs/tuning/benchmark/group_a_notes.md"],
+          "depends_on": ["09"]
+        },
+        {
+          "session_id": "10b",
+          "title": "Benchmark Questions: View Group B",
+          "plan_file": "plans/10_benchmark_authoring.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan 10 for view group B (the second half of ontology-metric-views/metric_views/manifest.json by name) using the ontology-tuning skill (load it by its Unity Catalog id from sdk_config.json skills; fallback: skills/ontology-tuning/SKILL.md in the SDK checkout): single-view questions with expected_sql run read-only. No Git commands.",
+          "owned_paths": ["docs/tuning/benchmark/group_b.yml", "docs/tuning/benchmark/group_b_notes.md"],
+          "depends_on": ["09"]
+        },
+        {
+          "session_id": "10c",
+          "title": "Benchmark Questions: Cross-View",
+          "plan_file": "plans/10_benchmark_authoring.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan 10 for cross-view questions (two or more metric views) using the ontology-tuning skill (load it by its Unity Catalog id from sdk_config.json skills; fallback: skills/ontology-tuning/SKILL.md in the SDK checkout), with expected_sql run read-only. No Git commands.",
+          "owned_paths": ["docs/tuning/benchmark/cross_view.yml", "docs/tuning/benchmark/cross_view_notes.md"],
+          "depends_on": ["09"]
+        }
+      ]
+    },
+    {
+      "wave_id": "7",
+      "name": "Benchmark Baseline",
+      "continuation_passes": 2,
+      "gate": [
+        "All session status files have status pass",
+        "docs/tuning/accuracy_history.json has a baseline entry from an evaluation that started after this build run started, with tuning and holdout accuracy; report as check 'baseline_results'",
+        "docs/tuning/tuning_plan_01.md classifies every failed tuning-split question with one category and a ladder step, and never cites a holdout question; report as check 'tuning_plan_01'",
+        "The agents were rendered with geniespace render --params docs/registration/resolved_target.json --check, and every agent file passes validate_space. The baseline accuracy is recorded, not gated"
+      ],
+      "validate_bundles": [
+        {"root": "ontology-metric-views", "target": "dev"},
+        {"root": "ontology-genie-agents", "target": "dev"}
+      ],
+      "required_checks": ["baseline_results", "tuning_plan_01"],
+      "sessions": [
+        {
+          "session_id": "11",
+          "title": "Benchmark Baseline & Tuning Plan 01",
+          "plan_file": "plans/11_benchmark_baseline.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "scope": "All tasks in plan 11 using the ontology-tuning skill (load it by its Unity Catalog id from sdk_config.json skills; fallback: skills/ontology-tuning/SKILL.md in the SDK checkout): assign tuning/holdout splits, add the benchmarks to the agent files, render with geniespace render --params docs/registration/resolved_target.json --check, deploy ontology-genie-agents to dev, run the baseline evaluation, and write accuracy_history.json and tuning_plan_01.md. No Git commands.",
+          "owned_paths": ["docs/tuning/**", "ontology-genie-agents/agents/**"],
+          "owned_assets": ["bundle:ontology-genie-agents (dev target)"],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:ontology-genie-agents (dev target)", "reason": "plan 11: deploy the agents with their benchmark questions"}
+          ],
+          "depends_on": ["10a", "10b", "10c"]
+        }
+      ]
+    },
+    {
+      "wave_id": "8",
+      "name": "Tuning Iteration 1 (mandatory, MV-first)",
+      "continuation_passes": 3,
+      "gate": [
+        "All session status files have status pass",
+        "docs/tuning/tuning_plan_01.md is marked applied, with an outcome for every action; docs/tuning/iterations/01.md and a new accuracy_history.json entry exist from an evaluation that started after this build run started; report as check 'iteration_01'",
+        "docs/tuning/tuning_plan_02.md exists; report as check 'next_plan'",
+        "Every change to an agent instruction or example SQL since the baseline has an exhaustion record in the tuning plans (all metric view and UC semantic ladder steps tried for that failure); report as check 'mv_first'",
+        "If any metric view YAML changed, the register_metric_views job has a SUCCESS run that started after the change; python -m genie_ontology_modeled_knowledge_sdk.mv_yaml validate ontology-metric-views/metric_views exits 0"
+      ],
+      "validate_bundles": [
+        {"root": "ontology-metric-views", "target": "dev"},
+        {"root": "ontology-genie-agents", "target": "dev"}
+      ],
+      "required_checks": ["iteration_01", "next_plan", "mv_first"],
+      "sessions": [
+        {
+          "session_id": "12",
+          "title": "Tuning Iteration 1 (MV-First)",
+          "plan_file": "plans/12_tuning_iteration.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "scope": "All tasks in plan 12 for iteration 1 using the ontology-tuning skill (load it by its Unity Catalog id from sdk_config.json skills; fallback: skills/ontology-tuning/SKILL.md in the SDK checkout): apply tuning_plan_01.md (metric views first, UC semantics next, agent instructions last), deploy ontology-metric-views and bundle run register_metric_views when YAML changed, redeploy ontology-genie-agents when agents changed, re-evaluate, write iterations/01.md and tuning_plan_02.md. No Git commands.",
+          "owned_paths": ["docs/tuning/**", "docs/semantics/**", "docs/pages/**", "ontology-metric-views/metric_views/**", "ontology-genie-agents/agents/**"],
+          "owned_assets": ["bundle:ontology-metric-views (dev target)", "register_metric_views job of the ontology-metric-views bundle (dev target)", "bundle:ontology-genie-agents (dev target)", "UC Pages for the bakehouse_retail_sales glossary terms in the Discover domain sdk_config.json pages_domain_id"],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:ontology-metric-views (dev target)", "reason": "tuning: redeploy changed metric view YAML"},
+            {"action": "jobs.run_now", "target": "register_metric_views job of the ontology-metric-views bundle (dev target)", "reason": "tuning: re-register changed metric views"},
+            {"action": "bundle.deploy", "target": "bundle:ontology-genie-agents (dev target)", "reason": "tuning: redeploy the agents after a justified change"},
+            {"action": "workspace.write", "target": "UC Pages for the bakehouse_retail_sales glossary terms in the Discover domain sdk_config.json pages_domain_id", "reason": "tuning ladder step: update a glossary page this run created"}
+          ],
+          "depends_on": ["11"]
+        }
+      ]
+    },
+    {
+      "wave_id": "9",
+      "name": "Tuning Iteration 2 (mandatory, MV-first)",
+      "continuation_passes": 3,
+      "gate": [
+        "All session status files have status pass",
+        "docs/tuning/tuning_plan_02.md is marked applied, with an outcome for every action; docs/tuning/iterations/02.md and a new accuracy_history.json entry exist from an evaluation that started after this build run started; report as check 'iteration_02'",
+        "docs/tuning/tuning_plan_03.md exists; report as check 'next_plan'",
+        "Every change to an agent instruction or example SQL since the baseline has an exhaustion record in the tuning plans; report as check 'mv_first'",
+        "If any metric view YAML changed, the register_metric_views job has a SUCCESS run that started after the change; python -m genie_ontology_modeled_knowledge_sdk.mv_yaml validate ontology-metric-views/metric_views exits 0"
+      ],
+      "validate_bundles": [
+        {"root": "ontology-metric-views", "target": "dev"},
+        {"root": "ontology-genie-agents", "target": "dev"}
+      ],
+      "required_checks": ["iteration_02", "next_plan", "mv_first"],
+      "sessions": [
+        {
+          "session_id": "13",
+          "title": "Tuning Iteration 2 (MV-First)",
+          "plan_file": "plans/12_tuning_iteration.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "scope": "All tasks in plan 12 for iteration 2 using the ontology-tuning skill (load it by its Unity Catalog id from sdk_config.json skills; fallback: skills/ontology-tuning/SKILL.md in the SDK checkout): apply tuning_plan_02.md, deploy ontology-metric-views and bundle run register_metric_views when YAML changed, redeploy ontology-genie-agents when agents changed, re-evaluate, write iterations/02.md and tuning_plan_03.md. No Git commands.",
+          "owned_paths": ["docs/tuning/**", "docs/semantics/**", "docs/pages/**", "ontology-metric-views/metric_views/**", "ontology-genie-agents/agents/**"],
+          "owned_assets": ["bundle:ontology-metric-views (dev target)", "register_metric_views job of the ontology-metric-views bundle (dev target)", "bundle:ontology-genie-agents (dev target)", "UC Pages for the bakehouse_retail_sales glossary terms in the Discover domain sdk_config.json pages_domain_id"],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:ontology-metric-views (dev target)", "reason": "tuning: redeploy changed metric view YAML"},
+            {"action": "jobs.run_now", "target": "register_metric_views job of the ontology-metric-views bundle (dev target)", "reason": "tuning: re-register changed metric views"},
+            {"action": "bundle.deploy", "target": "bundle:ontology-genie-agents (dev target)", "reason": "tuning: redeploy the agents after a justified change"},
+            {"action": "workspace.write", "target": "UC Pages for the bakehouse_retail_sales glossary terms in the Discover domain sdk_config.json pages_domain_id", "reason": "tuning ladder step: update a glossary page this run created"}
+          ],
+          "depends_on": ["12"]
+        }
+      ]
+    },
+    {
+      "wave_id": "10",
+      "name": "Tuning Iteration 3 (mandatory, MV-first)",
+      "continuation_passes": 3,
+      "gate": [
+        "All session status files have status pass",
+        "docs/tuning/tuning_plan_03.md is marked applied, with an outcome for every action; docs/tuning/iterations/03.md and a new accuracy_history.json entry exist from an evaluation that started after this build run started; report as check 'iteration_03'",
+        "docs/tuning/tuning_plan_04.md exists unless benchmark.asymptote already returns reached=true; report as check 'next_plan'",
+        "Every change to an agent instruction or example SQL since the baseline has an exhaustion record in the tuning plans; report as check 'mv_first'",
+        "If any metric view YAML changed, the register_metric_views job has a SUCCESS run that started after the change; python -m genie_ontology_modeled_knowledge_sdk.mv_yaml validate ontology-metric-views/metric_views exits 0"
+      ],
+      "validate_bundles": [
+        {"root": "ontology-metric-views", "target": "dev"},
+        {"root": "ontology-genie-agents", "target": "dev"}
+      ],
+      "required_checks": ["iteration_03", "next_plan", "mv_first"],
+      "sessions": [
+        {
+          "session_id": "14",
+          "title": "Tuning Iteration 3 (MV-First)",
+          "plan_file": "plans/12_tuning_iteration.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "scope": "All tasks in plan 12 for iteration 3 using the ontology-tuning skill (load it by its Unity Catalog id from sdk_config.json skills; fallback: skills/ontology-tuning/SKILL.md in the SDK checkout): apply tuning_plan_03.md, deploy ontology-metric-views and bundle run register_metric_views when YAML changed, redeploy ontology-genie-agents when agents changed, re-evaluate, write iterations/03.md and tuning_plan_04.md unless the asymptote rule is met. No Git commands.",
+          "owned_paths": ["docs/tuning/**", "docs/semantics/**", "docs/pages/**", "ontology-metric-views/metric_views/**", "ontology-genie-agents/agents/**"],
+          "owned_assets": ["bundle:ontology-metric-views (dev target)", "register_metric_views job of the ontology-metric-views bundle (dev target)", "bundle:ontology-genie-agents (dev target)", "UC Pages for the bakehouse_retail_sales glossary terms in the Discover domain sdk_config.json pages_domain_id"],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:ontology-metric-views (dev target)", "reason": "tuning: redeploy changed metric view YAML"},
+            {"action": "jobs.run_now", "target": "register_metric_views job of the ontology-metric-views bundle (dev target)", "reason": "tuning: re-register changed metric views"},
+            {"action": "bundle.deploy", "target": "bundle:ontology-genie-agents (dev target)", "reason": "tuning: redeploy the agents after a justified change"},
+            {"action": "workspace.write", "target": "UC Pages for the bakehouse_retail_sales glossary terms in the Discover domain sdk_config.json pages_domain_id", "reason": "tuning ladder step: update a glossary page this run created"}
+          ],
+          "depends_on": ["13"]
+        }
+      ]
+    },
+    {
+      "wave_id": "11",
+      "name": "Tuning Iteration 4 (conditional, until asymptote)",
+      "continuation_passes": 3,
+      "gate": [
+        "All session status files have status pass",
+        "Either docs/tuning/iterations/04.md records a full iteration (tuning_plan_04.md applied, new accuracy_history.json entry from an evaluation after this build run started, tuning_plan_05.md written unless the asymptote rule is met), or iterations/04.md records 'converged at iteration <j>' with the benchmark.asymptote output and no file outside docs/tuning changed; report as check 'iteration_04'",
+        "Every change to an agent instruction or example SQL since the baseline has an exhaustion record in the tuning plans; report as check 'mv_first'",
+        "If any metric view YAML changed, the register_metric_views job has a SUCCESS run that started after the change; python -m genie_ontology_modeled_knowledge_sdk.mv_yaml validate ontology-metric-views/metric_views exits 0"
+      ],
+      "validate_bundles": [
+        {"root": "ontology-metric-views", "target": "dev"},
+        {"root": "ontology-genie-agents", "target": "dev"}
+      ],
+      "required_checks": ["iteration_04", "mv_first"],
+      "sessions": [
+        {
+          "session_id": "15",
+          "title": "Tuning Iteration 4 (Conditional, MV-First)",
+          "plan_file": "plans/12_tuning_iteration.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "scope": "All tasks in plan 12 for iteration 4 using the ontology-tuning skill (load it by its Unity Catalog id from sdk_config.json skills; fallback: skills/ontology-tuning/SKILL.md in the SDK checkout): if benchmark.asymptote over accuracy_history.json returns reached=true, write iterations/04.md 'converged at iteration <j>' and change nothing else (pass); otherwise apply tuning_plan_04.md, deploy ontology-metric-views and bundle run register_metric_views when YAML changed, redeploy ontology-genie-agents when agents changed, re-evaluate, write iterations/04.md and tuning_plan_05.md. No Git commands.",
+          "owned_paths": ["docs/tuning/**", "docs/semantics/**", "docs/pages/**", "ontology-metric-views/metric_views/**", "ontology-genie-agents/agents/**"],
+          "owned_assets": ["bundle:ontology-metric-views (dev target)", "register_metric_views job of the ontology-metric-views bundle (dev target)", "bundle:ontology-genie-agents (dev target)", "UC Pages for the bakehouse_retail_sales glossary terms in the Discover domain sdk_config.json pages_domain_id"],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:ontology-metric-views (dev target)", "reason": "tuning: redeploy changed metric view YAML"},
+            {"action": "jobs.run_now", "target": "register_metric_views job of the ontology-metric-views bundle (dev target)", "reason": "tuning: re-register changed metric views"},
+            {"action": "bundle.deploy", "target": "bundle:ontology-genie-agents (dev target)", "reason": "tuning: redeploy the agents after a justified change"},
+            {"action": "workspace.write", "target": "UC Pages for the bakehouse_retail_sales glossary terms in the Discover domain sdk_config.json pages_domain_id", "reason": "tuning ladder step: update a glossary page this run created"}
+          ],
+          "depends_on": ["14"]
+        }
+      ]
+    },
+    {
+      "wave_id": "12",
+      "name": "Tuning Iteration 5 (conditional, until asymptote)",
+      "continuation_passes": 3,
+      "gate": [
+        "All session status files have status pass",
+        "Either docs/tuning/iterations/05.md records a full iteration (tuning_plan_05.md applied, new accuracy_history.json entry from an evaluation after this build run started, tuning_plan_06.md written unless the asymptote rule is met), or iterations/05.md records 'converged at iteration <j>' with the benchmark.asymptote output and no file outside docs/tuning changed; report as check 'iteration_05'",
+        "Every change to an agent instruction or example SQL since the baseline has an exhaustion record in the tuning plans; report as check 'mv_first'",
+        "If any metric view YAML changed, the register_metric_views job has a SUCCESS run that started after the change; python -m genie_ontology_modeled_knowledge_sdk.mv_yaml validate ontology-metric-views/metric_views exits 0"
+      ],
+      "validate_bundles": [
+        {"root": "ontology-metric-views", "target": "dev"},
+        {"root": "ontology-genie-agents", "target": "dev"}
+      ],
+      "required_checks": ["iteration_05", "mv_first"],
+      "sessions": [
+        {
+          "session_id": "16",
+          "title": "Tuning Iteration 5 (Conditional, MV-First)",
+          "plan_file": "plans/12_tuning_iteration.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "scope": "All tasks in plan 12 for iteration 5 using the ontology-tuning skill (load it by its Unity Catalog id from sdk_config.json skills; fallback: skills/ontology-tuning/SKILL.md in the SDK checkout): if benchmark.asymptote over accuracy_history.json returns reached=true, write iterations/05.md 'converged at iteration <j>' and change nothing else (pass); otherwise apply tuning_plan_05.md, deploy ontology-metric-views and bundle run register_metric_views when YAML changed, redeploy ontology-genie-agents when agents changed, re-evaluate, write iterations/05.md and tuning_plan_06.md. No Git commands.",
+          "owned_paths": ["docs/tuning/**", "docs/semantics/**", "docs/pages/**", "ontology-metric-views/metric_views/**", "ontology-genie-agents/agents/**"],
+          "owned_assets": ["bundle:ontology-metric-views (dev target)", "register_metric_views job of the ontology-metric-views bundle (dev target)", "bundle:ontology-genie-agents (dev target)", "UC Pages for the bakehouse_retail_sales glossary terms in the Discover domain sdk_config.json pages_domain_id"],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:ontology-metric-views (dev target)", "reason": "tuning: redeploy changed metric view YAML"},
+            {"action": "jobs.run_now", "target": "register_metric_views job of the ontology-metric-views bundle (dev target)", "reason": "tuning: re-register changed metric views"},
+            {"action": "bundle.deploy", "target": "bundle:ontology-genie-agents (dev target)", "reason": "tuning: redeploy the agents after a justified change"},
+            {"action": "workspace.write", "target": "UC Pages for the bakehouse_retail_sales glossary terms in the Discover domain sdk_config.json pages_domain_id", "reason": "tuning ladder step: update a glossary page this run created"}
+          ],
+          "depends_on": ["15"]
+        }
+      ]
+    },
+    {
+      "wave_id": "13",
+      "name": "Tuning Iteration 6 (conditional) & Asymptote Gate",
+      "continuation_passes": 3,
+      "gate": [
+        "All session status files have status pass",
+        "Either docs/tuning/iterations/06.md records a full iteration (tuning_plan_06.md applied, new accuracy_history.json entry from an evaluation after this build run started) or 'converged at iteration <j>'; report as check 'iteration_06'",
+        "benchmark.asymptote over docs/tuning/accuracy_history.json returns reached=true with at least 3 completed fix iterations (tuning plans 01-03 applied); report as check 'asymptote'. If it is not reached after iteration 6 this check fails and the owner decides whether to append iterations",
+        "docs/tuning/tuning_summary.md has the accuracy curve (tuning and holdout per iteration), every change by ladder step, and every remaining failure with its category and exhausted ladder steps; report as check 'tuning_summary'",
+        "Every change to an agent instruction or example SQL since the baseline has an exhaustion record in the tuning plans; report as check 'mv_first'. Accuracy targets are recorded in tuning_summary.md, not gated"
+      ],
+      "validate_bundles": [
+        {"root": "ontology-metric-views", "target": "dev"},
+        {"root": "ontology-genie-agents", "target": "dev"}
+      ],
+      "required_checks": ["iteration_06", "asymptote", "tuning_summary", "mv_first"],
+      "sessions": [
+        {
+          "session_id": "17",
+          "title": "Tuning Iteration 6 (Conditional) & Tuning Summary",
+          "plan_file": "plans/12_tuning_iteration.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "allow_deploy": true,
+          "scope": "All tasks in plan 12 for iteration 6 using the ontology-tuning skill (load it by its Unity Catalog id from sdk_config.json skills; fallback: skills/ontology-tuning/SKILL.md in the SDK checkout): if benchmark.asymptote returns reached=true, write iterations/06.md 'converged at iteration <j>'; otherwise apply tuning_plan_06.md with the same deploy and re-register rules and re-evaluate. Then write docs/tuning/tuning_summary.md. No Git commands.",
+          "owned_paths": ["docs/tuning/**", "docs/semantics/**", "docs/pages/**", "ontology-metric-views/metric_views/**", "ontology-genie-agents/agents/**"],
+          "owned_assets": ["bundle:ontology-metric-views (dev target)", "register_metric_views job of the ontology-metric-views bundle (dev target)", "bundle:ontology-genie-agents (dev target)", "UC Pages for the bakehouse_retail_sales glossary terms in the Discover domain sdk_config.json pages_domain_id"],
+          "authorizations": [
+            {"action": "bundle.deploy", "target": "bundle:ontology-metric-views (dev target)", "reason": "tuning: redeploy changed metric view YAML"},
+            {"action": "jobs.run_now", "target": "register_metric_views job of the ontology-metric-views bundle (dev target)", "reason": "tuning: re-register changed metric views"},
+            {"action": "bundle.deploy", "target": "bundle:ontology-genie-agents (dev target)", "reason": "tuning: redeploy the agents after a justified change"},
+            {"action": "workspace.write", "target": "UC Pages for the bakehouse_retail_sales glossary terms in the Discover domain sdk_config.json pages_domain_id", "reason": "tuning ladder step: update a glossary page this run created"}
+          ],
+          "depends_on": ["16"]
+        }
+      ]
+    },
+    {
+      "wave_id": "14",
+      "name": "Independent Report Simulation",
+      "continuation_passes": 2,
+      "gate": [
+        "All session status files have status pass",
+        "docs/evaluation/report_simulation_results.md has 4-5 report personas, each with 8-15 turns asked in one Genie conversation, a per-turn grade against pre-registered ground-truth SQL over the source tables, a per-report score and an overall score; report as check 'report_simulation'",
+        "Every ground-truth query file under docs/evaluation/ground_truth/ was written before its report was run (timestamps in the results file) and ran with state SUCCEEDED; report as check 'ground_truth'",
+        "The session summary states that no file under docs/tuning/ and no agent instructions were read. An overall score below 80% is recorded as a backlog item, not a failure"
+      ],
+      "required_checks": ["report_simulation", "ground_truth"],
+      "sessions": [
+        {
+          "session_id": "18",
+          "title": "Independent Report Simulation",
+          "plan_file": "plans/13_report_simulation.md",
+          "mode": "edit",
+          "allow_execute": true,
+          "scope": "All tasks in plan 13: without reading docs/tuning/ or agent instructions, write 4-5 report personas and their ground-truth SQL over the source tables first, then ask each report's turns in one Genie conversation per report and grade them; write docs/evaluation/. Read-only SQL, no deploys, no Git commands.",
+          "owned_paths": ["docs/evaluation/**"],
+          "depends_on": ["17"]
+        }
+      ]
+    }
+  ]
+}
