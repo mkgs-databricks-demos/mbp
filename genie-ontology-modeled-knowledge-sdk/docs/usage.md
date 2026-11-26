@@ -13,7 +13,7 @@ Before any project, choose where the SDK lives and deploy it as a bundle. Open `
 | `sdk_catalog` | Existing catalog for the SDK schema (required) |
 | `sdk_schema` | SDK schema. A **new** schema the SDK bundle creates is recommended (default `ontology_sdk`; the `dev` target prefixes it `dev_<user>_`) |
 | `schema_mode` | `new` (recommended; targets `dev` or `prod`) or `existing` (the schema must exist; target `prod_existing_schema` creates only the `sdk_wheels` volume) |
-| `consumer_group` | Group granted `USE_SCHEMA` and `READ_VOLUME` (required for `prod` targets) |
+| `readers` | Optional principals granted `USE_SCHEMA` and `READ_VOLUME` (user names, account-level groups, service principal application ids). Empty: the bundle default, which is the deploying developer in `dev` and `account users` in `prod` |
 | `warehouse_id` | SQL warehouse (required) |
 
 The notebook calls `setup_project.setup_sdk`: it checks that the catalog exists and that you can create the schema (or that the existing schema exists and you can create a volume in it), then writes the SDK bundle's gitignored `.databricks/bundle/<target>/variable-overrides.json` and prints the exact steps. Nothing is deployed, granted or created by the notebook; a missing catalog writes nothing. Then, from a terminal at the SDK root:
@@ -28,7 +28,7 @@ The notebook calls `setup_project.setup_sdk`: it checks that the catalog exists 
 
 | Way | When | How |
 |---|---|---|
-| **Wheel** (default) | Every project | The SDK bundle publishes `genie_ontology_modeled_knowledge_sdk-<version>-py3-none-any.whl` to its `sdk_wheels` volume. Readers need `READ VOLUME` on it (`consumer_group`; project run-as principals and the genie-build-waves run-as user must be members). Projects pin `sdk_version` in the metric-views overrides; the job environment installs `<sdk_volume_path>/.internal/genie_ontology_modeled_knowledge_sdk-<sdk_version>-py3-none-any.whl`. In notebooks: `%pip install --upgrade databricks-sdk <wheel path>` then `dbutils.library.restartPython()` |
+| **Wheel** (default) | Every project | The SDK bundle publishes `genie_ontology_modeled_knowledge_sdk-<version>-py3-none-any.whl` to its `sdk_wheels` volume. Readers need `READ VOLUME` on it (`sdk_volume_grants`: the developer in `dev`, `account users` in `prod` by default; add project run-as principals and the genie-build-waves run-as user if they are not covered). Projects pin `sdk_version` in the metric-views overrides; the job environment installs `<sdk_volume_path>/.internal/genie_ontology_modeled_knowledge_sdk-<sdk_version>-py3-none-any.whl`. In notebooks: `%pip install --upgrade databricks-sdk <wheel path>` then `dbutils.library.restartPython()` |
 | **Vendored** (opt-in) | No package egress or locked-down workspaces | `vendor` = `true` in the init notebook, `scaffold_project(..., vendor=True)` or `gos-scaffold --vendor`: copies the SDK modules the project notebooks import into `ontology-metric-views/src/genie_ontology_modeled_knowledge_sdk_vendored/` plus a `VENDORED_VERSION` file. No wheel prerequisite |
 | **Editable install** | SDK development | `pip install -e .` at the SDK root (add `.[dev]` for pytest, ruff, mypy). The init notebook falls back to `<sdk>/src` only when the package is not installed and it runs from an SDK checkout |
 
@@ -80,8 +80,8 @@ Both bundles read workspace-specific values from gitignored files. The guided no
 
 | File | Keys |
 |---|---|
-| `ontology-metric-views/.databricks/bundle/<target>/variable-overrides.json` | `catalog`, `schema_name`, `warehouse_id`, `consumer_group`, `source_catalog`, `source_schema`; wheel mode adds `sdk_volume_path`, `sdk_version` |
-| `ontology-genie-agents/.databricks/bundle/<target>/variable-overrides.json` | `catalog`, `schema`, `warehouse_id`, `consumer_group`, `curator_group` |
+| `ontology-metric-views/.databricks/bundle/<target>/variable-overrides.json` | `catalog`, `schema_name`, `warehouse_id`, `source_catalog`, `source_schema`, optional `schema_grants` (from `readers`); wheel mode adds `sdk_volume_path`, `sdk_version` |
+| `ontology-genie-agents/.databricks/bundle/<target>/variable-overrides.json` | `catalog`, `schema`, `warehouse_id`, optional `agent_permissions` (`CAN_RUN` for `readers`, `CAN_EDIT` for `curators`) |
 
 The agents bundle `schema` must be the schema DAB 1 actually registers into. In the `dev` target that is the dev-prefixed schema (`dev_<user>_<schema_name>`, where `schema_name` is the scaffolded `target_schema`); `write_overrides` resolves it from the current user. A mismatch blocked build-0 wave 0-8 once; check it with `information_schema.tables` after registration. Variable details are in the [metric views template README](../templates/ontology-metric-views/README.md) and the [Genie Agents template README](../templates/ontology-genie-agents/README.md).
 
@@ -136,7 +136,7 @@ Only `catalog`, `warehouse_id` and the deployment target change between environm
 
 Without the notebooks, the same steps by hand:
 
-1. **SDK bundle overrides**: `<sdk>/.databricks/bundle/<target>/variable-overrides.json` with `sdk_catalog`, `sdk_schema`, `warehouse_id` and (prod targets) `sdk_consumer_group`; then the deploy steps in step 0.
+1. **SDK bundle overrides**: `<sdk>/.databricks/bundle/<target>/variable-overrides.json` with `sdk_catalog`, `sdk_schema`, `warehouse_id` and, optionally, `sdk_schema_grants` / `sdk_volume_grants`; then the deploy steps in step 0.
 2. **Scaffold**: `gos-scaffold` as in step 2 (add `--vendor` for the vendored copy).
 3. **Project overrides**: write the two files in step 3 by hand. Keep `catalog` identical and set the agents `schema` to the resolved metric-view schema; after registration, confirm it with `information_schema.tables`.
 4. **Vars file**: a JSON file outside the repository with `project_name`, `instance_suffix`, `build_root` (project root), `build_branch`, `manifest_path` (`<build_root>/docs/plans/waves.json`), `skills_catalog`, `skills_schema` ([genie-build-waves README](../../genie-build-waves/README.md)).

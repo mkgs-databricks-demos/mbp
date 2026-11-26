@@ -72,8 +72,9 @@ def test_bundle_basics(bundle):
     assert bundle["bundle"]["name"] == "genie_ontology_modeled_knowledge_sdk"
     assert bundle["include"] == ["resources/*.yml"]
     variables = bundle["variables"]
-    for name in ("sdk_catalog", "sdk_consumer_group", "warehouse_id"):
+    for name in ("sdk_catalog", "warehouse_id"):
         assert "default" not in variables[name], f"{name} must be required (no default)"
+    assert "sdk_consumer_group" not in variables
     assert variables["sdk_schema"]["default"] == "ontology_sdk"
 
 
@@ -103,12 +104,24 @@ def test_new_schema_mode_declares_schema_and_volume(target_resources, target):
     assert volume["schema_name"] == "${resources.schemas.sdk.name}"
 
 
-def test_prod_grants_consumer_group(target_resources):
-    res = target_resources["prod"]
-    assert res["schemas"]["sdk"]["grants"] == [{"principal": "${var.sdk_consumer_group}", "privileges": ["USE_SCHEMA"]}]
-    assert res["volumes"]["sdk_wheels"]["grants"] == [
-        {"principal": "${var.sdk_consumer_group}", "privileges": ["READ_VOLUME"]}
-    ]
+def test_grant_variables_default_per_target(bundle):
+    # Readers: `account users` by default (production targets), the deploying developer in dev.
+    variables = bundle["variables"]
+    for name, privs in (("sdk_schema_grants", ["USE_SCHEMA"]), ("sdk_volume_grants", ["READ_VOLUME"])):
+        assert variables[name]["type"] == "complex"
+        assert variables[name]["default"] == [{"principal": "account users", "privileges": privs}]
+        assert bundle["targets"]["dev"]["variables"][name] == [
+            {"principal": "${workspace.current_user.userName}", "privileges": privs}
+        ]
+        for target in ("prod", EXISTING_SCHEMA_TARGET):
+            assert name not in (bundle["targets"][target].get("variables") or {})
+
+
+@pytest.mark.parametrize("target", NEW_SCHEMA_TARGETS)
+def test_new_schema_targets_use_grant_variables(target_resources, target):
+    res = target_resources[target]
+    assert res["schemas"]["sdk"]["grants"] == "${var.sdk_schema_grants}"
+    assert res["volumes"]["sdk_wheels"]["grants"] == "${var.sdk_volume_grants}"
 
 
 def test_existing_schema_mode_omits_schema_resource(target_resources):

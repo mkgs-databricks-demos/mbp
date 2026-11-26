@@ -16,11 +16,18 @@ variables:
     description: Catalog that holds the metric views (environment discriminator, e.g. dev / prd catalog).
   schema:
     description: Full metric view schema name in that catalog, including any dev prefix.
-  consumer_group:
-    # No default on purpose: the owner must name the group that may run the agents.
-    description: Required. Group granted CAN_RUN on every Genie Agent (no default; name a group in variable-overrides.json or --var consumer_group=...).
-  curator_group:
-    description: Group granted CAN_EDIT on every Genie Agent. Required; a permissions entry cannot be omitted conditionally.
+  agent_permissions:
+    description: >-
+      Permissions on every Genie Agent, a list of {level, one typed principal
+      key (user, group or service principal)}. Default CAN_RUN for the account
+      group `account users`; dev defaults to none beyond the deploying
+      developer, who owns the agents. Override the whole list per target in
+      variable-overrides.json, for example a curator group with CAN_EDIT or a
+      service principal (application id) with CAN_RUN.
+    type: complex
+    default:
+      - level: CAN_RUN
+        group_name: account users
   genie_parent_path:
     description: Workspace folder the Genie Agents are created in.
 
@@ -30,8 +37,11 @@ targets:
     default: true
     variables:
       genie_parent_path: ${workspace.root_path}/genie
+      # The deploying developer owns the agents; add others in variable-overrides.json.
+      agent_permissions: []
 
   prd:
     mode: production
-    # genie_parent_path, warehouse_id, catalog, schema, consumer_group and curator_group come from
-    # .databricks/bundle/prd/variable-overrides.json or --var flags.
+    # genie_parent_path, warehouse_id, catalog and schema come from
+    # .databricks/bundle/prd/variable-overrides.json or --var flags; agent_permissions
+    # defaults to CAN_RUN for `account users` and can be overridden there.

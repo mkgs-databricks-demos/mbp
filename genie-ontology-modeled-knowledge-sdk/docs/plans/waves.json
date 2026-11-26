@@ -902,9 +902,9 @@
       "manual_prereqs": [
         {
           "session_id": "P1-4",
-          "title": "Owner adds consumer_group to both gitignored TPC-H variable-overrides.json files, adds sdk_volume_path (the /Volumes path of the SDK bundle's sdk_wheels volume, from its bundle summary) to the metric-views one, and confirms the agents schema equals the metric-views dev schema",
+          "title": "Owner keeps consumer access at the bundle defaults in both gitignored TPC-H variable-overrides.json files (no consumer_group or curator_group keys; optional schema_grants / agent_permissions lists only with account-level groups, users or service principal application ids), adds sdk_volume_path (the /Volumes path of the SDK bundle's sdk_wheels volume, from its bundle summary) to the metric-views one, and confirms the agents schema equals the metric-views dev schema",
           "plan_file": "build-1/30_tpch_mv_refresh.md",
-          "done_when": "Both examples/tpch/*/.databricks/bundle/dev/variable-overrides.json files parse as JSON, contain consumer_group (and sdk_volume_path for the metric-views bundle), and are untracked"
+          "done_when": "Both examples/tpch/*/.databricks/bundle/dev/variable-overrides.json files parse as JSON, contain no consumer_group or curator_group key, the metric-views one contains sdk_volume_path, and both are untracked"
         },
         {
           "session_id": "P1-5",
@@ -933,7 +933,7 @@
           "mode": "edit",
           "allow_execute": true,
           "allow_deploy": true,
-          "scope": "All tasks in plan build-1/30: capture the registered DDL, move examples/tpch/ontology-metric-views to the build-1 template (pinned wheel from the SDK volume, no vendored copy, required consumer_group), deploy to dev, run register_metric_views and confirm identical DDL; then fix Return Rate units (observation 30) and re-register until all views pass smoke + cardinality (max 4 attempts); write registration_results.md and resolved_target.json. Deploy only this bundle.",
+          "scope": "All tasks in plan build-1/30: capture the registered DDL, move examples/tpch/ontology-metric-views to the build-1 template (pinned wheel from the SDK volume, no vendored copy, schema_grants complex variable already applied by the owner in the working tree: developer in dev, account users elsewhere), deploy to dev, run register_metric_views and confirm identical DDL; then fix Return Rate units (observation 30) and re-register until all views pass smoke + cardinality (max 4 attempts); write registration_results.md and resolved_target.json. Deploy only this bundle.",
           "owned_paths": [
             "examples/tpch/ontology-metric-views/**",
             "examples/tpch/docs/registration/**"

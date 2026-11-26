@@ -31,8 +31,7 @@ Test (Databricks CLI v1.27.0, 2026-11-24): a scratch bundle with `variables.cata
 | `warehouse_id` | yes | | SQL warehouse the agents query with |
 | `catalog` | yes | | Catalog of the metric views (the environment discriminator) |
 | `schema` | yes | | Full metric view schema name, including any dev prefix that DAB 1 applies in `dev` |
-| `consumer_group` | yes | | Group granted `CAN_RUN`. No default on purpose: name the group that may use the agents. `bundle validate` fails with `no value assigned to required variable consumer_group` until you set it |
-| `curator_group` | yes | | Group granted `CAN_EDIT`. No default: a permissions entry cannot be omitted conditionally, so you must name a group |
+| `agent_permissions` | no | `dev`: none beyond you (the deploying developer owns the agents); other targets: `CAN_RUN` for `account users` | List of `{level, user_name | group_name | service_principal_name}` on every agent, for example `CAN_RUN` for readers and `CAN_EDIT` for a curator group. Override the whole list per target in `variable-overrides.json` |
 | `genie_parent_path` | `prd` only | `dev`: `${workspace.root_path}/genie` | Workspace folder the agents are created in |
 
 ## 1. Write the overrides file
@@ -44,10 +43,15 @@ Create `.databricks/bundle/dev/variable-overrides.json` (gitignored; never commi
   "warehouse_id": "<warehouse id>",
   "catalog": "<metric view catalog>",
   "schema": "<metric view schema, with dev prefix>",
-  "consumer_group": "<group that may run the agents>",
-  "curator_group": "<curator group>"
+  "agent_permissions": [
+    {"level": "CAN_RUN", "group_name": "<account-level reader group>"},
+    {"level": "CAN_RUN", "service_principal_name": "<service principal application id>"},
+    {"level": "CAN_EDIT", "group_name": "<curator group>"}
+  ]
 }
 ```
+
+`agent_permissions` is optional; leave it out to keep the target default.
 
 Take `catalog` and `schema` from the metric-views bundle's `resolved_target.json` (next step) rather than typing them: in `dev` the schema has the `dev_<user>_` prefix.
 

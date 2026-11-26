@@ -1,8 +1,8 @@
 # New-schema mode (recommended): the bundle creates the SDK schema. Used by
 # targets dev and prod; the sdk_wheels volume is in sdk_wheels.volume.yml.
 #
-# dev declares no grants (the deployer owns the dev-prefixed schema; grants are
-# an owner decision). prod grants the consumer group USE_SCHEMA.
+# Grants come from var.sdk_schema_grants: the deploying developer in dev,
+# `account users` in prod, overridable per target.
 targets:
   dev:
     resources:
@@ -11,6 +11,7 @@ targets:
           catalog_name: ${var.sdk_catalog}
           name: ${var.sdk_schema}
           comment: Genie Ontology Modeled Knowledge SDK assets (wheels volume, published skills, build scratch views)
+          grants: ${var.sdk_schema_grants}
 
   prod:
     resources:
@@ -19,7 +20,4 @@ targets:
           catalog_name: ${var.sdk_catalog}
           name: ${var.sdk_schema}
           comment: Genie Ontology Modeled Knowledge SDK assets (wheels volume, published skills, build scratch views)
-          grants:
-            - principal: ${var.sdk_consumer_group}
-              privileges:
-                - USE_SCHEMA
+          grants: ${var.sdk_schema_grants}

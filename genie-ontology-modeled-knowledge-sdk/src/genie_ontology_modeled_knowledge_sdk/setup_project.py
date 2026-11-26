@@ -52,6 +52,15 @@ DEFAULT_SKILL_IDS = (
 )
 
 PASS, ACTION, SKIP = "pass", "action", "skip"
+
+# Who reads / runs what each bundle deploys. Empty inputs keep the bundle's
+# per-target default: the deploying developer in dev (development mode), the
+# account group `account users` in every other target.
+ACCOUNT_USERS = "account users"
+SDK_SCHEMA_PRIVILEGES = ("USE_SCHEMA",)
+SDK_VOLUME_PRIVILEGES = ("READ_VOLUME",)
+ONTOLOGY_SCHEMA_PRIVILEGES = ("USE_SCHEMA", "SELECT")
+_UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
 _CREATE_SCHEMA_PRIVS = frozenset({"CREATE_SCHEMA", "ALL_PRIVILEGES"})
 _SCHEMA_WRITE_PRIVS = frozenset({"CREATE_VOLUME", "ALL_PRIVILEGES"})
 _PROTECTED_BRANCHES = frozenset({"main", "master"})
@@ -135,7 +144,10 @@ class SdkSetupInputs:
     catalog: str
     schema: str = DEFAULT_SDK_SCHEMA
     schema_mode: str = "new"
-    consumer_group: str = ""
+    # Principals that read the SDK schema and wheels volume (user names,
+    # account-level groups, service principal application ids). Empty keeps the
+    # bundle default: the deploying developer in dev, `account users` elsewhere.
+    readers: list[str] = field(default_factory=list)
     warehouse_id: str = ""
     target: str = ""  # default: dev (new) / prod_existing_schema (existing)
     user_name: str = ""  # used for the dev schema prefix; default: ws.current_user.me()
@@ -158,8 +170,13 @@ class ProjectInputs:
     catalog: str
     schema_name: str
     warehouse_id: str
-    consumer_group: str
-    curator_group: str
+    # Principals (user names, account-level groups, service principal
+    # application ids) granted USE_SCHEMA + SELECT on the ontology schema and
+    # CAN_RUN on the Genie Agents. Empty keeps the bundle default: the deploying
+    # developer in dev, `account users` elsewhere.
+    readers: list[str] = field(default_factory=list)
+    # Principals granted CAN_EDIT on the Genie Agents (optional).
+    curators: list[str] = field(default_factory=list)
     source_catalog: str = ""
     source_schema: str = ""
     bundle_target: str = "dev"
@@ -191,30 +208,105 @@ class ProjectInputs:
         return f"{base}/{sub}/{name}" if sub else f"{base}/{name}"
 
 
+def parse_principals(value: str | list[str] | tuple[str, ...] | None) -> list[str]:
+    """Principal list from a list or a comma / newline separated string (widgets), deduplicated in order."""
+    items = re.split(r"[,\n]", value) if isinstance(value, str) else list(value or [])
+    out: list[str] = []
+    for item in items:
+        name = str(item).strip()
+        if name and name not in out:
+            out.append(name)
+    return out
+
+
+def principal_kind(principal: str) -> str:
+    """``service_principal`` (application id), ``user`` (contains ``@``) or ``group``."""
+    if _UUID_RE.match(principal.strip()):
+        return "service_principal"
+    return "user" if "@" in principal else "group"
+
+
+def uc_grants(principals: list[str], privileges: tuple[str, ...]) -> list[dict[str, Any]]:
+    """Unity Catalog ``grants`` entries (any principal kind) for a complex grants variable."""
+    return [{"principal": p, "privileges": list(privileges)} for p in principals]
+
+
+def agent_permissions(readers: list[str], curators: list[str] | tuple[str, ...] = ()) -> list[dict[str, str]]:
+    """Genie Agent ``permissions`` entries: CAN_RUN for readers, CAN_EDIT for curators (typed keys)."""
+    key = {"service_principal": "service_principal_name", "user": "user_name", "group": "group_name"}
+    out = [{"level": "CAN_RUN", key[principal_kind(p)]: p} for p in readers if p not in curators]
+    out += [{"level": "CAN_EDIT", key[principal_kind(p)]: p} for p in curators]
+    return out
+
+
+def check_principals(ws: Any, principals: list[str]) -> list[Check]:
+    """One check per principal: exists, and groups are account-level (Unity Catalog grants need that).
+
+    ``account users`` always passes. Workspace-local groups such as ``admins``
+    fail: Unity Catalog returns PRINCIPAL_DOES_NOT_EXIST for them.
+    """
+    checks: list[Check] = []
+    for p in principals:
+        kind = principal_kind(p)
+        name = f"principal:{p}"
+        if p == ACCOUNT_USERS:
+            checks.append(Check(name, PASS, "account group"))
+            continue
+        try:
+            if kind == "service_principal":
+                found = list(ws.service_principals.list(filter=f'applicationId eq "{p}"'))
+                detail = "service principal" if found else "no service principal with this application id"
+                checks.append(Check(name, PASS if found else ACTION, detail))
+            elif kind == "user":
+                found = list(ws.users.list(filter=f'userName eq "{p}"'))
+                checks.append(Check(name, PASS if found else ACTION, "user" if found else "no such user"))
+            else:
+                found = list(ws.groups.list(filter=f'displayName eq "{p}"'))
+                if not found:
+                    checks.append(Check(name, ACTION, "no such group"))
+                    continue
+                rtype = _text(getattr(getattr(found[0], "meta", None), "resource_type", ""))
+                if rtype == "WorkspaceGroup":
+                    detail = "workspace-local group: Unity Catalog grants need an account-level group"
+                    checks.append(Check(name, ACTION, detail))
+                else:
+                    checks.append(Check(name, PASS, "account group"))
+        except Exception as e:  # noqa: BLE001
+            checks.append(Check(name, ACTION, f"could not look up ({_err(e)})"))
+    return checks
+
+
 def _as_project_inputs(inputs: ProjectInputs | dict[str, Any]) -> ProjectInputs:
     if isinstance(inputs, ProjectInputs):
-        return inputs
-    known = {f.name for f in fields(ProjectInputs)}
-    unknown = sorted(set(inputs) - known)
-    if unknown:
-        raise ValueError(f"unknown project inputs: {', '.join(unknown)}")
-    return ProjectInputs(**inputs)
+        p = inputs
+    else:
+        known = {f.name for f in fields(ProjectInputs)}
+        unknown = sorted(set(inputs) - known)
+        if unknown:
+            raise ValueError(f"unknown project inputs: {', '.join(unknown)}")
+        p = ProjectInputs(**inputs)
+    p.readers = parse_principals(p.readers)
+    p.curators = parse_principals(p.curators)
+    return p
 
 
 def _as_sdk_inputs(inputs: SdkSetupInputs | dict[str, Any]) -> SdkSetupInputs:
     if isinstance(inputs, SdkSetupInputs):
-        return inputs
-    known = {f.name for f in fields(SdkSetupInputs)}
-    unknown = sorted(set(inputs) - known)
-    if unknown:
-        raise ValueError(f"unknown SDK setup inputs: {', '.join(unknown)}")
-    return SdkSetupInputs(**inputs)
+        s = inputs
+    else:
+        known = {f.name for f in fields(SdkSetupInputs)}
+        unknown = sorted(set(inputs) - known)
+        if unknown:
+            raise ValueError(f"unknown SDK setup inputs: {', '.join(unknown)}")
+        s = SdkSetupInputs(**inputs)
+    s.readers = parse_principals(s.readers)
+    return s
 
 
 def missing_project_inputs(inputs: ProjectInputs | dict[str, Any], *, for_vars_file: bool = False) -> list[str]:
     """Names of required project inputs that are empty (the notebook stops until none are)."""
     p = _as_project_inputs(inputs)
-    required = ["project_dir", "catalog", "schema_name", "warehouse_id", "consumer_group", "curator_group"]
+    required = ["project_dir", "catalog", "schema_name", "warehouse_id"]
     if p.bundle_target in DEV_MODE_TARGETS:
         required.append("user_name")
     if not p.vendor:
@@ -343,12 +435,17 @@ def overrides_path(bundle_dir: str | Path, target: str) -> Path:
 # ---------------------------------------------------------------------------
 
 
-def sdk_overrides(inputs: SdkSetupInputs | dict[str, Any]) -> dict[str, str]:
-    """Values of the SDK bundle's ``variable-overrides.json``."""
+def sdk_overrides(inputs: SdkSetupInputs | dict[str, Any]) -> dict[str, Any]:
+    """Values of the SDK bundle's ``variable-overrides.json``.
+
+    ``readers`` become ``sdk_schema_grants`` / ``sdk_volume_grants``; without
+    readers the bundle's target default applies (developer in dev, ``account users`` elsewhere).
+    """
     s = _as_sdk_inputs(inputs)
-    out = {"sdk_catalog": s.catalog, "sdk_schema": s.schema, "warehouse_id": s.warehouse_id}
-    if s.consumer_group:
-        out["sdk_consumer_group"] = s.consumer_group
+    out: dict[str, Any] = {"sdk_catalog": s.catalog, "sdk_schema": s.schema, "warehouse_id": s.warehouse_id}
+    if s.readers:
+        out["sdk_schema_grants"] = uc_grants(s.readers, SDK_SCHEMA_PRIVILEGES)
+        out["sdk_volume_grants"] = uc_grants(s.readers, SDK_VOLUME_PRIVILEGES)
     return out
 
 
@@ -367,8 +464,6 @@ def check_sdk_setup(ws: Any, inputs: SdkSetupInputs | dict[str, Any]) -> list[Ch
                   f"(use {' or '.join(SDK_TARGETS[s.schema_mode])})")
         )
         return checks
-    if target != "dev" and not s.consumer_group:
-        missing.append("consumer_group")
     if missing:
         checks.append(Check("inputs", ACTION, "missing: " + ", ".join(missing)))
         return checks
@@ -409,6 +504,7 @@ def check_sdk_setup(ws: Any, inputs: SdkSetupInputs | dict[str, Any]) -> list[Ch
             checks.append(Check("schema", PASS, f"'{full}' exists and you can create the sdk_wheels volume"))
 
     checks.append(_check_warehouse(ws, s.warehouse_id))
+    checks.extend(check_principals(ws, s.readers))
     return checks
 
 
@@ -551,6 +647,9 @@ def check_prereqs(ws: Any, inputs: ProjectInputs | dict[str, Any]) -> list[Check
         except Exception as e:  # noqa: BLE001
             checks.append(Check("skills", ACTION, f"skills schema '{full}' not readable ({_err(e)})"))
 
+    # Readers and curators (account-level groups, users, service principals)
+    checks.extend(check_principals(ws, p.readers + [c for c in p.curators if c not in p.readers]))
+
     # Pages domain
     if not p.pages_domain_id:
         checks.append(Check("pages_domain", SKIP, "no Pages domain set: the Pages wave publishes later (dry run only)"))
@@ -590,8 +689,9 @@ def project_overrides(inputs: ProjectInputs | dict[str, Any]) -> dict[str, dict[
         "catalog": p.catalog,
         "schema_name": p.schema_name,
         "warehouse_id": p.warehouse_id,
-        "consumer_group": p.consumer_group,
     }
+    if p.readers:
+        mv["schema_grants"] = uc_grants(p.readers, ONTOLOGY_SCHEMA_PRIVILEGES)
     if p.source_catalog:
         mv["source_catalog"] = p.source_catalog
     if p.source_schema:
@@ -600,13 +700,13 @@ def project_overrides(inputs: ProjectInputs | dict[str, Any]) -> dict[str, dict[
         mv["sdk_volume_path"] = p.sdk_volume_path
     if p.sdk_version:
         mv["sdk_version"] = p.sdk_version
-    agents = {
+    agents: dict[str, Any] = {
         "catalog": p.catalog,
         "schema": p.resolved_schema(),
         "warehouse_id": p.warehouse_id,
-        "consumer_group": p.consumer_group,
-        "curator_group": p.curator_group,
     }
+    if p.readers or p.curators:
+        agents["agent_permissions"] = agent_permissions(p.readers, p.curators)
     return {MV_BUNDLE: mv, AGENTS_BUNDLE: agents}
 
 

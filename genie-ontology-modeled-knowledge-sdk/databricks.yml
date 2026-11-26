@@ -5,9 +5,13 @@
 # workspace.artifact_path) and the sdk_smoke job. Later builds add the published
 # skills and build-only scratch_* views, all in this one schema.
 #
-# SDK setup asks three questions: which catalog (sdk_catalog), which schema
-# (sdk_schema; a NEW schema the bundle creates is recommended) and which group
-# reads the SDK assets (sdk_consumer_group). See docs/distribution/README.md.
+# SDK setup asks: which catalog (sdk_catalog), which schema (sdk_schema; a NEW
+# schema the bundle creates is recommended) and, optionally, who reads the SDK
+# assets (sdk_schema_grants / sdk_volume_grants). Readers default per target:
+# the deploying developer in dev, the account group `account users` in prod.
+# Any principal works (user name, account-level group, service principal
+# application id); workspace-local groups such as `admins` cannot hold Unity
+# Catalog grants. See docs/distribution/README.md.
 #
 # Modes:
 #   * new-schema (recommended): targets dev and prod create the schema
@@ -54,8 +58,24 @@ variables:
   sdk_schema:
     description: SDK schema name (new-schema mode creates it, prefixed per user in development mode; existing-schema mode uses it as is)
     default: ontology_sdk
-  sdk_consumer_group:
-    description: Group granted USE_SCHEMA on the SDK schema and READ_VOLUME on sdk_wheels (production targets)
+  sdk_schema_grants:
+    description: >-
+      Unity Catalog grants on the SDK schema, a list of {principal, privileges}.
+      Default `account users`; dev defaults to the deploying user. Override the
+      whole list per target in variable-overrides.json to use a group or add a
+      service principal (application id).
+    type: complex
+    default:
+      - principal: account users
+        privileges: [USE_SCHEMA]
+  sdk_volume_grants:
+    description: >-
+      Unity Catalog grants on the sdk_wheels volume, a list of {principal,
+      privileges}. Same defaults and override rule as sdk_schema_grants.
+    type: complex
+    default:
+      - principal: account users
+        privileges: [READ_VOLUME]
   warehouse_id:
     description: SQL warehouse for SDK setup checks and later SDK jobs
   tags_project:
@@ -72,6 +92,14 @@ targets:
   dev:
     mode: development
     default: true
+    variables:
+      # The deploying developer by default; override in variable-overrides.json.
+      sdk_schema_grants:
+        - principal: ${workspace.current_user.userName}
+          privileges: [USE_SCHEMA]
+      sdk_volume_grants:
+        - principal: ${workspace.current_user.userName}
+          privileges: [READ_VOLUME]
     workspace:
       # Wheels go to the bundle's own sdk_wheels volume (no DBFS).
       artifact_path: ${resources.volumes.sdk_wheels.volume_path}

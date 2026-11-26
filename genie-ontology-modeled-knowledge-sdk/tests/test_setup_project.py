@@ -15,6 +15,7 @@ from conftest import FakeNotFound, FakeWorkspaceClient
 from genie_ontology_modeled_knowledge_sdk import setup_project as sp
 
 USER = "jane.doe@example.com"
+SPN_APP_ID = "72bab3e9-0000-4000-8000-000000000001"
 SDK_VOLUME = "/Volumes/cat_a/dev_jane_doe_ontology_sdk/sdk_wheels"
 NB = Path(__file__).resolve().parents[1] / "notebooks"
 
@@ -22,8 +23,13 @@ NB = Path(__file__).resolve().parents[1] / "notebooks"
 class SetupFakeWorkspace(FakeWorkspaceClient):
     """Adds grants, warehouses, Git folders, skills and Pages to the shared fake."""
 
-    def __init__(self, *, privileges=None, warehouses=None, repos=None, skills=None, grants_error=False, **kw):
+    def __init__(self, *, privileges=None, warehouses=None, repos=None, skills=None, grants_error=False,
+                 principals=None, **kw):
         super().__init__(**kw)
+        # name -> "user" | "Group" (account) | "WorkspaceGroup" | "service_principal"
+        known = principals if principals is not None else {
+            "readers-acct": "Group", "curators-acct": "Group", "admins": "WorkspaceGroup",
+            USER: "user", SPN_APP_ID: "service_principal"}
         self._privs = privileges or {}  # (type, full_name) -> set of privileges
         self._grants_error = grants_error
         whs = warehouses if warehouses is not None else {"wh1": "RUNNING"}
@@ -74,6 +80,18 @@ class SetupFakeWorkspace(FakeWorkspaceClient):
                     raise FakeNotFound("domain not found")
                 return {"pages": []}
 
+        def _lister(kind_ok):
+            def _list(filter="", **_):
+                name = filter.split('"')[1] if '"' in filter else ""
+                kind = known.get(name)
+                if kind is None or not kind_ok(kind):
+                    return []
+                return [SimpleNamespace(meta=SimpleNamespace(resource_type=kind))]
+            return SimpleNamespace(list=_list)
+
+        self.service_principals = _lister(lambda k: k == "service_principal")
+        self.users = _lister(lambda k: k == "user")
+        self.groups = _lister(lambda k: k in ("Group", "WorkspaceGroup"))
         self.grants = _Grants()
         self.warehouses = _Warehouses()
         self.workspace = _Workspace()
@@ -101,8 +119,8 @@ def _project(tmp_path: Path, **kw) -> dict:
         catalog="cat_a",
         schema_name="ontology_sales",
         warehouse_id="wh1",
-        consumer_group="readers",
-        curator_group="curators",
+        readers="readers-acct, " + SPN_APP_ID,
+        curators=["curators-acct"],
         source_catalog="samples",
         source_schema="tpch",
         user_name=USER,
@@ -162,29 +180,65 @@ def test_setup_sdk_new_schema_writes_overrides(tmp_path):
     assert again.overrides.action == "unchanged"
 
 
-def test_setup_sdk_prod_needs_consumer_group(tmp_path):
+def test_setup_sdk_prod_defaults_to_bundle_readers(tmp_path):
+    # No readers: the bundle default applies (account users in prod), so no grants in the overrides.
     inputs = {"catalog": "cat_a", "warehouse_id": "wh1", "target": "prod", "user_name": USER}
     res = sp.setup_sdk(_ws(), tmp_path, inputs)
-    assert not res.ok and "consumer_group" in res.checks[0].detail
-    res = sp.setup_sdk(_ws(), tmp_path, {**inputs, "consumer_group": "sdk_users"})
-    assert res.ok
-    assert _read(tmp_path / ".databricks/bundle/prod/variable-overrides.json")["sdk_consumer_group"] == "sdk_users"
+    assert res.ok, res.to_dict()
+    assert "sdk_schema_grants" not in _read(tmp_path / ".databricks/bundle/prod/variable-overrides.json")
+
+
+def test_setup_sdk_readers_become_grant_lists(tmp_path):
+    inputs = {"catalog": "cat_a", "warehouse_id": "wh1", "user_name": USER,
+              "readers": f"{USER}, readers-acct, {SPN_APP_ID}"}
+    res = sp.setup_sdk(_ws(), tmp_path, inputs)
+    assert res.ok, res.to_dict()
+    data = _read(tmp_path / ".databricks/bundle/dev/variable-overrides.json")
+    assert data["sdk_schema_grants"] == [{"principal": p, "privileges": ["USE_SCHEMA"]}
+                                         for p in (USER, "readers-acct", SPN_APP_ID)]
+    assert data["sdk_volume_grants"][2] == {"principal": SPN_APP_ID, "privileges": ["READ_VOLUME"]}
+
+
+def test_setup_sdk_rejects_workspace_local_group(tmp_path):
+    inputs = {"catalog": "cat_a", "warehouse_id": "wh1", "user_name": USER, "readers": "admins"}
+    res = sp.setup_sdk(_ws(), tmp_path, inputs)
+    assert not res.ok and res.overrides is None
+    bad = [c for c in res.checks if c.name == "principal:admins"]
+    assert bad and bad[0].status == sp.ACTION and "account-level" in bad[0].detail
+
+
+def test_principal_helpers():
+    assert sp.parse_principals(" a, b\nb , ,c ") == ["a", "b", "c"]
+    assert sp.principal_kind(SPN_APP_ID) == "service_principal"
+    assert sp.principal_kind(USER) == "user"
+    assert sp.principal_kind("account users") == "group"
+    assert sp.agent_permissions([USER, "readers-acct", SPN_APP_ID], ["curators-acct"]) == [
+        {"level": "CAN_RUN", "user_name": USER},
+        {"level": "CAN_RUN", "group_name": "readers-acct"},
+        {"level": "CAN_RUN", "service_principal_name": SPN_APP_ID},
+        {"level": "CAN_EDIT", "group_name": "curators-acct"},
+    ]
+    checks = {c.name: c.status for c in sp.check_principals(_ws(), ["account users", "nobody-group", SPN_APP_ID])}
+    assert checks == {"principal:account users": sp.PASS, "principal:nobody-group": sp.ACTION,
+                      f"principal:{SPN_APP_ID}": sp.PASS}
 
 
 def test_setup_sdk_existing_schema_mode(tmp_path):
     ws = _ws(data={"cat_a": {"shared": []}}, privileges={("schema", "cat_a.shared"): {"CREATE_VOLUME"}})
     inputs = {"catalog": "cat_a", "schema": "shared", "schema_mode": "existing", "warehouse_id": "wh1",
-              "consumer_group": "sdk_users", "user_name": USER}
+              "readers": ["readers-acct"], "user_name": USER}
     res = sp.setup_sdk(ws, tmp_path, inputs)
     assert res.ok, res.to_dict()
     assert res.target == "prod_existing_schema"
     assert _read(tmp_path / ".databricks/bundle/prod_existing_schema/variable-overrides.json") == {
-        "sdk_catalog": "cat_a", "sdk_schema": "shared", "warehouse_id": "wh1", "sdk_consumer_group": "sdk_users"}
+        "sdk_catalog": "cat_a", "sdk_schema": "shared", "warehouse_id": "wh1",
+        "sdk_schema_grants": [{"principal": "readers-acct", "privileges": ["USE_SCHEMA"]}],
+        "sdk_volume_grants": [{"principal": "readers-acct", "privileges": ["READ_VOLUME"]}]}
 
 
 def test_setup_sdk_existing_schema_missing(tmp_path):
     inputs = {"catalog": "cat_a", "schema": "nope", "schema_mode": "existing", "warehouse_id": "wh1",
-              "consumer_group": "g", "user_name": USER}
+              "user_name": USER}
     res = sp.setup_sdk(_ws(), tmp_path, inputs)
     assert not res.ok and res.overrides is None
     assert not (tmp_path / ".databricks").exists()
@@ -240,7 +294,22 @@ def test_write_overrides_both_files_match(tmp_path):
     assert mv["warehouse_id"] == ag["warehouse_id"] == "wh1"
     assert mv["sdk_volume_path"] == SDK_VOLUME and mv["sdk_version"] == "0.1.0"
     assert (mv["source_catalog"], mv["source_schema"]) == ("samples", "tpch")
-    assert ag["curator_group"] == "curators" and ag["consumer_group"] == mv["consumer_group"] == "readers"
+    assert mv["schema_grants"] == [{"principal": p, "privileges": ["USE_SCHEMA", "SELECT"]}
+                                   for p in ("readers-acct", SPN_APP_ID)]
+    assert ag["agent_permissions"] == [
+        {"level": "CAN_RUN", "group_name": "readers-acct"},
+        {"level": "CAN_RUN", "service_principal_name": SPN_APP_ID},
+        {"level": "CAN_EDIT", "group_name": "curators-acct"},
+    ]
+
+
+def test_write_overrides_without_readers_keeps_bundle_defaults(tmp_path):
+    inputs = _project(tmp_path, readers="", curators="")
+    sp.write_overrides(inputs["project_dir"], inputs)
+    root = Path(inputs["project_dir"])
+    assert "schema_grants" not in _read(root / "ontology-metric-views/.databricks/bundle/dev/variable-overrides.json")
+    agents = _read(root / "ontology-genie-agents/.databricks/bundle/dev/variable-overrides.json")
+    assert "agent_permissions" not in agents
 
 
 def test_write_overrides_prod_target_has_no_prefix(tmp_path):
@@ -283,8 +352,8 @@ def test_write_overrides_whitespace_edit_is_unchanged(tmp_path):
 
 
 def test_write_overrides_requires_inputs(tmp_path):
-    with pytest.raises(ValueError, match="consumer_group"):
-        sp.write_overrides(tmp_path, _project(tmp_path, consumer_group=""))
+    with pytest.raises(ValueError, match="warehouse_id"):
+        sp.write_overrides(tmp_path, _project(tmp_path, warehouse_id=""))
     with pytest.raises(ValueError, match="sdk_volume_path"):
         sp.write_overrides(tmp_path, _project(tmp_path, sdk_volume_path=""))
     # vendored projects do not need the wheel location
@@ -293,9 +362,9 @@ def test_write_overrides_requires_inputs(tmp_path):
 
 
 def test_missing_project_inputs():
-    assert set(sp.missing_project_inputs({"project_dir": "", "catalog": "", "schema_name": "", "warehouse_id": "",
-                                           "consumer_group": "", "curator_group": ""})) >= {
-        "project_dir", "catalog", "schema_name", "warehouse_id", "consumer_group", "curator_group", "user_name",
+    empty = {"project_dir": "", "catalog": "", "schema_name": "", "warehouse_id": ""}
+    assert set(sp.missing_project_inputs(empty)) >= {
+        "project_dir", "catalog", "schema_name", "warehouse_id", "user_name",
         "sdk_volume_path", "sdk_version"}
 
 
@@ -346,12 +415,13 @@ def test_check_prereqs_all_pass(tmp_path):
     checks = _by_name(sp.check_prereqs(_ws(), inputs))
     assert {n: c.status for n, c in checks.items()} == {
         "catalog": "pass", "warehouse": "pass", "git_folder": "pass", "skills": "pass",
-        "pages_domain": "pass", "sdk_wheel": "pass"}
+        "pages_domain": "pass", "sdk_wheel": "pass",
+        "principal:readers-acct": "pass", f"principal:{SPN_APP_ID}": "pass", "principal:curators-acct": "pass"}
 
 
 def test_check_prereqs_reports_actions(tmp_path):
     ws = _ws(privileges={}, warehouses={}, repos={"/Users/jane.doe@example.com/repo": "main"},
-             skills=["cat_a.dev_jane_doe_ontology_sdk.ontology_tuning"], volume_dirs={})
+             skills=["cat_a.dev_jane_doe_ontology_sdk.ontology_tuning"], volume_dirs={}, principals={})
     inputs = _project(tmp_path, project_dir="/Users/jane.doe@example.com/repo/proj", pages_domain_id="missing")
     checks = _by_name(sp.check_prereqs(ws, inputs))
     assert all(c.status == sp.ACTION for c in checks.values()), checks
@@ -386,7 +456,7 @@ def _code(nb: Path) -> str:
 
 
 REQUIRED_WIDGETS = ("domain_name", "domain_context", "target_catalog", "target_schema", "source_tables",
-                    "warehouse_id", "consumer_group", "curator_group", "target_dir")
+                    "warehouse_id", "readers", "curators", "target_dir")
 
 
 def test_init_notebook_required_widgets_empty():

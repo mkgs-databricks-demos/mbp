@@ -2,7 +2,8 @@
 # bundle creates (sdk.schema.yml), referenced through ${resources.schemas.sdk.*}
 # so the schema is created first. Used by targets dev and prod.
 #
-# dev declares no grants (owner decision); prod grants the consumer group READ_VOLUME.
+# Grants come from var.sdk_volume_grants: the deploying developer in dev,
+# `account users` in prod, overridable per target.
 targets:
   dev:
     resources:
@@ -13,6 +14,7 @@ targets:
           name: sdk_wheels
           volume_type: MANAGED
           comment: Versioned Genie Ontology Modeled Knowledge SDK wheels
+          grants: ${var.sdk_volume_grants}
 
   prod:
     resources:
@@ -23,7 +25,4 @@ targets:
           name: sdk_wheels
           volume_type: MANAGED
           comment: Versioned Genie Ontology Modeled Knowledge SDK wheels
-          grants:
-            - principal: ${var.sdk_consumer_group}
-              privileges:
-                - READ_VOLUME
+          grants: ${var.sdk_volume_grants}

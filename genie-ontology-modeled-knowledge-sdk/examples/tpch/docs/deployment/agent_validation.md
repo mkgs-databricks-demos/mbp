@@ -67,4 +67,4 @@ ORDER BY `Order Year` ASC, `Revenue` DESC
 
 ## Notes for prd
 
-Users other than the owner need `USE CATALOG`, `USE SCHEMA` and `SELECT` on the metric views (plus `CAN_RUN` on the agent, granted to `consumer_group` by the bundle) to use the agent. Dev is owner-only.
+Users other than the owner need `USE CATALOG`, `USE SCHEMA` and `SELECT` on the metric views (plus `CAN_RUN` on the agent, from the bundle's `agent_permissions`: `account users` outside `dev`) to use the agent. Dev is owner-only.

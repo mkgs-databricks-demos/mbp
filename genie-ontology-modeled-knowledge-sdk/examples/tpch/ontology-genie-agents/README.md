@@ -31,8 +31,7 @@ Test (Databricks CLI v1.27.0, 2026-11-24): a scratch bundle with `variables.cata
 | `warehouse_id` | yes | | SQL warehouse the agents query with |
 | `catalog` | yes | | Catalog of the metric views (the environment discriminator) |
 | `schema` | yes | | Full metric view schema name, including any dev prefix that DAB 1 applies in `dev` |
-| `consumer_group` | no | `account users` | Group granted `CAN_RUN` |
-| `curator_group` | yes | | Group granted `CAN_EDIT`. No default: a permissions entry cannot be omitted conditionally, so you must name a group |
+| `agent_permissions` | no | `dev`: none beyond the deploying developer; other targets: `CAN_RUN` for `account users` | List of `{level, user_name | group_name | service_principal_name}`; override per target in `variable-overrides.json` |
 | `genie_parent_path` | `prd` only | `dev`: `${workspace.root_path}/genie` | Workspace folder the agents are created in |
 
 ## 1. Write the overrides file
@@ -43,8 +42,7 @@ Create `.databricks/bundle/dev/variable-overrides.json` (gitignored; never commi
 {
   "warehouse_id": "<warehouse id>",
   "catalog": "<metric view catalog>",
-  "schema": "<metric view schema, with dev prefix>",
-  "curator_group": "<curator group>"
+  "schema": "<metric view schema, with dev prefix>"
 }
 ```
 

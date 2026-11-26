@@ -6,7 +6,7 @@ Declarative Automation Bundle template that owns a Genie Ontology project's metr
 
 | Resource | Key | What |
 |---|---|---|
-| Schema | `ontology_schema` | `${var.catalog}.${var.schema_name}`, grants `USE_SCHEMA` + `SELECT` to `${var.consumer_group}`. In `dev` (development mode) the name gets the per-user `dev_<user>_` prefix. |
+| Schema | `ontology_schema` | `${var.catalog}.${var.schema_name}`, grants `${var.schema_grants}` (`USE_SCHEMA` + `SELECT`). In `dev` (development mode) the name gets the per-user `dev_<user>_` prefix. |
 | Job | `register_metric_views` | Four serverless notebook tasks (below) |
 
 ```
@@ -46,7 +46,7 @@ Metric view YAML rules: file name = view name; `source:` and `joins[].source` us
 | `catalog` | yes | - | Catalog for the ontology schema and the metric views (the environment discriminator) |
 | `source_catalog` | yes | - | Catalog of the source tables |
 | `source_schema` | yes | - | Schema of the source tables |
-| `consumer_group` | yes | - | Group granted `USE_SCHEMA` + `SELECT`. No default on purpose: name the group that may read the metric views. `bundle validate` fails with `no value assigned to required variable consumer_group` until you set it |
+| `schema_grants` | no | `dev`: the deploying developer; other targets: `account users` | List of `{principal, privileges}` granted on the ontology schema. A principal is a user name, an account-level group or a service principal application id (workspace-local groups such as `admins` cannot hold Unity Catalog grants). Override the whole list per target in `variable-overrides.json` |
 | `warehouse_id` | no | `""` | Optional SQL warehouse. Nothing in the job uses it (every task runs on serverless); set it only for ad hoc SQL checks, and it is copied into `resolved_target.json` for the Genie Agent bundle |
 | `schema_name` | no | `ontology` | Ontology schema name. `scaffold_project` replaces the default with `sdk_config.target_schema` |
 | `sdk_volume_path` | yes | - | `/Volumes/<sdk_catalog>/<sdk_schema>/sdk_wheels` of the SDK bundle (set it in `variable-overrides.json`) |
@@ -60,7 +60,7 @@ Every job task runs with `environment_key: sdk`; the job environment `sdk` insta
 
 ## Targets
 
-* `dev` (default): `mode: development`. It sets obvious placeholders (`catalog: main`, `source_catalog: samples`, `source_schema: tpch`). `consumer_group` is not set: `bundle validate` passes once you name it in the overrides file (or `--var consumer_group=<group>`).
+* `dev` (default): `mode: development`. It sets obvious placeholders (`catalog: main`, `source_catalog: samples`, `source_schema: tpch`). `schema_grants` defaults to the deploying developer (`${workspace.current_user.userName}`); add a group or a service principal in the overrides file.
 * `prd`: `mode: production`, `root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}`. No values are set; supply them with overrides or `--var`.
 
 Neither target sets a workspace host: select the workspace with a CLI profile (`--profile` or `DATABRICKS_CONFIG_PROFILE`).
@@ -74,12 +74,15 @@ Put workspace-specific values in `.databricks/bundle/<target>/variable-overrides
   "catalog": "<your_catalog>",
   "source_catalog": "<source_catalog>",
   "source_schema": "<source_schema>",
-  "consumer_group": "<group that may read the metric views>",
-  "warehouse_id": "<optional warehouse_id>"
+  "warehouse_id": "<optional warehouse_id>",
+  "schema_grants": [
+    {"principal": "<you or an account-level group>", "privileges": ["USE_SCHEMA", "SELECT"]},
+    {"principal": "<service principal application id>", "privileges": ["USE_SCHEMA", "SELECT"]}
+  ]
 }
 ```
 
-`consumer_group` is required (there is no default grant); `warehouse_id` may be left out.
+`schema_grants` is optional (the target default applies when it is left out) and replaces the whole list when set; `warehouse_id` may be left out.
 
 The CLI reads this file for the selected target; values there override the target defaults. `--var name=value` on the command line overrides both.
 

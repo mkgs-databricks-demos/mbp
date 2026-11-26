@@ -25,9 +25,18 @@ variables:
   schema_name:
     description: Name of the ontology schema that receives the metric views (prefixed per user in development mode)
     default: ontology
-  consumer_group:
-    # No default on purpose: the owner must name the group that may read the metric views.
-    description: Required. Group granted USE_SCHEMA and SELECT on the ontology schema (no default; name a group in variable-overrides.json or --var consumer_group=...)
+  schema_grants:
+    description: >-
+      Unity Catalog grants on the ontology schema, a list of {principal,
+      privileges}. Default `account users`; dev defaults to the deploying
+      developer. Override the whole list per target in variable-overrides.json
+      to use a group or add a service principal (application id). Groups must
+      be account-level (workspace-local groups such as `admins` cannot hold
+      Unity Catalog grants).
+    type: complex
+    default:
+      - principal: account users
+        privileges: [USE_SCHEMA, SELECT]
   # SDK wheel installed by every job task through the job environment (see
   # README.md "SDK wheel"). The scaffold renders sdk_version from the SDK.
   sdk_version:
@@ -48,14 +57,17 @@ targets:
   dev:
     mode: development
     default: true
-    # Placeholders for the source and catalog values. Real values, and the
-    # required consumer_group, go in .databricks/bundle/dev/variable-overrides.json
-    # (gitignored).
+    # Placeholders for the source and catalog values. Real values go in
+    # .databricks/bundle/dev/variable-overrides.json (gitignored).
     variables:
       catalog: main
       source_catalog: samples
       source_schema: tpch
       sdk_volume_path: /Volumes/main/ontology_sdk/sdk_wheels
+      # The deploying developer by default; override in variable-overrides.json.
+      schema_grants:
+        - principal: ${workspace.current_user.userName}
+          privileges: [USE_SCHEMA, SELECT]
 
   prd:
     mode: production

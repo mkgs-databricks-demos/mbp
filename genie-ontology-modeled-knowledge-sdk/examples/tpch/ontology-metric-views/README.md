@@ -6,7 +6,7 @@ Declarative Automation Bundle template that owns a Genie Ontology project's metr
 
 | Resource | Key | What |
 |---|---|---|
-| Schema | `ontology_schema` | `${var.catalog}.${var.schema_name}`, grants `USE_SCHEMA` + `SELECT` to `${var.consumer_group}`. In `dev` (development mode) the name gets the per-user `dev_<user>_` prefix. |
+| Schema | `ontology_schema` | `${var.catalog}.${var.schema_name}`, grants `${var.schema_grants}` (`USE_SCHEMA` + `SELECT`). In `dev` (development mode) the name gets the per-user `dev_<user>_` prefix. |
 | Job | `register_metric_views` | Four serverless notebook tasks (below) |
 
 ```
@@ -48,7 +48,7 @@ Metric view YAML rules: file name = view name; `source:` and `joins[].source` us
 | `source_schema` | yes | - | Schema of the source tables |
 | `warehouse_id` | yes | - | SQL warehouse for ad hoc checks and the Genie Agent bundle (job tasks run on serverless) |
 | `schema_name` | no | `ontology` | Ontology schema name |
-| `consumer_group` | no | `account users` | Group granted `USE_SCHEMA` + `SELECT` |
+| `schema_grants` | no | `dev`: the deploying developer; other targets: `account users` | List of `{principal, privileges}` on the ontology schema (user names, account-level groups or service principal application ids); override per target in `variable-overrides.json` |
 
 ## Targets
 

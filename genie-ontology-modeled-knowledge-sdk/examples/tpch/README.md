@@ -49,7 +49,7 @@ The scaffold never overwrites existing files (unless `--force`) and never touche
 Both bundles read workspace-specific values from gitignored files. Never commit them:
 
 * `ontology-metric-views/.databricks/bundle/dev/variable-overrides.json`: `catalog`, `warehouse_id`
-* `ontology-genie-agents/.databricks/bundle/dev/variable-overrides.json`: `catalog`, `schema` (the dev-prefixed metric view schema), `warehouse_id`, `curator_group`
+* `ontology-genie-agents/.databricks/bundle/dev/variable-overrides.json`: `catalog`, `schema` (the dev-prefixed metric view schema), `warehouse_id`; optional `agent_permissions`
 
 ## Validate
 

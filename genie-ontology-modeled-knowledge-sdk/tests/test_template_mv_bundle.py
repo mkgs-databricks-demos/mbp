@@ -19,8 +19,8 @@ TEMPLATE = Path(__file__).resolve().parents[1] / "templates" / "ontology-metric-
 SCHEMA_RESOURCE = TEMPLATE / "resources" / "ontology_schema.yml"
 SCHEMA_REF = "${resources.schemas.ontology_schema.name}"
 CATALOG_REF = "${resources.schemas.ontology_schema.catalog_name}"
-REQUIRED_VARS = {"catalog", "source_catalog", "source_schema", "consumer_group", "sdk_volume_path"}
-DEV_PLACEHOLDER_VARS = {"catalog", "source_catalog", "source_schema", "sdk_volume_path"}
+REQUIRED_VARS = {"catalog", "source_catalog", "source_schema", "sdk_volume_path"}
+DEV_PLACEHOLDER_VARS = {"catalog", "source_catalog", "source_schema", "sdk_volume_path", "schema_grants"}
 SDK_VARS = {"sdk_version", "sdk_wheel_subpath", "sdk_wheel"}
 TASK_KEYS = ["generate_manifest", "register_each_mv", "smoke_test", "cardinality_test"]
 
@@ -119,21 +119,23 @@ def test_bundle_includes_resources(bundle):
 
 def test_variables(bundle):
     variables = bundle["variables"]
-    assert set(variables) == REQUIRED_VARS | SDK_VARS | {"schema_name", "warehouse_id"}
+    assert set(variables) == REQUIRED_VARS | SDK_VARS | {"schema_name", "warehouse_id", "schema_grants"}
     for name in REQUIRED_VARS:
         assert "default" not in variables[name], f"{name} must be required (no default)"
         assert variables[name].get("description")
     assert variables["schema_name"]["default"] == "ontology"
 
 
-def test_consumer_group_has_no_default(bundle):
-    # R4.3 / G9: no broad default grant; the owner must name a group.
-    cg = bundle["variables"]["consumer_group"]
-    assert "default" not in cg
-    assert "required" in cg["description"].lower()
-    for target in bundle["targets"].values():
-        assert "consumer_group" not in (target.get("variables") or {})
-    assert "account users" not in (TEMPLATE / "databricks.yml").read_text()
+def test_schema_grants_default_per_target(bundle):
+    # Owner decision 2026-11-26: the developer in dev, `account users` elsewhere, overridable per target.
+    sg = bundle["variables"]["schema_grants"]
+    assert sg["type"] == "complex"
+    assert sg["default"] == [{"principal": "account users", "privileges": ["USE_SCHEMA", "SELECT"]}]
+    assert bundle["targets"]["dev"]["variables"]["schema_grants"] == [
+        {"principal": "${workspace.current_user.userName}", "privileges": ["USE_SCHEMA", "SELECT"]}
+    ]
+    assert "schema_grants" not in (bundle["targets"]["prd"].get("variables") or {})
+    assert "consumer_group" not in bundle["variables"]
 
 
 def test_warehouse_id_is_optional(bundle):
@@ -146,7 +148,7 @@ def test_warehouse_id_is_optional(bundle):
 
 def test_readme_documents_required_group_and_resolved_target():
     readme = (TEMPLATE / "README.md").read_text()
-    assert "consumer_group" in readme and "account users" not in readme
+    assert "schema_grants" in readme and "account users" in readme
     assert "resolved_target.json" in readme
     assert "genie_ontology_modeled_knowledge_sdk.targets resolve" in readme
 
@@ -186,10 +188,7 @@ def test_schema_resource(resources):
     schema = resources["schemas"]["ontology_schema"]
     assert schema["catalog_name"] == "${var.catalog}"
     assert schema["name"] == "${var.schema_name}"
-    grants = schema["grants"]
-    assert len(grants) == 1
-    assert grants[0]["principal"] == "${var.consumer_group}"
-    assert set(grants[0]["privileges"]) == {"USE_SCHEMA", "SELECT"}
+    assert schema["grants"] == "${var.schema_grants}"
 
 
 def test_job_has_four_tasks(job):

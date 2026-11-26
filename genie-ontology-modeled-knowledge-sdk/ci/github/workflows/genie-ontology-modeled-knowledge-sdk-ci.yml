@@ -132,11 +132,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: databricks/setup-cli@main
       - name: Validate the SDK bundle (dev, real values)
-        if: ${{ vars.GOS_SDK_CATALOG != '' && vars.GOS_SDK_CONSUMER_GROUP != '' && vars.GOS_WAREHOUSE_ID != '' }}
+        if: ${{ vars.GOS_SDK_CATALOG != '' && vars.GOS_WAREHOUSE_ID != '' }}
         run: |
           databricks bundle validate --strict -t dev \
             --var "sdk_catalog=${{ vars.GOS_SDK_CATALOG }}" \
-            --var "sdk_consumer_group=${{ vars.GOS_SDK_CONSUMER_GROUP }}" \
             --var "warehouse_id=${{ vars.GOS_WAREHOUSE_ID }}"
       - name: Validate the metric view template bundle
         working-directory: genie-ontology-modeled-knowledge-sdk/templates/ontology-metric-views

@@ -11,8 +11,5 @@ resources:
       warehouse_id: ${var.warehouse_id}
       parent_path: ${var.genie_parent_path}
       file_path: ../.rendered/ontology_agent.geniespace.json
-      permissions:
-        - level: CAN_RUN
-          group_name: ${var.consumer_group}
-        - level: CAN_EDIT
-          group_name: ${var.curator_group}
+      # var.agent_permissions: none beyond the deploying developer in dev, CAN_RUN for `account users` elsewhere.
+      permissions: ${var.agent_permissions}

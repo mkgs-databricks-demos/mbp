@@ -12,7 +12,4 @@ targets:
           name: sdk_wheels
           volume_type: MANAGED
           comment: Versioned Genie Ontology Modeled Knowledge SDK wheels
-          grants:
-            - principal: ${var.sdk_consumer_group}
-              privileges:
-                - READ_VOLUME
+          grants: ${var.sdk_volume_grants}

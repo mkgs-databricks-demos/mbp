@@ -14,20 +14,21 @@ Committed files never name a real catalog or schema; this document writes it as 
 |---|---|---|
 | `sdk_catalog` | Which existing catalog holds the SDK schema? | none (required) |
 | `sdk_schema` | Which schema? **Recommended: a new schema the bundle creates.** | `ontology_sdk` |
-| `sdk_consumer_group` | Which group reads the SDK assets (`USE_SCHEMA`, `READ_VOLUME` in production)? | none (required) |
+| `sdk_schema_grants`, `sdk_volume_grants` | Who reads the SDK assets (`USE_SCHEMA`, `READ_VOLUME`)? Lists of `{principal, privileges}`; a principal is a user name, an account-level group or a service principal application id | `dev`: the deploying developer; `prod` targets: `account users` |
 | `warehouse_id` | Which SQL warehouse runs SDK setup checks and later SDK jobs? | none (required) |
 
 Put the answers in the gitignored `.databricks/bundle/<target>/variable-overrides.json` at the SDK root:
 
 ```json
-{"sdk_catalog": "<catalog>", "sdk_schema": "ontology_sdk", "sdk_consumer_group": "<group>", "warehouse_id": "<warehouse id>"}
+{"sdk_catalog": "<catalog>", "sdk_schema": "ontology_sdk", "warehouse_id": "<warehouse id>",
+ "sdk_volume_grants": [{"principal": "<account-level group or SP application id>", "privileges": ["READ_VOLUME"]}]}
 ```
 
 ## Modes
 
 | Mode | Targets | Resources | Files |
 |---|---|---|---|
-| New schema (recommended) | `dev` (development; schema name prefixed `dev_<user>_`), `prod` | schema `sdk` + volume `sdk_wheels` in it (`${resources.schemas.sdk.*}`, so the schema is created first). `prod` grants `USE_SCHEMA` / `READ_VOLUME` to `sdk_consumer_group`; `dev` declares no grants | `resources/sdk.schema.yml`, `resources/sdk_wheels.volume.yml` |
+| New schema (recommended) | `dev` (development; schema name prefixed `dev_<user>_`), `prod` | schema `sdk` + volume `sdk_wheels` in it (`${resources.schemas.sdk.*}`, so the schema is created first). grants from `sdk_schema_grants` / `sdk_volume_grants` (developer in `dev`, `account users` in `prod`) | `resources/sdk.schema.yml`, `resources/sdk_wheels.volume.yml` |
 | Existing schema | `prod_existing_schema` | volume `sdk_wheels` only, in `<sdk_catalog>.<sdk_schema>` (the schema must exist; it is not managed by the bundle) | `resources/sdk.existing_schema.yml` |
 
 All three targets pass `databricks bundle validate --strict`.
@@ -56,7 +57,7 @@ Checked with Databricks CLI **v1.27.0** (`databricks version`).
 | `sync.exclude` | everything except the package, its metadata and `notebooks/sdk_smoke.ipynb` | `dist/` and `build/` are left to `.gitignore`; strict validate rejects exclude patterns that match no files |
 | `resources/sdk_smoke.job.yml` | serverless notebook task, job environment `sdk` with `dependencies: [../dist/*.whl]`, `environment_key: sdk` | referencing the wheel is what makes the CLI upload it |
 
-**`bundle validate` needs the volume.** The CLI checks that the `/Volumes/...` `artifact_path` exists during validate. Placeholder catalogs therefore cannot validate the SDK bundle: validate it with real values (the gitignored `variable-overrides.json`, or the CI repository variables `GOS_SDK_CATALOG`, `GOS_SDK_CONSUMER_GROUP`, `GOS_WAREHOUSE_ID`), after the first deploy has created the volume.
+**`bundle validate` needs the volume.** The CLI checks that the `/Volumes/...` `artifact_path` exists during validate. Placeholder catalogs therefore cannot validate the SDK bundle: validate it with real values (the gitignored `variable-overrides.json`, or the CI repository variables `GOS_SDK_CATALOG`, `GOS_WAREHOUSE_ID`), after the first deploy has created the volume.
 
 ## The volume contract
 
@@ -68,4 +69,4 @@ Projects install `<sdk_volume_path>/<sdk_wheel_subpath>/genie_ontology_modeled_k
 
 ## Grants
 
-Consumers need `USE_CATALOG` on `<sdk_catalog>`, `USE_SCHEMA` on the SDK schema and `READ_VOLUME` on `sdk_wheels`. The `prod` target grants `USE_SCHEMA` and `READ_VOLUME` to `sdk_consumer_group`; `USE_CATALOG` is a catalog owner step. `dev` declares no grants.
+Consumers need `USE_CATALOG` on `<sdk_catalog>`, `USE_SCHEMA` on the SDK schema and `READ_VOLUME` on `sdk_wheels`. Every target grants `USE_SCHEMA` and `READ_VOLUME` from `sdk_schema_grants` / `sdk_volume_grants`: the deploying developer in `dev`, `account users` in `prod` and `prod_existing_schema`, overridable per target. Workspace-local groups (for example `admins`) cannot hold Unity Catalog grants. `USE_CATALOG` is a catalog owner step.

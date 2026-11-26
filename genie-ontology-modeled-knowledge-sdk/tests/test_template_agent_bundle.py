@@ -80,14 +80,18 @@ def test_targets_dev_and_prd():
 
 def test_variables():
     variables = _bundle()["variables"]
-    for name in ("warehouse_id", "catalog", "schema", "consumer_group", "curator_group", "genie_parent_path"):
+    for name in ("warehouse_id", "catalog", "schema", "agent_permissions", "genie_parent_path"):
         assert name in variables, name
         assert variables[name].get("description"), f"{name} has no description"
-    # R4.3 / G9: no broad default grant; the owner must name a group.
-    assert "required" in variables["consumer_group"]["description"].lower()
-    assert "account users" not in (BUNDLE / "databricks.yml").read_text(encoding="utf-8")
-    for required in ("warehouse_id", "catalog", "schema", "consumer_group", "curator_group"):
+    assert "consumer_group" not in variables and "curator_group" not in variables
+    for required in ("warehouse_id", "catalog", "schema"):
         assert "default" not in variables[required], f"{required} must not have a default"
+    # Owner decision 2026-11-26: CAN_RUN for `account users` by default; dev adds no one beyond the developer.
+    perms = variables["agent_permissions"]
+    assert perms["type"] == "complex"
+    assert perms["default"] == [{"level": "CAN_RUN", "group_name": "account users"}]
+    assert _bundle()["targets"]["dev"]["variables"]["agent_permissions"] == []
+    assert "agent_permissions" not in (_bundle()["targets"]["prd"].get("variables") or {})
 
 
 def test_no_hosts_or_user_names():
@@ -122,8 +126,7 @@ def test_genie_spaces_resource_shape():
         assert spec["parent_path"] == "${var.genie_parent_path}"
         assert spec.get("title")
         assert spec.get("file_path"), f"{key}: file_path missing"
-        grants = {(p["level"], p.get("group_name")) for p in spec["permissions"]}
-        assert grants == {("CAN_RUN", "${var.consumer_group}"), ("CAN_EDIT", "${var.curator_group}")}
+        assert spec["permissions"] == "${var.agent_permissions}"
 
 
 def test_file_path_sources_exist():
@@ -170,5 +173,4 @@ def test_readme_records_interpolation_result():
 def test_readme_renders_from_resolved_target():
     readme = (BUNDLE / "README.md").read_text(encoding="utf-8")
     assert "--params" in readme and "resolved_target.json" in readme and "--check" in readme
-    assert '"consumer_group"' in readme  # overrides example names the group
-    assert "account users" not in readme
+    assert "agent_permissions" in readme  # documents the per-target override
