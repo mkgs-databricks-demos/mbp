@@ -77,6 +77,21 @@
     "repo_path": {
       "type": "string", "minLength": 1,
       "description": "Workspace Git folder path the developer can write to (L100)."
+    },
+    "skills": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["catalog", "schema"],
+      "description": "Where the SDK skills are published in Unity Catalog (build-1 R1). Sessions load <catalog>.<schema>.<id> and fall back to the SDK skills/ folder.",
+      "properties": {
+        "catalog": {"type": "string", "minLength": 1, "description": "Catalog of the skills schema."},
+        "schema": {"type": "string", "minLength": 1, "description": "Skills schema (the SDK schema)."},
+        "ids": {
+          "type": "array", "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "description": "snake_case skill ids, e.g. ontology_mv_synthesis."
+        }
+      }
     }
   }
 }

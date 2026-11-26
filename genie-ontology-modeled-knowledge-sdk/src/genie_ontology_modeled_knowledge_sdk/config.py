@@ -81,6 +81,8 @@ class SdkConfig:
     max_metric_views_per_agent: int = DEFAULT_MAX_METRIC_VIEWS_PER_AGENT
     project_root: str | None = None
     repo_path: str | None = None
+    # Published SDK skills location: {"catalog", "schema", "ids"} (build-1 R1).
+    skills: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a ``sdk_config.json``-shaped dict.
@@ -92,6 +94,9 @@ class SdkConfig:
         for f in fields(self):
             value = getattr(self, f.name)
             if value is None or (isinstance(value, list) and not value):
+                continue
+            if isinstance(value, dict):
+                out[f.name] = {k: (list(v) if isinstance(v, list) else v) for k, v in value.items()}
                 continue
             out[f.name] = list(value) if isinstance(value, list) else value
         return out

@@ -1,0 +1,23 @@
+# Skill mapping for the Genie Ontology Modeled Knowledge SDK (build-1 R1).
+#
+# Staged under genie-ontology-modeled-knowledge-sdk/ci/; the owner moves it to
+# <repo root>/skills.yaml (see docs/skills/README.md). Sources are relative to
+# the repository root. Targets are Unity Catalog skill ids
+# <catalog>.<schema>.<skill_id>; ${SKILLS_CATALOG} and ${SKILLS_SCHEMA} are
+# substituted at publish time (GitHub workflow variables, or the
+# notebooks/publish_skills widgets). Ids follow the Unity Catalog snake_case
+# convention; each SKILL.md keeps its kebab-case front matter name.
+version: 1
+skills:
+  - source: genie-ontology-modeled-knowledge-sdk/skills/ontology-domain-research
+    target: ${SKILLS_CATALOG}.${SKILLS_SCHEMA}.ontology_domain_research
+  - source: genie-ontology-modeled-knowledge-sdk/skills/ontology-context-extraction
+    target: ${SKILLS_CATALOG}.${SKILLS_SCHEMA}.ontology_context_extraction
+  - source: genie-ontology-modeled-knowledge-sdk/skills/ontology-deep-eda
+    target: ${SKILLS_CATALOG}.${SKILLS_SCHEMA}.ontology_deep_eda
+  - source: genie-ontology-modeled-knowledge-sdk/skills/ontology-mv-synthesis
+    target: ${SKILLS_CATALOG}.${SKILLS_SCHEMA}.ontology_mv_synthesis
+  - source: genie-ontology-modeled-knowledge-sdk/skills/ontology-agent-curation
+    target: ${SKILLS_CATALOG}.${SKILLS_SCHEMA}.ontology_agent_curation
+  - source: genie-ontology-modeled-knowledge-sdk/skills/ontology-tuning
+    target: ${SKILLS_CATALOG}.${SKILLS_SCHEMA}.ontology_tuning

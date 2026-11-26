@@ -6,6 +6,7 @@ Sessions are listed in reverse chronological order.
 
 | Date | Session | Summary |
 |---|---|---|
+| 2026-11-26 | [W1-3 / 27 Publish SDK Skills to the Unity Gateway Skills Library (R1)](2026-11-26_w1-3-27-skills-publishing.md) | Wave 1-3, session 27, mode edit, status pass: six ontology-* skills published (9 then 0 changes), R1 spike recorded, workspace-folder fallback documented (run 288268071022101) |
 | 2026-11-26 | [W1-2b / 23b Publish the SDK Wheel to the UC Volume (R7a)](2026-11-26_w1-2b-23b-wheel-publish.md) | Wave 1-2b, session 23b, mode edit, status pass: SDK bundle deployed to dev, one 0.1.0 wheel at the stable .internal/ path, sdk_smoke SUCCESS (run 288268071022101) |
 | 2026-11-25 | [W1-2 / 26 Exhaustive Tuning Protocol Skill & Skills Index (R8)](2026-11-25_w1-2-26-tuning-skill.md) | Wave 1-2, session 26, mode edit, status pass: already completed, re-validated (run 288268071022101) |
 | 2026-11-25 | [W1-2 / 25 Synthesis & Curation Skills: Reconcile, Verify Patterns on the Platform (R8)](2026-11-25_w1-2-25-synthesis-curation-skills.md) | Wave 1-2, session 25, mode edit, status pass: already completed, re-validated (run 288268071022101) |

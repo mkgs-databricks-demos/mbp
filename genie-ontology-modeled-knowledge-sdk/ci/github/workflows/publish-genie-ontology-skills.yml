@@ -1,0 +1,71 @@
+# Publish the Genie Ontology Modeled Knowledge SDK skills to the Unity Gateway
+# skills library (build-1 R1).
+#
+# Staged under genie-ontology-modeled-knowledge-sdk/ci/github/workflows/; the
+# owner moves it to <repo root>/.github/workflows/ and ci/skills.yaml to
+# <repo root>/skills.yaml (see docs/skills/README.md). Paths are relative to the
+# repository root.
+#
+# Auth: GitHub OIDC workload identity federation on a publishing service
+# principal (no stored secret). Repository/environment variables:
+#   DATABRICKS_HOST, DATABRICKS_CLIENT_ID (publishing service principal),
+#   SKILLS_CATALOG, SKILLS_SCHEMA (the SDK schema for this environment).
+# The service principal needs USE CATALOG, USE SCHEMA and CREATE VOLUME on the
+# skills schema, plus READ VOLUME and WRITE VOLUME to update existing skills.
+name: publish-genie-ontology-skills
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "genie-ontology-modeled-knowledge-sdk/skills/**"
+      - "skills.yaml"
+      - ".github/workflows/publish-genie-ontology-skills.yml"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Validate and diff only; publish nothing"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write # GitHub OIDC token for Databricks workload identity federation
+
+concurrency:
+  group: publish-genie-ontology-skills
+  cancel-in-progress: false
+
+jobs:
+  hygiene:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: genie-ontology-modeled-knowledge-sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[test]"
+      - run: python -m pytest -q tests/test_skills.py
+
+  publish:
+    needs: hygiene
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_AUTH_TYPE: github-oidc
+      SKILLS_CATALOG: ${{ vars.SKILLS_CATALOG }}
+      SKILLS_SCHEMA: ${{ vars.SKILLS_SCHEMA }}
+    steps:
+      - uses: actions/checkout@v4
+      # TODO(owner): pin reviewed SHA. The commit could not be verified from the
+      # build session; replace the ref below with the reviewed 40-character SHA
+      # and confirm the input names against the action's action.yml.
+      - uses: databricks/unity-gateway/actions/publish-skills@0000000000000000000000000000000000000000
+        with:
+          mapping: skills.yaml
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}

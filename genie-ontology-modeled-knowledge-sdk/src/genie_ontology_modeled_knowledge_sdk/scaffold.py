@@ -245,6 +245,22 @@ def _is_protected(rel: Path) -> bool:
     return any(part in PROTECTED_DIRS for part in rel.parts)
 
 
+def skills_memory_section(skills: dict[str, Any]) -> str:
+    """``PROJECT_MEMORY.md`` section recording where the SDK skills are published (build-1 R1)."""
+    catalog, schema = skills["catalog"], skills["schema"]
+    lines = [
+        "## SDK skills",
+        "",
+        f"Published in Unity Catalog schema `{catalog}.{schema}` (recorded by scaffold_project from "
+        "`sdk_config.json` `skills`). Load each skill by its Unity Catalog id; if it is not in the "
+        "session's skill list, read `skills/<folder>/SKILL.md` from the SDK checkout instead "
+        "(workspace-folder fallback).",
+        "",
+    ]
+    lines += [f"* `{catalog}.{schema}.{i}`" for i in skills.get("ids") or []]
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def _plan(sdk_root: Path, cfg: SdkConfig, values: dict[str, str], vendor: bool = False) -> list[tuple[Path, bytes]]:
     """Return ``(relative destination, content)`` for every file to scaffold."""
     templates = sdk_root / "templates"
@@ -284,7 +300,10 @@ def _plan(sdk_root: Path, cfg: SdkConfig, values: dict[str, str], vendor: bool =
     memory = run / "PROJECT_MEMORY.md"
     if not memory.is_file():
         raise FileNotFoundError(f"run kit file missing: {memory}")
-    out.append((Path("PROJECT_MEMORY.md"), _render_bytes(memory.read_bytes(), values)))
+    memory_bytes = _render_bytes(memory.read_bytes(), values)
+    if cfg.skills:
+        memory_bytes = memory_bytes.rstrip(b"\n") + b"\n\n" + skills_memory_section(cfg.skills).encode("utf-8")
+    out.append((Path("PROJECT_MEMORY.md"), memory_bytes))
 
     if vendor:
         for module in vendored_modules(sdk_root):
