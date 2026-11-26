@@ -23,8 +23,8 @@ def pyproject_version() -> str:
     return m.group(1)
 
 
-def test_pyproject_version_is_0_1_0():
-    assert pyproject_version() == "0.1.0"
+def test_pyproject_version_is_0_1_1():
+    assert pyproject_version() == "0.1.1"
 
 
 def test_dunder_version_matches_pyproject():

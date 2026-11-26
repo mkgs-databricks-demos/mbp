@@ -51,7 +51,7 @@ Checked with Databricks CLI **v1.27.0** (`databricks version`).
 |---|---|---|
 | `artifacts.sdk_wheel.type` | `whl` | pure-Python wheel |
 | `artifacts.sdk_wheel.path` | `.` | the SDK root (`pyproject.toml`) |
-| `artifacts.sdk_wheel.build` | `python -m pip wheel --no-deps --no-build-isolation -w dist .` | `python -m build` was not used: the `build` module is not installed on the serverless compute where deploys ran |
+| `artifacts.sdk_wheel.build` | `rm -rf build dist && python -m pip wheel --no-deps --no-build-isolation -w dist .` | `python -m build` was not used: the `build` module is not installed on the serverless compute where deploys ran. `build/` and `dist/` are removed first because setuptools reused a stale `build/lib` on the workspace file system and shipped old module copies (first 0.1.1 build, 2026-11-26) |
 | version | static, `[project] version` in `pyproject.toml` | no dynamic versioning |
 | `workspace.artifact_path` | `${resources.volumes.sdk_wheels.volume_path}` on every target | the resource reference is accepted by `bundle validate`, so no per-target path is composed |
 | `sync.exclude` | everything except the package, its metadata and `notebooks/sdk_smoke.ipynb` | `dist/` and `build/` are left to `.gitignore`; strict validate rejects exclude patterns that match no files |

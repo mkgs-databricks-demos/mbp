@@ -41,7 +41,7 @@ variables:
   # README.md "SDK wheel"). The scaffold renders sdk_version from the SDK.
   sdk_version:
     description: Genie Ontology Modeled Knowledge SDK version to install (rendered by the scaffold from the SDK version)
-    default: 0.1.0
+    default: 0.1.1
   sdk_volume_path:
     # No default on purpose: the /Volumes/<catalog>/<schema>/sdk_wheels path of
     # the SDK bundle's volume differs per workspace.

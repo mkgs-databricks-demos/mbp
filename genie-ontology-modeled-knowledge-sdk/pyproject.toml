@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "genie-ontology-modeled-knowledge-sdk"
 # Single source of the SDK version: __version__ reads it from the installed wheel's
 # metadata (or from this file in a source tree); see CHANGELOG.md.
-version = "0.1.0"
+version = "0.1.1"
 description = "Automates the standup of modeled knowledge for Genie Ontology: UC sources -> metric views -> UC Pages -> Genie Agents -> tuning plan."
 readme = "README.md"
 requires-python = ">=3.11"
