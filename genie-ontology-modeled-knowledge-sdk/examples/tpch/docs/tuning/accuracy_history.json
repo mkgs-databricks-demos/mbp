@@ -182,5 +182,28 @@
       "correct": 180,
       "n": 191
     }
+  },
+  {
+    "changes": [
+      {
+        "step": 1,
+        "view": "mv_tpch_supply_chain_returns",
+        "what": "Returned Revenue comment: report NULL as-is, no COALESCE/IFNULL/NVL/CASE WHEN ... IS NULL THEN 0; Return Flag other than R has no returned lines (NULL)"
+      }
+    ],
+    "eval_run_id": "01f1e9bfb0df1b80b8150581a4dc3e1d",
+    "holdout": {
+      "accuracy": 0.9761904761904762,
+      "correct": 41,
+      "n": 42
+    },
+    "iteration": 5,
+    "label": "tuning_plan_05",
+    "started_at": "2026-11-26T17:34:53+00:00",
+    "tuning": {
+      "accuracy": 0.9476439790575916,
+      "correct": 181,
+      "n": 191
+    }
   }
 ]

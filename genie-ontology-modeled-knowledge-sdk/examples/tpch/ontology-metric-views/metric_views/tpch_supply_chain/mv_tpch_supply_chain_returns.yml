@@ -68,7 +68,7 @@ dimensions:
 measures:
   - name: Returned Revenue
     expr: SUM(source.l_extendedprice * (1 - source.l_discount)) FILTER (WHERE source.l_returnflag = 'R')
-    comment: "Discounted revenue in USD on returned lines (TPC-H Q10 revenue lost). A selection with no returned lines returns NULL; report the NULL, do not COALESCE it to 0"
+    comment: "Discounted revenue in USD on returned lines (TPC-H Q10 revenue lost). A selection with no returned lines returns NULL; report the NULL as-is: do not replace it with 0 by COALESCE, IFNULL, NVL or CASE WHEN ... IS NULL THEN 0. A Return Flag other than R (for example N) has no returned lines, so Returned Revenue there is NULL"
     synonyms:
       - revenue lost to returns
       - returned item revenue

@@ -1,7 +1,7 @@
 # Tuning Plan 05 — tpch_supply_chain_agent
 
 Written by: iteration 4 (session 39, build run 829522414538457, 2026-11-26), from fresh triage of the tuning-split failures in iterations/04.md (eval run 01f1e9b700941e0babec9fa9438fbc86).
-Applied by: iteration 5.
+Applied by: iteration 5 (session 40, build run 829522414538457). **Status: applied** (1 applied, 0 reverted). Eval run 01f1e9bfb0df1b80b8150581a4dc3e1d: tuning 94.8% (181/191), holdout 97.6% (41/42); asymptote reached, no tuning_plan_06.
 Rule: MV-first (ladder steps 1-8 before 9-10). Holdout: numbers only (92.9%, 39/42); no holdout question is cited here.
 
 Iteration-4 tuning accuracy 94.2% (180/191), +0.5 pp. 11 tuning-split failures, each with one category: Benchmark defect 10 (unchanged), Ambiguity 1 (f034, regression). Triage is from the generated SQL versus the expected SQL (no result rows in the eval details).
@@ -12,7 +12,7 @@ Iteration-4 tuning accuracy 94.2% (180/191), +0.5 pp. 11 tuning-split failures, 
 
 | # | Question ids | Category | Ladder step | Change | Expected effect | Status | Outcome |
 |---|---|---|---|---|---|---|---|
-| 1 | f034 | Ambiguity | 1 comment | `Returned Revenue` measure comment: replace "report the NULL, do not COALESCE it to 0" with "report the NULL as-is: do not replace it with 0 by COALESCE, IFNULL, NVL or CASE WHEN ... IS NULL THEN 0. A Return Flag other than R (for example N) has no returned lines, so Returned Revenue there is NULL" | f034 returns the raw `Returned Revenue` measure (NULL); other returns questions unchanged | planned | |
+| 1 | f034 | Ambiguity | 1 comment | `Returned Revenue` measure comment: replace "report the NULL, do not COALESCE it to 0" with "report the NULL as-is: do not replace it with 0 by COALESCE, IFNULL, NVL or CASE WHEN ... IS NULL THEN 0. A Return Flag other than R (for example N) has no returned lines, so Returned Revenue there is NULL" | f034 returns the raw `Returned Revenue` measure (NULL); other returns questions unchanged | applied | f034 fixed; returns view 41/45 (was 40/45), no regression; registered by run 198716023326190 |
 
 ### Agent (steps 9-10, exhaustion record required)
 
