@@ -108,7 +108,7 @@ measures:
       currency_code: USD
   - name: Supplier Count
     expr: COUNT(DISTINCT source.ps_suppkey)
-    comment: "Distinct suppliers with offers in scope"
+    comment: "Distinct suppliers with offers in scope. To compare supplier and customer counts by nation, match Supplier Nation to Customer Nation (orders view) with an inner join on the nation name; do not FULL OUTER JOIN or COALESCE missing counts to 0"
   - name: Part Count
     expr: COUNT(DISTINCT source.ps_partkey)
     comment: "Distinct parts with offers in scope"

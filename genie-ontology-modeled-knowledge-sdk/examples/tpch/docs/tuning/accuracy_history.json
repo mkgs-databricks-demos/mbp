@@ -88,5 +88,48 @@
       "correct": 177,
       "n": 191
     }
+  },
+  {
+    "changes": [
+      {
+        "step": 6,
+        "view": "mv_tpch_supply_chain_returns",
+        "what": "new dimension Order Year = YEAR(orders.o_orderdate) (integer, same as other views)"
+      },
+      {
+        "step": 5,
+        "view": "mv_tpch_supply_chain_revenue",
+        "what": "Average Discount expression ROUND(AVG(l_discount), 4); comment updated"
+      },
+      {
+        "step": 1,
+        "view": "mv_tpch_supply_chain_profit",
+        "what": "view comment: YoY keeps every year (first year NULL change), only the changes asked for"
+      },
+      {
+        "step": 1,
+        "view": "mv_tpch_supply_chain_supply_cost",
+        "what": "Supplier Count comment: inner join Supplier Nation to Customer Nation, no FULL OUTER JOIN / COALESCE"
+      },
+      {
+        "step": 1,
+        "view": "mv_tpch_supply_chain_market_share",
+        "what": "Supplier Nation comment: share of total market volume 0-1 rounded to 4 decimals; top question returns one row"
+      }
+    ],
+    "eval_run_id": "01f1e9a5cbae1ec8817029d8fb8334e6",
+    "holdout": {
+      "accuracy": 0.9761904761904762,
+      "correct": 41,
+      "n": 42
+    },
+    "iteration": 2,
+    "label": "tuning_plan_02",
+    "started_at": "2026-11-26T14:29:31+00:00",
+    "tuning": {
+      "accuracy": 0.9424083769633508,
+      "correct": 180,
+      "n": 191
+    }
   }
 ]

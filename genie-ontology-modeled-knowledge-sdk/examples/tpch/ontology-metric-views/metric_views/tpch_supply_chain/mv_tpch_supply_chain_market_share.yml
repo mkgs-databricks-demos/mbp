@@ -73,7 +73,7 @@ dimensions:
     comment: "Region of the ordering customer; Q8 restricts the market to one customer region"
   - name: Supplier Nation
     expr: supplier.supplier_nation.n_name
-    comment: "Nation of the supplier that fulfilled the line; the numerator nation of national market share"
+    comment: "Nation of the supplier that fulfilled the line; the numerator nation of national market share. A nation's share of total market volume is its Market Volume over the total across nations, a 0-1 fraction rounded to 4 decimals; a 'which nation earns the most' question returns the single top row (ORDER BY ... LIMIT 1)"
     synonyms:
       - supplying nation
       - vendor country

@@ -38,6 +38,9 @@ dimensions:
   - name: Order Quarter
     expr: DATE_TRUNC('QUARTER', orders.o_orderdate)
     comment: "Calendar quarter the order was placed"
+  - name: Order Year
+    expr: YEAR(orders.o_orderdate)
+    comment: "Calendar year the order was placed, an integer (same name and meaning as Order Year in the revenue, profit, orders and market share views). Use it to group or join by year; do not derive a year with DATE_TRUNC('YEAR', Order Month)"
   - name: Return Flag
     expr: source.l_returnflag
     comment: "'R' = returned"
