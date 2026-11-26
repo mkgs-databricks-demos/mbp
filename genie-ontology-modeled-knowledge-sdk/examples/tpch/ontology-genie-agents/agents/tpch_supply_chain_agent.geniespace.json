@@ -1,4 +1,3503 @@
 {
+  "benchmarks": {
+    "questions": [
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)\n",
+              "SELECT o.order_year, ROUND(p.profit / o.order_count, 2) AS profit_per_order FROM o JOIN p USING (order_year) ORDER BY o.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "00f270bace905f619032e332beb28457",
+        "question": [
+          "What was the profit per order in each order year?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Return Flag` = 'R'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "016f68c7b3f55cb7940a5836e77c2731",
+        "question": [
+          "How many distinct orders contain at least one returned line?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Ordering Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "t AS (SELECT `Customer Nation` AS nation, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)\n",
+              "SELECT o.nation, o.customers, t.returned_revenue FROM o JOIN t USING (nation) ORDER BY t.returned_revenue DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "0382e641694f5d46aed73b3677e236b7",
+        "question": [
+          "For each customer nation, how many distinct customers placed orders and how much revenue was returned?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1996"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "03acaf9c747050f29bb5d36db9aaf8f3",
+        "question": [
+          "What was our order volume in 1996?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),\n",
+              "f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Average Transit Days`) AS avg_transit_days FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)\n",
+              "SELECT t.ship_mode, ROUND(t.return_line_rate, 5) AS return_line_rate, ROUND(f.avg_transit_days, 2) AS avg_transit_days FROM t JOIN f USING (ship_mode) ORDER BY t.return_line_rate DESC LIMIT 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "045e646766025f52a56d47aa07a55dab",
+        "question": [
+          "Which ship mode has the highest share of returned lines, and what is its average transit time in days?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH p AS (SELECT `Manufacturer` AS mfgr, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),\n",
+              "c AS (SELECT `Manufacturer` AS mfgr, MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)\n",
+              "SELECT p.mfgr, p.profit, c.inventory_value FROM p JOIN c USING (mfgr) ORDER BY p.mfgr"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "057fdb71e0825811ad543c282c05c7ad",
+        "question": [
+          "By manufacturer, show profit and inventory value."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Month` AS order_month, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1995 GROUP BY ALL),\n",
+              "r AS (SELECT `Order Month` AS order_month, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Order Year` = 1995 GROUP BY ALL),\n",
+              "t AS (SELECT `Order Month` AS order_month, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE YEAR(`Order Month`) = 1995 GROUP BY ALL)\n",
+              "SELECT o.order_month, o.order_count, r.revenue, t.returned_revenue FROM o JOIN r USING (order_month) JOIN t USING (order_month) ORDER BY o.order_month"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "066507e89e2154abbd928e4b9ba646ef",
+        "question": [
+          "Month by month in 1995, show orders placed, net revenue and returned revenue."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Quantity`) AS quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "0681e1e9ecf452219405aad4b34fc7d5",
+        "question": [
+          "How many units were ordered in total across all order lines?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "06f5966beec2582abffaafab10f73c33",
+        "question": [
+          "What is the overall profit margin as a fraction of net revenue?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Order Year` = 1999"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "08dbbf82c45c559b9de2d10c1ae12099",
+        "question": [
+          "What was market volume for orders placed in 1999?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Supplier Nation`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY `Supplier Nation` ORDER BY market_volume DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "08f93c9edd1a59aa808bafcf192d1e7e",
+        "question": [
+          "Show market volume by supplier nation, largest first."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Order Priority`, MEASURE(`Average Transit Days`) AS avg_transit_days FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL ORDER BY `Order Priority`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "09a977aa31ac58bd8ab533423b97513b",
+        "question": [
+          "Show average transit days from shipment to receipt for each order priority."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`On-Time Delivery Rate`) AS on_time_delivery_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)\n",
+              "SELECT r.ship_mode, r.revenue, ROUND(f.on_time_delivery_rate, 4) AS on_time_delivery_rate FROM r JOIN f USING (ship_mode) ORDER BY r.ship_mode"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "0d2afbd7f8f45e908465ad2d78eef2d0",
+        "question": [
+          "By ship mode, compare net revenue with the on-time delivery rate."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Nation`, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL ORDER BY returned_revenue DESC LIMIT 5"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "0db2f74d9ec558cab500d16e39a571f1",
+        "question": [
+          "Which 5 customer nations lost the most revenue to returns?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "101862f65d72552594844fa6db944089",
+        "question": [
+          "What is total market volume across all lines?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Gross Charge`) AS gross_charge FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Ship Date` > DATE'1998-08-02'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "11b7927f68b6549b8cbf84f1e12ddaee",
+        "question": [
+          "How much revenue including tax was charged on lines shipped after the last order date, 1998-08-02?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Market Segment`, MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL ORDER BY `Market Segment`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "11f01ed69b6957058ac9f21a964e039b",
+        "question": [
+          "What is the product return rate by customer segment?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "12e5e39cd44950789c4278133116db30",
+        "question": [
+          "How much discounted revenue was lost to returned lines overall?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS orders_view_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "r AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS revenue_view_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL)\n",
+              "SELECT o.order_year, o.orders_view_count, r.revenue_view_count, o.orders_view_count - r.revenue_view_count AS difference FROM o JOIN r USING (order_year) ORDER BY o.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "1389ec5381ce5fae9430a265880823ea",
+        "question": [
+          "By order year, do the orders view and the revenue view agree on the number of orders?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Supplier Nation`, MEASURE(`Profit`) AS profit, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Order Year` = 1995 GROUP BY ALL ORDER BY `Supplier Nation`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "14363b146c4853d4b842f0c0f1bdffce",
+        "question": [
+          "What is the gross profit and margin for each vendor country in 1995?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Region`, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY `Customer Region` ORDER BY `Customer Region`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "14471707558659f3bd9ddacb8d3bcd23",
+        "question": [
+          "Show net revenue by customer region."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Order Year`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY `Order Year` ORDER BY `Order Year`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "14fbcfe37624575098348658badd89af",
+        "question": [
+          "How did market volume change year over year by order year?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Priority` AS priority, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "f AS (SELECT `Order Priority` AS priority, MEASURE(`Late Receipt Count`) AS late_receipts FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)\n",
+              "SELECT o.priority, ROUND(f.late_receipts / o.order_count, 4) AS late_receipts_per_order FROM o JOIN f USING (priority) ORDER BY late_receipts_per_order DESC LIMIT 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "154657ebe45f51438a1c04ad39f0f414",
+        "question": [
+          "Which order priority has the most late-received lines per order?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Supplier Name`, MEASURE(`Available Quantity`) AS available_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL ORDER BY available_quantity DESC, `Supplier Name` LIMIT 5"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "168999ffd4d153fd9ca70f48f26cf148",
+        "question": [
+          "Which 5 suppliers hold the most available units?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Order Year`, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY `Order Year` ORDER BY `Order Year`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "168b97720afa5e7f978d66bb84884923",
+        "question": [
+          "How many orders were placed each year?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "182587bae11b54dca6985239925c8c1c",
+        "question": [
+          "How many order lines are there in total?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Market Segment` AS segment, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "t AS (SELECT `Market Segment` AS segment, MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)\n",
+              "SELECT o.segment, o.order_count, ROUND(t.return_rate, 4) AS return_rate FROM o JOIN t USING (segment) ORDER BY o.segment"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "18b0349dc54a5411882d296630f7a1c9",
+        "question": [
+          "By market segment, show the number of orders and the quantity return rate."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH p AS (SELECT `Part Type` AS part_type, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),\n",
+              "c AS (SELECT `Part Type` AS part_type, MEASURE(`Available Quantity`) AS available_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)\n",
+              "SELECT p.part_type, ROUND(p.profit / c.available_quantity, 4) AS profit_per_available_unit FROM p JOIN c USING (part_type) ORDER BY profit_per_available_unit DESC LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "196fdcfca9d85c76bbca7b04072e39cc",
+        "question": [
+          "By part type, what is the profit per unit of available supplier quantity? Show the top 10."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Order Year` AS order_year, MEASURE(`Average Discount`) AS avg_discount FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)\n",
+              "SELECT r.order_year, ROUND(p.profit_margin, 4) AS profit_margin, ROUND(r.avg_discount, 4) AS avg_discount FROM r JOIN p USING (order_year) ORDER BY r.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "19e90fedd126543eae48b7b76c8d8fe1",
+        "question": [
+          "Show the margin trend: profit margin and average discount by order year."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1999"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "1b7ee6250a9c5dc19406c414755a31d0",
+        "question": [
+          "How many orders were placed in 1999?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Customer Region` AS region, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "c AS (SELECT `Supplier Region` AS region, MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)\n",
+              "SELECT o.region, o.order_count, c.inventory_value FROM o JOIN c USING (region) ORDER BY o.region"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "1c0c15e1d2415d5c96affdb11c027341",
+        "question": [
+          "By region, show orders placed by customers in the region and the inventory value held by suppliers in the same region."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Region`, MEASURE(`Order Count`) AS order_count, MEASURE(`Order Total Price`) AS order_total_price FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY `Customer Region` ORDER BY `Customer Region`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "1cb525176c5c57728a18b4bca23004b2",
+        "question": [
+          "Show order count and header order total for each customer region."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Ordering Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "p AS (SELECT `Order Year` AS order_year, MEASURE(`Quantity`) AS quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)\n",
+              "SELECT o.order_year, o.customers, p.quantity, ROUND(p.quantity / o.customers, 2) AS quantity_per_customer FROM o JOIN p USING (order_year) ORDER BY o.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "1f721d1c3d8456af9d24cb667ccc8b54",
+        "question": [
+          "By order year, show the number of ordering customers and the quantity sold in the profit view."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`On-Time Shipping Rate`) AS on_time_shipping_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `Ship Mode` = 'AIR'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "1f7d946cc8cc58cda9f4202c58b1d488",
+        "question": [
+          "What is the on-time shipping rate for lines shipped by AIR, as a fraction?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1998"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "20810e47cc695c828c3e4721fda1fc50",
+        "question": [
+          "How many orders were placed in 1998, the last and partial year of data?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH t AS (SELECT YEAR(`Order Month`) AS order_year, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),\n",
+              "p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)\n",
+              "SELECT p.order_year, ROUND(t.returned_revenue / p.profit, 4) AS returned_to_profit FROM t JOIN p USING (order_year) ORDER BY p.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "2103a6f46a145ff897ebd846718f8f2c",
+        "question": [
+          "For each order year, what is returned revenue as a fraction of profit?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Minimum Supply Cost`) AS minimum_supply_cost FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost WHERE `Part Size` = 15 AND `Part Type` LIKE '%BRASS' AND `Supplier Region` = 'EUROPE'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "2178e04b1cd354ceafa136ed9765ee5b",
+        "question": [
+          "Following TPC-H Q2, what is the lowest supply cost for size 15 parts of a BRASS type from suppliers in EUROPE?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Customer Nation` AS nation, MEASURE(`Average Discount`) AS avg_discount FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "m AS (SELECT `Customer Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)\n",
+              "SELECT r.nation, ROUND(r.avg_discount, 5) AS avg_discount, m.market_volume FROM r JOIN m USING (nation) ORDER BY r.avg_discount DESC LIMIT 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "21b94b591fa259cba4be0891fe335ad7",
+        "question": [
+          "Which customer nation has the highest average discount, and what is its market volume?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Nation`, MEASURE(`Ordering Customer Count`) AS ordering_customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY `Customer Nation` ORDER BY ordering_customers DESC, `Customer Nation` LIMIT 5"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "22bd45b7bdb2591c9f8a01ac2d7abf15",
+        "question": [
+          "Which five customer nations have the most ordering customers?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Status` AS status, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Status` IN ('O', 'F') GROUP BY ALL),\n",
+              "r AS (SELECT `Line Status` AS status, MEASURE(`Line Item Count`) AS line_items, MEASURE(`Quantity`) AS quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL)\n",
+              "SELECT o.status, o.order_count, r.line_items, r.quantity FROM o JOIN r USING (status) ORDER BY o.status"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "2519c7dcbc285f07981ad6776e722454",
+        "question": [
+          "Compare open (O) and fulfilled (F) work: order count by order status next to line item count and quantity by line status."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Ordering Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Supplier Count`) AS suppliers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL),\n",
+              "m AS (SELECT `Supplier Nation` AS nation, MEASURE(`Market Volume`) AS supplied_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)\n",
+              "SELECT o.nation, o.customers, c.suppliers, m.supplied_volume FROM o JOIN c USING (nation) JOIN m USING (nation) ORDER BY o.nation"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "25312ac1a6535bc8b3538fda7be0d615",
+        "question": [
+          "For each nation, compare demand and supply: customers ordering from the nation, suppliers based in it, and market volume supplied by its suppliers."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Part Key`, MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost WHERE `Supplier Nation` = 'GERMANY' GROUP BY ALL ORDER BY inventory_value DESC, `Part Key` LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "267df8c449f751ddb916dd36b3728d5f",
+        "question": [
+          "Which 10 parts have the highest inventory value for suppliers in GERMANY?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Region`, market_volume / SUM(market_volume) OVER () AS volume_share FROM (SELECT `Customer Region`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY `Customer Region`) ORDER BY `Customer Region`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "2736415530fe5681a9a858b1d9fc11ad",
+        "question": [
+          "What share of total market volume does each customer region account for?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Return Flag` AS return_flag, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "t AS (SELECT `Return Flag` AS return_flag, MEASURE(`Returned Line Count`) AS returned_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)\n",
+              "SELECT r.return_flag, r.revenue, t.returned_lines FROM r JOIN t USING (return_flag) ORDER BY r.return_flag"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "29b075f92ee058009b9bf0cba3df2627",
+        "question": [
+          "By return flag, show net revenue and the number of returned lines."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Cost of Goods Sold`) AS cost_of_goods_sold FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "2a3b34fab1895b7da5ab5ed16f7c0ffc",
+        "question": [
+          "What was the total cost of goods sold?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Customer Region` AS region, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "r AS (SELECT `Customer Region` AS region, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL)\n",
+              "SELECT o.region, ROUND(r.revenue / o.order_count, 2) AS revenue_per_order FROM o JOIN r USING (region) ORDER BY revenue_per_order DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "2b74b3fef95552c6bbd1541607c15c64",
+        "question": [
+          "Which customer region earns the most net revenue per order, dividing line-level revenue by the order count from the orders view?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Inventory Value`) FILTER (WHERE `Supplier Region` = 'ASIA') / MEASURE(`Inventory Value`) AS asia_share FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "2d50291e0b0b513db874d2264686a479",
+        "question": [
+          "What share of total inventory value sits with suppliers in ASIA, as a fraction?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Order Year`, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL ORDER BY `Order Year`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "2fabbf705c8e5187860d3bb125ec293d",
+        "question": [
+          "How did yearly profit change from 1992 through 1998?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Available Quantity`) AS available_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost WHERE `Part Size` = 50"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "30662b5dc27659e8b2b4c66fe55de604",
+        "question": [
+          "How many units are available from offers on parts of size 50?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Ship Date` = DATE'1996-06-03'),\n",
+              "f AS (SELECT MEASURE(`On-Time Shipped Line Count`) AS on_time_lines, MEASURE(`Line Item Count`) AS line_items FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `Ship Date` = DATE'1996-06-03')\n",
+              "SELECT r.revenue, f.on_time_lines, f.line_items FROM r CROSS JOIN f"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "32d758c0a14f56a28a5faf6c480012c9",
+        "question": [
+          "On ship date 1996-06-03, how much net revenue shipped and how many of those lines shipped on time?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Supplier Count`) AS supplier_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost WHERE `Part Key` = 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "341884789d5e5b5ab17f8eed169ee070",
+        "question": [
+          "How many suppliers offer part key 1?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Ship Mode`, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL ORDER BY `Ship Mode`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "3627421bd26d55c4b0f4bc477d468227",
+        "question": [
+          "How much returned item revenue was there by shipping mode?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Ordering Customer Count`) AS ordering_customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Supplier Count`) AS suppliers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)\n",
+              "SELECT o.nation, o.ordering_customers, c.suppliers FROM o JOIN c USING (nation) ORDER BY o.nation"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "379226621ccf565892d4f450d4b00cfa",
+        "question": [
+          "For each nation, compare the number of customers who placed orders with the number of suppliers based there."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH t AS (SELECT `Order Quarter` AS order_quarter, MEASURE(`Returned Quantity`) AS returned_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE YEAR(`Order Quarter`) = 1993 GROUP BY ALL),\n",
+              "p AS (SELECT MEASURE(`Profit`) AS profit_1993 FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Order Year` = 1993)\n",
+              "SELECT t.order_quarter, t.returned_quantity, p.profit_1993 FROM t CROSS JOIN p ORDER BY t.order_quarter"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "37bea01ccf955e9ab022b49689e769e2",
+        "question": [
+          "For 1993, show returned quantity for each order quarter alongside the full-year 1993 profit."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),\n",
+              "f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`On-Time Delivery Rate`) AS on_time_delivery_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)\n",
+              "SELECT t.ship_mode, ROUND(t.return_rate, 4) AS return_rate, ROUND(f.on_time_delivery_rate, 4) AS on_time_delivery_rate FROM t JOIN f USING (ship_mode) ORDER BY t.ship_mode"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "390719276ca45d6790ee0dd1a759a5a7",
+        "question": [
+          "By ship mode, show the quantity return rate next to the on-time delivery rate."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Market Segment` = 'AUTOMOBILE'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "3c2fc0efd70b5df6acc57f9126eec2fd",
+        "question": [
+          "What is the return rate for the AUTOMOBILE market segment, in percent?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH m AS (SELECT `Supplier Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),\n",
+              "p AS (SELECT `Supplier Nation` AS nation, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),\n",
+              "j AS (SELECT m.nation, p.profit, m.market_volume / SUM(m.market_volume) OVER () AS volume_share FROM m JOIN p USING (nation))\n",
+              "SELECT nation, profit, ROUND(volume_share, 4) AS volume_share FROM j ORDER BY profit DESC LIMIT 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "3c9f283dbc5c5389ac1324c38083e44b",
+        "question": [
+          "Which supplier nation earns the most profit, and what share of total market volume do its suppliers have?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH t AS (SELECT `Customer Nation` AS nation, MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),\n",
+              "m AS (SELECT `Customer Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)\n",
+              "SELECT m.nation, m.market_volume, ROUND(t.return_rate, 4) AS return_rate FROM t JOIN m USING (nation) ORDER BY m.market_volume DESC LIMIT 5"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "3d8866492ca554e2b3a7e66b415f74c9",
+        "question": [
+          "For the 5 customer nations with the largest market volume, what is the quantity return rate?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Order Year` AS order_year, MEASURE(`Gross Charge`) AS gross_charge FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "m AS (SELECT `Order Year` AS order_year, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)\n",
+              "SELECT r.order_year, r.gross_charge, m.market_volume FROM r JOIN m USING (order_year) ORDER BY r.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "3fb999fe8a865dcca1ee24693ff462de",
+        "question": [
+          "For each order year, show the gross charge including tax and the market volume."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Return Flag` = 'N'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "41bf027053f452b39bf1be43c045f3cc",
+        "question": [
+          "How much returned revenue is on lines whose return flag is N (not returned)?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Line Status` AS line_status, MEASURE(`Line Item Count`) AS line_items FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "f AS (SELECT `Line Status` AS line_status, MEASURE(`On-Time Shipped Line Count`) AS on_time_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)\n",
+              "SELECT r.line_status, r.line_items, f.on_time_lines, ROUND(f.on_time_lines / r.line_items, 4) AS on_time_share FROM r JOIN f USING (line_status) ORDER BY r.line_status"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "41ea9c45701e5e2eaf81ece458f111bb",
+        "question": [
+          "By line status, what share of line items shipped on time?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "r AS (SELECT `Customer Nation` AS nation, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "t AS (SELECT `Customer Nation` AS nation, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)\n",
+              "SELECT o.nation, o.order_count, r.revenue, t.returned_revenue FROM o JOIN r USING (nation) JOIN t USING (nation) ORDER BY r.revenue DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "4339bb8660cb58baace3aca0e5e08650",
+        "question": [
+          "For each customer nation, show orders placed, net revenue and returned revenue."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Order Year`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Supplier Nation` = 'BRAZIL' AND `Order Year` IN (1995, 1996) GROUP BY `Order Year` ORDER BY `Order Year`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "4633831eb9735427b6f910567857e953",
+        "question": [
+          "Compare market volume supplied by BRAZIL in 1995 and 1996."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Supplier Nation`, MEASURE(`Available Quantity`) AS available_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL ORDER BY `Supplier Nation`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "46ea5e0380cc5540916a27ba0e776ea7",
+        "question": [
+          "What is the stock on hand by vendor country?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Market Segment` AS segment, MEASURE(`Ordering Customer Count`) AS ordering_customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "t AS (SELECT `Market Segment` AS segment, COUNT(DISTINCT `Customer Key`) AS customers_with_returns\n",
+              "      FROM (SELECT `Market Segment`, `Customer Key`, MEASURE(`Returned Line Count`) AS returned_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL) WHERE returned_lines > 0 GROUP BY segment)\n",
+              "SELECT o.segment, o.ordering_customers, t.customers_with_returns FROM o JOIN t USING (segment) ORDER BY o.segment"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "482f1d7383095ecfb4494c81523a2353",
+        "question": [
+          "How many customers with refunds (returned lines) are there per market segment, compared with the customers ordering in that segment?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH m AS (SELECT `Supplier Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),\n",
+              "p AS (SELECT `Supplier Nation` AS nation, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),\n",
+              "c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)\n",
+              "SELECT m.nation, m.market_volume, p.profit, c.inventory_value FROM m JOIN p USING (nation) JOIN c USING (nation) ORDER BY p.profit DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "4916926b9b6a535d9e505f6cec500a9a",
+        "question": [
+          "By supplier nation, show market volume, profit and inventory value."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `High Priority` = true"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "4b644ac9465158009b8621c0a9a6e642",
+        "question": [
+          "How many urgent or high priority orders do we have?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT t.`Order Year`, COALESCE(b.market_volume, 0) / t.market_volume AS brazil_share FROM\n",
+              "(SELECT `Order Year`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Customer Region` = 'AMERICA' AND `Part Type` = 'ECONOMY ANODIZED STEEL' AND `Order Year` IN (1995, 1996) GROUP BY `Order Year`) t\n",
+              "LEFT JOIN (SELECT `Order Year`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Customer Region` = 'AMERICA' AND `Part Type` = 'ECONOMY ANODIZED STEEL' AND `Supplier Nation` = 'BRAZIL' AND `Order Year` IN (1995, 1996) GROUP BY `Order Year`) b\n",
+              "ON t.`Order Year` = b.`Order Year` ORDER BY t.`Order Year`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "4d12bb9fe7b959d283b9e0bad979469c",
+        "question": [
+          "What was BRAZIL's national market share of ECONOMY ANODIZED STEEL volume in the AMERICA customer region, by year for 1995 and 1996?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH p AS (SELECT `Manufacturer` AS mfgr, MEASURE(`Profit`) AS profit, MEASURE(`Cost of Goods Sold`) AS cogs FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),\n",
+              "c AS (SELECT `Manufacturer` AS mfgr, MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)\n",
+              "SELECT p.mfgr, p.profit, p.cogs, c.inventory_value, ROUND(c.inventory_value / p.cogs, 4) AS inventory_to_cogs FROM p JOIN c USING (mfgr) ORDER BY p.mfgr"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "4e6a1187ab94587292ee9d5dada7c20d",
+        "question": [
+          "By manufacturer, show profit, cost of goods sold and inventory value, and the ratio of inventory value to cost of goods sold."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)\n",
+              "SELECT o.order_year, o.order_count, p.profit FROM o JOIN p USING (order_year) ORDER BY o.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "4f58b29c959a528e8fd75eaac58dba97",
+        "question": [
+          "By order year, show the number of orders and the profit."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH t AS (SELECT YEAR(`Order Quarter`) AS order_year, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),\n",
+              "p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)\n",
+              "SELECT p.order_year, t.returned_revenue, p.profit FROM t JOIN p USING (order_year) ORDER BY p.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "500741a339f153bfb640d482eb6919db",
+        "question": [
+          "By order year, show returned revenue and profit."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Receipt Month`, MEASURE(`Late Receipt Count`) AS late_receipts FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `Receipt Year` = 1995 GROUP BY ALL ORDER BY `Receipt Month`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "50546e17720f51cf87f6e5e702ff6f64",
+        "question": [
+          "How did the count of late receipts trend by receipt month during 1995?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Order Count`) AS order_count, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Order Priority` = '1-URGENT' AND `Market Segment` = 'MACHINERY'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "51e31fe539e05f08941ba31876060609",
+        "question": [
+          "What is the number of distinct orders and the net revenue for 1-URGENT orders in the MACHINERY segment?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `Ship Date` = DATE'1992-01-02'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "534cf1a1b3a95a6c9075f0b496aa7149",
+        "question": [
+          "How many lines shipped on the very first ship date in the data, January 2, 1992?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Priority` AS priority, MEASURE(`Average Order Total`) AS avg_order_total FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "f AS (SELECT `Order Priority` AS priority, MEASURE(`On-Time Delivery Rate`) AS on_time_delivery_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)\n",
+              "SELECT o.priority, ROUND(o.avg_order_total, 2) AS avg_order_total, ROUND(f.on_time_delivery_rate, 4) AS on_time_delivery_rate FROM o JOIN f USING (priority) ORDER BY o.priority"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "547db5fc977950509f9f94f057821fea",
+        "question": [
+          "For each order priority, show the average order total and the on-time delivery rate."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "r AS (SELECT `Order Year` AS order_year, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "m AS (SELECT `Order Year` AS order_year, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),\n",
+              "p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)\n",
+              "SELECT o.order_year, o.order_count, r.revenue, m.market_volume, p.profit FROM o JOIN r USING (order_year) JOIN m USING (order_year) JOIN p USING (order_year) ORDER BY o.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "54824547a0b35253a137564392e50453",
+        "question": [
+          "By order year, show order count, net revenue, market volume and profit together."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH m AS (SELECT `Part Type` AS part_type, MEASURE(`Line Item Count`) AS line_items FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),\n",
+              "c AS (SELECT `Part Type` AS part_type, MEASURE(`Offer Count`) AS offers, MEASURE(`Part Count`) AS parts FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)\n",
+              "SELECT c.part_type, c.offers, c.parts, m.line_items FROM m JOIN c USING (part_type) ORDER BY c.offers DESC, c.part_type LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "56515e21580f525ea7dca84adc66d3a5",
+        "question": [
+          "By part type, how many supplier offers and distinct parts are there compared with the number of line items sold? Show the 10 types with the most offers."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH t AS (SELECT `Customer Nation` AS nation, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),\n",
+              "m AS (SELECT `Customer Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)\n",
+              "SELECT t.nation, ROUND(t.returned_revenue / m.market_volume, 4) AS returned_share FROM t JOIN m USING (nation) ORDER BY returned_share DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "56ebfd4608645f1fa8276e9369f929d7",
+        "question": [
+          "By customer nation, what is returned revenue as a fraction of market volume?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Part Type`, MEASURE(`Average Supply Cost`) AS average_supply_cost FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost WHERE `Part Type` LIKE 'STANDARD POLISHED%' GROUP BY ALL ORDER BY `Part Type`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "570b3d3ea1085826ad9958f69a23cce3",
+        "question": [
+          "What is the unit cost by product type for STANDARD POLISHED parts?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Market Segment` AS segment, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "t AS (SELECT `Market Segment` AS segment, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)\n",
+              "SELECT r.segment, ROUND(t.returned_revenue / r.revenue, 4) AS returned_share FROM r JOIN t USING (segment) ORDER BY returned_share DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "5aa5c94cb6075472aa049f6a482c0818",
+        "question": [
+          "For each market segment, what fraction of net revenue was returned?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Supplier Region`, MEASURE(`Part Count`) AS part_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL ORDER BY `Supplier Region`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "5acdc5d8c99159b6819c72affcce15b3",
+        "question": [
+          "How many distinct parts are offered by suppliers in each region (a part offered in several regions counts in each)?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Average Order Value`) AS average_order_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Order Year` = 1997"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "5c0be93369575b7e851a0ed86fd22106",
+        "question": [
+          "What is our AOV for orders placed in 1997?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Available Quantity`) AS available_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost WHERE `Supplier Region` = 'ASIA' GROUP BY ALL),\n",
+              "m AS (SELECT `Supplier Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)\n",
+              "SELECT c.nation, m.market_volume, c.available_quantity FROM c JOIN m USING (nation) ORDER BY c.nation"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "5d95b0a9549858efb7938157c64babb5",
+        "question": [
+          "For supplier nations in ASIA, compare market volume with the quantity available from those suppliers."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Order Year` AS order_year, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "t AS (SELECT YEAR(`Order Month`) AS order_year, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),\n",
+              "p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)\n",
+              "SELECT r.order_year, r.revenue, t.returned_revenue, p.profit, p.profit - t.returned_revenue AS profit_after_returns FROM r JOIN t USING (order_year) JOIN p USING (order_year) ORDER BY r.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "5da9cb26a53a5878a9b7cef4ba6aabb5",
+        "question": [
+          "By order year, show net revenue, returned revenue and profit, and profit after subtracting returned revenue."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "5dcf4318f68d51af823675d44d0cd85b",
+        "question": [
+          "What is total net revenue after discounts?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `High Priority` AS high_priority, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "r AS (SELECT `Order Priority` IN ('1-URGENT', '2-HIGH') AS high_priority, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "f AS (SELECT `High Priority` AS high_priority, MEASURE(`On-Time Delivery Rate`) AS on_time_delivery_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)\n",
+              "SELECT o.high_priority, o.order_count, r.revenue, ROUND(f.on_time_delivery_rate, 4) AS on_time_delivery_rate FROM o JOIN r USING (high_priority) JOIN f USING (high_priority) ORDER BY o.high_priority"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "6087ffd4aac257b4804c027ebf838b23",
+        "question": [
+          "For high-priority orders versus others, show order count, net revenue and on-time delivery rate."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `Receipt Date` = DATE'1998-12-31'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "61cc766ec99f51e4ad70b02fcd89c8cf",
+        "question": [
+          "How many lines were received on December 31, 1998 (after the last ship date)?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Market Segment` AS segment, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "r AS (SELECT `Market Segment` AS segment, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "t AS (SELECT `Market Segment` AS segment, MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)\n",
+              "SELECT o.segment, o.order_count, r.revenue, ROUND(t.return_rate, 4) AS return_rate FROM o JOIN r USING (segment) JOIN t USING (segment) ORDER BY o.segment"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "6233f6824c335d82895580d01ac80f40",
+        "question": [
+          "By market segment, show order count, net revenue and quantity return rate."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Return Flag`, MEASURE(`Gross Charge`) AS gross_charge FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY `Return Flag` ORDER BY `Return Flag`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "63b6a00c5f8b524c8ba060f58f109f40",
+        "question": [
+          "Show sum_charge by returned indicator."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH m AS (SELECT `Supplier Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),\n",
+              "c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)\n",
+              "SELECT m.nation, m.market_volume, c.inventory_value FROM m JOIN c USING (nation) ORDER BY m.nation"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "64cfe389ed495afeab46489b19b8e827",
+        "question": [
+          "By supplier nation, show market volume and inventory value."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),\n",
+              "f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Late Receipt Count`) AS late_receipts FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)\n",
+              "SELECT r.ship_mode, r.revenue, t.returned_revenue, f.late_receipts FROM r JOIN t USING (ship_mode) JOIN f USING (ship_mode) ORDER BY r.ship_mode"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "65684c711ce25246a229cd3d4f43ffa8",
+        "question": [
+          "By ship mode, how do sales, refunds and late arrivals compare? Show net revenue, returned revenue and late receipt count."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Part Brand`, MEASURE(`Inventory Value`) / MEASURE(`Offer Count`) AS inventory_value_per_offer FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL ORDER BY inventory_value_per_offer DESC LIMIT 5"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "664fc358fcef50e4b4d62d271a8fffd4",
+        "question": [
+          "What is the average inventory value per offer by brand, for the 5 brands with the highest value per offer?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Gross Charge`) AS gross_charge FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Customer Nation` = 'GERMANY' GROUP BY ALL),\n",
+              "t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Shipped Quantity`) AS shipped_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Customer Nation` = 'GERMANY' GROUP BY ALL)\n",
+              "SELECT r.ship_mode, r.gross_charge, t.shipped_quantity FROM r JOIN t USING (ship_mode) ORDER BY r.ship_mode"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "67a240882ef45cbe9cc9f4230cc227c1",
+        "question": [
+          "For the customer nation GERMANY, by ship mode, compare gross charge (with tax) and shipped quantity from the returns view."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT SUM(CASE WHEN high_priority THEN n ELSE 0 END) / SUM(n) AS high_priority_share FROM (SELECT `High Priority` AS high_priority, MEASURE(`Order Count`) AS n FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY `High Priority`)"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "69b88c6048d8505592bfa0d585161dda",
+        "question": [
+          "What share of all orders are high priority?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Ship Mode` IN ('AIR', 'REG AIR') GROUP BY ALL),\n",
+              "f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`On-Time Shipping Rate`) AS on_time_shipping_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `Ship Mode` IN ('AIR', 'REG AIR') GROUP BY ALL)\n",
+              "SELECT t.ship_mode, ROUND(t.return_line_rate, 4) AS return_line_rate, ROUND(f.on_time_shipping_rate, 4) AS on_time_shipping_rate FROM t JOIN f USING (ship_mode) ORDER BY t.ship_mode"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "6a1974f4377b5f25a53d753a3baaf745",
+        "question": [
+          "For air shipments only (AIR and REG AIR), show the return line rate and the on-time shipping rate."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Ship Month`, MEASURE(`Average Ship Lag Days`) AS avg_ship_lag_days FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE YEAR(`Ship Month`) = 1996 GROUP BY ALL ORDER BY `Ship Month`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "6a277db742eb5ae79cd0cc20d43196c5",
+        "question": [
+          "What was the average number of days between order placement and shipment for each ship month in 1996?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "6c5ec875a642544795e3d22d96e73699",
+        "question": [
+          "What is the total value of available inventory at supply cost?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Ship Mode`, MEASURE(`On-Time Delivery Rate`) AS on_time_delivery_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL ORDER BY on_time_delivery_rate DESC LIMIT 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "6d506d0fbc31561cb43442a862963ca8",
+        "question": [
+          "Which ship mode has the highest on-time delivery rate?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Returned Quantity`) AS returned_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),\n",
+              "f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Late Receipt Count`) AS late_receipts FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)\n",
+              "SELECT t.ship_mode, t.returned_quantity, f.late_receipts FROM t JOIN f USING (ship_mode) ORDER BY t.ship_mode"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "6df7baecbf7d5ae584d4197ce7cc7b37",
+        "question": [
+          "For each ship mode, compare the quantity returned with the number of lines received after their commit date."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Average Fulfillment Cycle Days`) AS avg_fulfillment_cycle_days FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "6f2039f86b345e02880b6d546d80b6d8",
+        "question": [
+          "What is the overall order cycle time in days?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Customer Region` AS region, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "m AS (SELECT `Customer Region` AS region, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)\n",
+              "SELECT o.region, o.order_count, m.market_volume FROM o JOIN m USING (region) ORDER BY m.market_volume DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "6f7a6540193e5419a45f675925ee042a",
+        "question": [
+          "By customer region, show the number of orders and the market volume."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Customer Nation` = 'JAPAN' AND `Supplier Nation` = 'JAPAN'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "704cd3fbdef7500fba9d083dd2793d7a",
+        "question": [
+          "How much volume did customers in JAPAN buy from suppliers in their own nation?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Region`, MEASURE(`Market Volume`) AS market_volume, MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY `Customer Region` ORDER BY `Customer Region`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "73148893757b508b8deb6cb27f964ddf",
+        "question": [
+          "Break down market volume and line count by customer region."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Order Year`, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY `Order Year` ORDER BY `Order Year`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "738d0a732d845f7abe28602865e33af4",
+        "question": [
+          "What was net revenue for each order year?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH p AS (SELECT `Supplier Nation` AS nation, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),\n",
+              "c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Supplier Count`) AS suppliers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)\n",
+              "SELECT p.nation, p.profit, c.suppliers, ROUND(p.profit / c.suppliers, 2) AS profit_per_supplier FROM p JOIN c USING (nation) ORDER BY profit_per_supplier DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "751816a68f305a3a97c2b79e19720b1e",
+        "question": [
+          "By supplier nation, show profit and the number of suppliers."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Month` AS order_month, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1994 GROUP BY ALL),\n",
+              "t AS (SELECT `Order Month` AS order_month, MEASURE(`Returned Quantity`) AS returned_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE YEAR(`Order Month`) = 1994 GROUP BY ALL)\n",
+              "SELECT o.order_month, o.order_count, t.returned_quantity FROM o JOIN t USING (order_month) ORDER BY o.order_month"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "755f88c7ec03598fa96a87dd25ddc04a",
+        "question": [
+          "Month by month in 1994, compare orders placed with the quantity of items returned."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH p AS (SELECT `Part Brand` AS brand, MEASURE(`Quantity`) AS quantity_sold FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Manufacturer` = 'Manufacturer#3' GROUP BY ALL),\n",
+              "c AS (SELECT `Part Brand` AS brand, MEASURE(`Available Quantity`) AS available_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost WHERE `Manufacturer` = 'Manufacturer#3' GROUP BY ALL)\n",
+              "SELECT p.brand, p.quantity_sold, c.available_quantity FROM p JOIN c USING (brand) ORDER BY p.brand"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "757e1caf0f1751d08c9171b9864f1d7f",
+        "question": [
+          "For Manufacturer#3, by brand, compare the quantity sold with the quantity suppliers have available."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Receipt Year`, MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL ORDER BY `Receipt Year`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "7585e7d4d3c25f52901365acb7ba6d45",
+        "question": [
+          "How many lines were received in each calendar year?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "76ad8b8b1560526ebd7313a3f33477a9",
+        "question": [
+          "What is total gross sales before any discount?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Customer Nation` AS nation, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "t AS (SELECT `Customer Nation` AS nation, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)\n",
+              "SELECT t.nation, t.returned_revenue, r.revenue FROM r JOIN t USING (nation) ORDER BY t.returned_revenue DESC LIMIT 5"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "78147e8e26da53bd84cad71126a65314",
+        "question": [
+          "Which 5 customer nations have the largest returned revenue, and what is their total net revenue?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Date` = DATE'1995-03-15'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "789f90b05b755d74be88e31ebf47426b",
+        "question": [
+          "How many orders were placed on 1995-03-15?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Ordering Customer Count`) AS ordering_customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Supplier Count`) AS suppliers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)\n",
+              "SELECT o.nation, o.ordering_customers, c.suppliers FROM o JOIN c USING (nation) WHERE c.suppliers > o.ordering_customers ORDER BY o.nation"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "7aa4b6412019574991be699d9ac45836",
+        "question": [
+          "Are there any nations with more suppliers than ordering customers?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Part Brand`, MEASURE(`Minimum Supply Cost`) AS minimum_supply_cost FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL ORDER BY `Part Brand`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "7ab4c65002a95973bd2219f17ee11cb5",
+        "question": [
+          "What is the lowest unit supply cost offered for each part brand?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Ordering Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "m AS (SELECT `Customer Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),\n",
+              "t AS (SELECT `Customer Nation` AS nation, MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)\n",
+              "SELECT o.nation, o.customers, m.market_volume, ROUND(t.return_line_rate, 4) AS return_line_rate FROM o JOIN m USING (nation) JOIN t USING (nation) ORDER BY o.nation"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "7ad463dc04765be39ac5a1ef441189f7",
+        "question": [
+          "By customer nation, show the number of ordering customers, market volume and return line rate."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Manufacturer`, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL ORDER BY profit_margin DESC LIMIT 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "7c044c195ef0557d81788545c744e151",
+        "question": [
+          "Which manufacturer has the highest profit margin?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH m AS (SELECT `Customer Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Customer Region` = 'EUROPE' GROUP BY ALL),\n",
+              "t AS (SELECT `Customer Nation` AS nation, MEASURE(`Returned Quantity`) AS returned_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)\n",
+              "SELECT m.nation, m.market_volume, t.returned_quantity FROM m JOIN t USING (nation) ORDER BY m.nation"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "7d6fa5a2122e55c4b5351f01bb102395",
+        "question": [
+          "For customer nations in the EUROPE region, show market volume and returned quantity."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Ordering Customer Count`) AS ordering_customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "80dfa8cd2f8c5c3486e2206dae8ec720",
+        "question": [
+          "How many distinct customers have placed at least one order?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Total Price`) AS order_total_price FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "m AS (SELECT `Order Year` AS order_year, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)\n",
+              "SELECT o.order_year, o.order_total_price, m.market_volume FROM o JOIN m USING (order_year) ORDER BY o.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "821f90f5cb3a5e69a376669ed3834c58",
+        "question": [
+          "By order year, compare the total order price on headers with market volume."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Customer Region` AS region, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "r AS (SELECT `Customer Region` AS region, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "m AS (SELECT `Customer Region` AS region, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)\n",
+              "SELECT o.region, o.order_count, r.revenue, m.market_volume, ABS(r.revenue - m.market_volume) > 0.01 AS differs FROM o JOIN r USING (region) JOIN m USING (region) ORDER BY o.region"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "82f2e8bab3a157869a5e7f7f94ec6c02",
+        "question": [
+          "By customer region, show order count, net revenue and market volume, and flag any region where revenue and market volume differ."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "t AS (SELECT `Customer Nation` AS nation, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)\n",
+              "SELECT o.nation, ROUND(t.returned_revenue / o.order_count, 2) AS returned_revenue_per_order FROM o JOIN t USING (nation) ORDER BY returned_revenue_per_order DESC LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "83412acab7fe5cebbc926985da71898b",
+        "question": [
+          "Which 10 customer nations have the highest returned revenue per order?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH m AS (SELECT `Supplier Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),\n",
+              "p AS (SELECT `Supplier Nation` AS nation, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)\n",
+              "SELECT m.nation, m.market_volume, ROUND(p.profit_margin, 4) AS profit_margin FROM m JOIN p USING (nation) ORDER BY m.market_volume DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "846efcd20012594aafe31dd2c26cd998",
+        "question": [
+          "By supplier nation, show market volume and profit margin."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH t AS (SELECT `Customer Nation` AS nation, MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),\n",
+              "m AS (SELECT `Customer Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),\n",
+              "overall AS (SELECT MEASURE(`Return Line Rate`) AS overall_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns)\n",
+              "SELECT t.nation, ROUND(t.return_line_rate, 5) AS return_line_rate, m.market_volume FROM t JOIN m USING (nation) CROSS JOIN overall WHERE t.return_line_rate > overall.overall_rate ORDER BY t.return_line_rate DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "84eb1f1af29155c184acb86017b134da",
+        "question": [
+          "Which customer nations have a higher-than-average refund rate on lines, and what is their market volume?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`On-Time Shipping Rate`) AS on_time_shipping_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "87a11717b3645bb4a6462fd027d2343d",
+        "question": [
+          "What share of order lines shipped on or before their commit date, across all data?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8814b418327b548aa44f28b77cf17771",
+        "question": [
+          "How many orders are on record in total?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Supplier Nation`, `Order Year`, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Part Name` LIKE '%green%' GROUP BY ALL ORDER BY `Supplier Nation`, `Order Year` DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8907ba0ad781548582d5ba84f34919d0",
+        "question": [
+          "Following TPC-H Q9, what is profit by supplier nation and order year for parts whose name contains 'green'?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Ship Mode`, MEASURE(`On-Time Shipped Line Count`) AS on_time_shipped_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL ORDER BY `Ship Mode`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8b2ccefa7c9b5110ac6bf6968c69749c",
+        "question": [
+          "Break down the number of lines that shipped on time by shipping method."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Customer Nation` = 'GERMANY' AND `Supplier Nation` = 'FRANCE'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8baaa24285475f41858bb5677f82e17a",
+        "question": [
+          "How many lines did customers in GERMANY buy from suppliers in FRANCE?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Customer Region` AS region, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "m AS (SELECT `Customer Region` AS region, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)\n",
+              "SELECT o.region, o.order_count, ROUND(m.market_volume / SUM(m.market_volume) OVER (), 4) AS market_share FROM o JOIN m USING (region) ORDER BY market_share DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8bf1489de657567d80465ce224e1862d",
+        "question": [
+          "What share of total market volume comes from each customer region, and how many orders does each region place?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Order Year` AS order_year, MEASURE(`Discount Revenue`) AS discount_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "p AS (SELECT `Order Year` AS order_year, MEASURE(`Cost of Goods Sold`) AS cogs FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)\n",
+              "SELECT r.order_year, r.discount_revenue, p.cogs FROM r JOIN p USING (order_year) ORDER BY r.discount_revenue DESC LIMIT 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8c0cd6c0741c5093946f8dd5c0031a83",
+        "question": [
+          "Which order year had the most discount revenue, and what was its cost of goods sold?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Order Year` AS order_year, MEASURE(`Revenue`) AS revenue_view_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "p AS (SELECT `Order Year` AS order_year, MEASURE(`Revenue`) AS profit_view_revenue, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)\n",
+              "SELECT r.order_year, r.revenue_view_revenue, p.profit_view_revenue, ROUND(p.profit_margin, 4) AS profit_margin FROM r JOIN p USING (order_year) ORDER BY r.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8cbcaace0d4850cb9608ba33744ba579",
+        "question": [
+          "By order year, do the revenue view and the profit view report the same revenue? Show both revenue figures and the profit margin."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Ship Date` <= DATE'1998-09-02'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8d9143f81f605896909b5a59579c21ad",
+        "question": [
+          "What revenue came from lines that shipped on or before 1998-09-02?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Customer Nation` = 'GERMANY'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8e873d1f7fcb5fa1867668baa8b3db8e",
+        "question": [
+          "What is the return rate for customers in GERMANY? Give it as a fraction between 0 and 1."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Average Discount`) AS avg_discount FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Average Transit Days`) AS avg_transit_days FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)\n",
+              "SELECT r.ship_mode, ROUND(r.avg_discount, 4) AS avg_discount, ROUND(f.avg_transit_days, 2) AS avg_transit_days FROM r JOIN f USING (ship_mode) ORDER BY r.ship_mode"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "9139020ee9315a348c58c776174523d4",
+        "question": [
+          "By ship mode, show the average discount next to the average transit days."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH m AS (SELECT `Order Year` AS order_year, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),\n",
+              "p AS (SELECT `Order Year` AS order_year, MEASURE(`Cost of Goods Sold`) AS cogs FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)\n",
+              "SELECT m.order_year, m.market_volume, p.cogs FROM m JOIN p USING (order_year) ORDER BY m.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "91b44e6084e0522090119c625f8c0f99",
+        "question": [
+          "For each order year, compare market volume with cost of goods sold."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Date` = DATE'1995-03-15'),\n",
+              "r AS (SELECT MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Order Date` = DATE'1995-03-15')\n",
+              "SELECT o.order_count, r.revenue FROM o CROSS JOIN r"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "92d849400b7751fda6ab7bda20f956e7",
+        "question": [
+          "On 1995-03-15, how many orders were placed and what was the net revenue of their line items?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "r AS (SELECT `Customer Nation` AS nation, MEASURE(`Discount Revenue`) AS discount_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL)\n",
+              "SELECT o.nation, o.order_count, r.discount_revenue FROM o JOIN r USING (nation) ORDER BY o.order_count DESC LIMIT 5"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "95c470e5d5585f2f8e40c26cb841e245",
+        "question": [
+          "Which 5 customer nations have the most orders, and how much discount was given on their line items?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Customer Region` AS region, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "m AS (SELECT `Customer Region` AS region, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)\n",
+              "SELECT r.region, r.revenue, m.market_volume, ROUND(r.revenue - m.market_volume, 2) AS difference FROM r JOIN m USING (region) ORDER BY r.region"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "96d77653f133593dbf92e1067b800dfe",
+        "question": [
+          "Do net revenue and market volume agree by customer region?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Market Segment`, MEASURE(`Shipped Quantity`) AS shipped_quantity, MEASURE(`Returned Quantity`) AS returned_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL ORDER BY `Market Segment`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "97a6f6d746805709b31ff77bdc829345",
+        "question": [
+          "Show total units shipped and returned for each market segment."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)\n",
+              "SELECT p.order_year, ROUND(p.profit_margin, 4) AS profit_margin, o.order_count FROM o JOIN p USING (order_year) ORDER BY p.profit_margin DESC LIMIT 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "97be5af1bc395d9eb142f8e66d027e1e",
+        "question": [
+          "In which order year was the profit margin highest, and how many orders were placed that year?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT DATE_TRUNC('QUARTER', `Order Month`) AS order_quarter, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1993 GROUP BY ALL),\n",
+              "t AS (SELECT `Order Quarter` AS order_quarter, MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE YEAR(`Order Quarter`) = 1993 GROUP BY ALL)\n",
+              "SELECT o.order_quarter, o.order_count, ROUND(t.return_line_rate, 4) AS return_line_rate FROM o JOIN t USING (order_quarter) ORDER BY o.order_quarter"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "97d3ca9f387851dba113a435bbcf1440",
+        "question": [
+          "For each order quarter of 1993, show the order count and the share of order lines that were returned."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Part Brand`, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL ORDER BY profit DESC LIMIT 5"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "9856684bf0f358718d2ccfe6d1921c1a",
+        "question": [
+          "Which 5 part brands earned the most profit?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH m AS (SELECT `Part Type` AS part_type, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),\n",
+              "c AS (SELECT `Part Type` AS part_type, MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)\n",
+              "SELECT c.part_type, c.inventory_value, m.market_volume FROM m JOIN c USING (part_type) ORDER BY c.inventory_value DESC LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "9b58493fda9f5ffcabf4349d7c444a90",
+        "question": [
+          "For the 10 part types with the highest stock value on hand, what is their market volume?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1996 GROUP BY ALL),\n",
+              "m AS (SELECT `Customer Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Order Year` = 1996 GROUP BY ALL)\n",
+              "SELECT o.nation, ROUND(m.market_volume / o.order_count, 2) AS market_volume_per_order FROM o JOIN m USING (nation) ORDER BY market_volume_per_order DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "9db0f30c33ef5d478d681b548fc9776c",
+        "question": [
+          "In 1996, what was the market volume per order for each customer nation?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Order Total Price`) AS order_total_price FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Market Segment` = 'AUTOMOBILE' AND `Customer Region` = 'EUROPE'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "9e51d16f0d9b5a81aaca12c6c73d2e65",
+        "question": [
+          "What is the header order total for customers in the AUTOMOBILE segment located in EUROPE?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Part Type`, MEASURE(`Cost of Goods Sold`) AS cost_of_goods_sold FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL ORDER BY cost_of_goods_sold DESC LIMIT 5"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "9ea1b35de3ed5db28b3e09ec2ba887b1",
+        "question": [
+          "What is COGS by product type for the 5 product types with the highest COGS?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Order Year` AS order_year, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)\n",
+              "SELECT r.order_year, r.gross_sales, p.profit FROM r JOIN p USING (order_year) ORDER BY r.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "a1b6808efba354018d95d393047a3218",
+        "question": [
+          "By order year, show gross sales and profit."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Part Type`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Customer Region` = 'MIDDLE EAST' GROUP BY `Part Type` ORDER BY market_volume DESC LIMIT 5"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "a298dc2fcef458ed8aecee3289584d53",
+        "question": [
+          "What is the volume by product type for customers in the MIDDLE EAST, top five?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "a3e128a25d1851218b8f6b1a22d5f58e",
+        "question": [
+          "How many order lines are there?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Order Total Price`) AS order_total_price FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "a429b59fb7535b6bb654b326351cafef",
+        "question": [
+          "What is the combined header total price of all orders?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Ship Mode`, `High Priority`, MEASURE(`Q12 Late Receipt Count`) AS q12_late_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `Ship Mode` IN ('MAIL', 'SHIP') AND `Receipt Year` = 1994 GROUP BY ALL ORDER BY `Ship Mode`, `High Priority`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "a686c9d63e225e599b0338545304987f",
+        "question": [
+          "For TPC-H query 12, how many lines shipped by MAIL or SHIP were received late despite shipping before the commit date in 1994, split by high versus low priority?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `High Priority` AS high_priority, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "f AS (SELECT `High Priority` AS high_priority, MEASURE(`Average Fulfillment Cycle Days`) AS avg_cycle_days FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)\n",
+              "SELECT o.high_priority, o.order_count, ROUND(f.avg_cycle_days, 2) AS avg_cycle_days FROM o JOIN f USING (high_priority) ORDER BY o.high_priority"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "a6a5cc47c94b57a182b7e457e3b5df3a",
+        "question": [
+          "Compare high-priority orders with all other orders: order count and average fulfillment cycle in days."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Order Status`, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY `Order Status` ORDER BY `Order Status`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "a95377b7b2035e7f8263cc2b1ff104f5",
+        "question": [
+          "Break down the number of orders by order status code."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH t AS (SELECT MEASURE(`Returned Line Count`) AS returned_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE YEAR(`Order Month`) = 1998),\n",
+              "p AS (SELECT MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Order Year` = 1998)\n",
+              "SELECT t.returned_lines, ROUND(p.profit_margin, 4) AS profit_margin FROM t CROSS JOIN p"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "a9ecc881a62555d0baf3e677e40f865f",
+        "question": [
+          "For orders placed in 1998, the last and partial year, how many lines were returned and what was the profit margin?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "aa68e2e2b5305e5bb50a85d95c8145a5",
+        "question": [
+          "How many order lines are in the market data?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Supplier Nation`, MEASURE(`Market Volume`) / MEASURE(`Line Item Count`) AS volume_per_line FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY `Supplier Nation` ORDER BY `Supplier Nation`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "aae8cf8f55f05c0793c96d02e8b882de",
+        "question": [
+          "What is the average market volume per order line, by supplier nation?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Order Priority`, MEASURE(`Average Order Total`) AS average_order_total FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY `Order Priority` ORDER BY `Order Priority`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "ac0fdeb359ad5aa4969813d294b14ce1",
+        "question": [
+          "What is the average header total per order, by order priority?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Supplier Nation`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Order Year` = 1996 GROUP BY `Supplier Nation` ORDER BY `Supplier Nation`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "afa89c29f80c5c2d80d1ef693ecf8089",
+        "question": [
+          "Show market revenue by vendor country for 1996."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Customer Region` AS region, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1998 GROUP BY ALL),\n",
+              "r AS (SELECT `Customer Region` AS region, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Order Year` = 1998 GROUP BY ALL)\n",
+              "SELECT o.region, o.order_count, r.revenue FROM o JOIN r USING (region) ORDER BY r.revenue DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b1cdaeb874f659bd987ac6494cc3e806",
+        "question": [
+          "What were 1998 sales and order volume by customer region?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH m AS (SELECT `Part Type` AS part_type, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Part Type` LIKE '%BRASS' GROUP BY ALL),\n",
+              "p AS (SELECT `Part Type` AS part_type, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Part Type` LIKE '%BRASS' GROUP BY ALL)\n",
+              "SELECT m.part_type, m.market_volume, ROUND(p.profit_margin, 4) AS profit_margin FROM m JOIN p USING (part_type) ORDER BY m.part_type"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b2c0b4eaf73157d895ccd2794dcb1717",
+        "question": [
+          "For part types made of brass, show market volume and profit margin."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "r AS (SELECT `Order Year` AS order_year, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)\n",
+              "SELECT o.order_year, o.order_count, r.revenue, ROUND(p.profit_margin, 4) AS profit_margin FROM o JOIN r USING (order_year) JOIN p USING (order_year) ORDER BY o.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b370de1ff2e35ca084d4e3b135cbc002",
+        "question": [
+          "By order year, show the number of orders, net revenue and profit margin."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Ship Month`, MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Ship Month` >= DATE'1994-01-01' AND `Ship Month` < DATE'1995-01-01' GROUP BY `Ship Month` ORDER BY `Ship Month`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b3f035e1ae7955e3b3b755645008a036",
+        "question": [
+          "Show the monthly count of shipped lines in 1994 by ship month."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `High Priority`),\n",
+              "f AS (SELECT MEASURE(`Q12 Late Receipt Count`) AS q12_late_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `High Priority`)\n",
+              "SELECT o.order_count, f.q12_late_lines FROM o CROSS JOIN f"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b440c06d4b185d4aab0b54858cc3923d",
+        "question": [
+          "For urgent and high-priority orders only, how many orders were there and how many lines were shipped on time but received late (TPC-H Q12 late lines)?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Month` AS order_month, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1995 GROUP BY ALL),\n",
+              "r AS (SELECT `Order Month` AS order_month, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Order Year` = 1995 GROUP BY ALL)\n",
+              "SELECT o.order_month, o.order_count, r.gross_sales FROM o JOIN r USING (order_month) ORDER BY o.order_month"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b442c82481025b779d4bc391c123d2d9",
+        "question": [
+          "For each month of 1995, show the number of orders placed next to gross sales before discounts."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Market Segment`, MEASURE(`Orders per Customer`) AS orders_per_customer FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY `Market Segment` ORDER BY `Market Segment`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b49c120181d75e3882d1f5ec345262ad",
+        "question": [
+          "On average, how many orders does each ordering customer place, per market segment?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Order Month`, MEASURE(`Order Total Price`) AS order_total_price FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1997 GROUP BY `Order Month` ORDER BY `Order Month`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b5d22189bace5d4ca1dbcc2bdba22d93",
+        "question": [
+          "Give the monthly header order total for 1997."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Order Month` AS order_month, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Order Year` = 1993 GROUP BY ALL),\n",
+              "t AS (SELECT `Order Month` AS order_month, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE YEAR(`Order Month`) = 1993 GROUP BY ALL)\n",
+              "SELECT r.order_month, r.revenue, t.returned_revenue FROM r JOIN t USING (order_month) ORDER BY r.order_month"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b63b5547e91458999cc7a2a5603ca82f",
+        "question": [
+          "Month by month in 1993, compare net revenue with returned revenue."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Line Item Count`) AS open_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `Line Status` = 'O'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b8cf8c12316354078a6a684680d750f2",
+        "question": [
+          "How many order lines are still open (line status O)?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Order Quarter`, MEASURE(`Returned Line Count`) AS returned_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE YEAR(`Order Quarter`) = 1993 GROUP BY ALL ORDER BY `Order Quarter`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b9240d9b97e35513a85f6dbb1d760fc1",
+        "question": [
+          "How many returned lines were there by order quarter in 1993?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Order Year` = 1997"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "baaee1f466765201a5ddb0a8b8671151",
+        "question": [
+          "What was net revenue for orders placed in 1997?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Returned Line Count`) AS returned_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Ship Mode` = 'TRUCK'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "bc060766529150b29a30e1e3ffe66168",
+        "question": [
+          "How many lines were returned for orders shipped by TRUCK?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Market Segment` AS segment, MEASURE(`Order Total Price`) AS order_total_price FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "r AS (SELECT `Market Segment` AS segment, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL)\n",
+              "SELECT o.segment, o.order_total_price, r.revenue, ROUND(r.revenue / o.order_total_price, 4) AS revenue_to_order_price FROM o JOIN r USING (segment) ORDER BY o.segment"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "bc358add45295a1b894169f97180817d",
+        "question": [
+          "By market segment, compare the total order price on order headers with the net revenue from line items."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH m AS (SELECT `Supplier Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),\n",
+              "c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Supplier Count`) AS suppliers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)\n",
+              "SELECT m.nation, ROUND(m.market_volume / c.suppliers, 2) AS market_volume_per_supplier FROM m JOIN c USING (nation) ORDER BY market_volume_per_supplier DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "bc96b63647445948845ffdf9b8da4bb8",
+        "question": [
+          "What is the market volume per supplier in each supplier nation?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Offer Count`) AS offer_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "bcf6c4cc99dc5d3d9abfc27712ca909c",
+        "question": [
+          "How many part-supplier offers are there?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Part Type` = 'ECONOMY ANODIZED STEEL'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "bd8e71601aaf5585b5b270139bc0e997",
+        "question": [
+          "How much profit came from parts of type 'ECONOMY ANODIZED STEEL'?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH p AS (SELECT `Manufacturer` AS mfgr, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),\n",
+              "c AS (SELECT `Manufacturer` AS mfgr, MEASURE(`Minimum Supply Cost`) AS min_supply_cost FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)\n",
+              "SELECT p.mfgr, ROUND(p.profit_margin, 4) AS profit_margin, c.min_supply_cost FROM p JOIN c USING (mfgr) ORDER BY p.mfgr"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "bdf2bbe701a65cb9a6385fae09e019e3",
+        "question": [
+          "By manufacturer, show the cheapest supply cost offered and the profit margin."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),\n",
+              "j AS (SELECT o.order_year, o.order_count, p.profit FROM o JOIN p USING (order_year))\n",
+              "SELECT order_year, order_count - LAG(order_count) OVER (ORDER BY order_year) AS order_count_change, profit - LAG(profit) OVER (ORDER BY order_year) AS profit_change FROM j ORDER BY order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "bfdd3e398c4e5d12b0ef37c00dc9d633",
+        "question": [
+          "Year over year, how did the change in profit compare with the change in order count?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Orders per Customer`) AS orders_per_customer FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "m AS (SELECT `Order Year` AS order_year, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)\n",
+              "SELECT o.order_year, ROUND(o.orders_per_customer, 4) AS orders_per_customer, m.market_volume FROM o JOIN m USING (order_year) ORDER BY o.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "c1bf8483e0fe52ea9161a8faa04ff141",
+        "question": [
+          "For each order year, show orders per customer alongside total market volume."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Nation`, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Customer Region` = 'ASIA' AND `Order Date` >= DATE'1994-01-01' AND `Order Date` < DATE'1995-01-01' GROUP BY `Customer Nation` ORDER BY revenue DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "c30451cd55fe50baa5b7c3eb36b4fd6b",
+        "question": [
+          "What was net revenue from customers in the ASIA region for orders placed in 1994, by customer nation?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Quantity`) AS quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Part Brand` = 'Brand#13'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "c69615e79f6850b68ab7c805375dc7a7",
+        "question": [
+          "How many units of brand Brand#13 were sold?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH p AS (SELECT `Part Brand` AS brand, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),\n",
+              "c AS (SELECT `Part Brand` AS brand, MEASURE(`Average Supply Cost`) AS avg_supply_cost, MEASURE(`Part Count`) AS parts FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)\n",
+              "SELECT p.brand, ROUND(p.profit_margin, 4) AS profit_margin, ROUND(c.avg_supply_cost, 2) AS avg_supply_cost, c.parts FROM p JOIN c USING (brand) ORDER BY p.profit_margin ASC LIMIT 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "c72f2670464553929603f70345c0030d",
+        "question": [
+          "Which brand has the lowest profit margin, and what are its average supply cost and number of distinct parts on offer?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Part Type` = 'ECONOMY ANODIZED STEEL' AND `Customer Region` = 'AMERICA'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "c8280fe783eb530a8d0ed3bf4740ed39",
+        "question": [
+          "What is market volume for ECONOMY ANODIZED STEEL parts bought by customers in AMERICA?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Supplier Nation`, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL ORDER BY `Supplier Nation`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "c9ba7a349821565bbf346805cec22c32",
+        "question": [
+          "Show profit by supplier nation."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH m AS (SELECT `Customer Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),\n",
+              "t AS (SELECT `Customer Nation` AS nation, MEASURE(`Shipped Quantity`) AS shipped_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)\n",
+              "SELECT t.nation, t.shipped_quantity, m.market_volume FROM m JOIN t USING (nation) ORDER BY t.shipped_quantity DESC LIMIT 5"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "cb3254532c125627884c337e150e3df2",
+        "question": [
+          "By customer nation, show market volume and the shipped quantity from the returns view; which 5 nations ship the most units?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Status` = 'P'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "ce3303ebff0a5300bea224d8b29e502e",
+        "question": [
+          "How many orders are only partially fulfilled (status P)?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Return Flag`, MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL ORDER BY `Return Flag`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "cf50c58885725d5190350139669d1abf",
+        "question": [
+          "How many order lines carry each return flag value?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Order Month`, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Order Month` >= DATE'1995-01-01' AND `Order Month` < DATE'1995-04-01' GROUP BY `Order Month` ORDER BY `Order Month`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "d1d663f0a851569dacaa370922601362",
+        "question": [
+          "Show net revenue by order month for the first quarter of 1995."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Priority` AS priority, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "f AS (SELECT `Order Priority` AS priority, MEASURE(`On-Time Shipping Rate`) AS on_time_shipping_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)\n",
+              "SELECT o.priority, o.order_count, ROUND(f.on_time_shipping_rate, 4) AS on_time_shipping_rate FROM o JOIN f USING (priority) ORDER BY o.priority"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "d1da89c976eb58aaa824bebaed941142",
+        "question": [
+          "By order priority, show the number of orders and the on-time shipping rate of their lines."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Manufacturer`, MEASURE(`Average Supply Cost`) AS average_supply_cost FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL ORDER BY `Manufacturer`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "d21320d0d918545c9564f9a7ab6f9742",
+        "question": [
+          "What is the average unit supply cost for each manufacturer?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Nation`, MEASURE(`Order Total Price`) AS order_total_price FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Market Segment` = 'BUILDING' GROUP BY `Customer Nation` ORDER BY `Customer Nation`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "d231cb944e9a587998de670d37e9c383",
+        "question": [
+          "Show total bookings by customer country for the BUILDING segment."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH p AS (SELECT `Part Brand` AS brand, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),\n",
+              "c AS (SELECT `Part Brand` AS brand, MEASURE(`Average Supply Cost`) AS avg_supply_cost FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)\n",
+              "SELECT p.brand, ROUND(p.profit_margin, 4) AS profit_margin, ROUND(c.avg_supply_cost, 2) AS avg_supply_cost FROM p JOIN c USING (brand) ORDER BY p.profit_margin DESC LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "d5232ae4987a5bd9b3f009bda8c56ee0",
+        "question": [
+          "For the 10 brands with the highest profit margin, what is the average supply cost?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`On-Time Delivery Rate`) AS on_time_delivery_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `High Priority`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "d662ad50a31a590880ba393a99f641e7",
+        "question": [
+          "What was the on-time delivery rate for urgent and high priority orders only?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Returned Quantity`) AS returned_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "d760668698b8552f89fbbe5590bf71a8",
+        "question": [
+          "How many units were returned in total?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Discount Revenue`) AS discount_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Ship Date` >= DATE'1994-01-01' AND `Ship Date` < DATE'1995-01-01'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "d94cd69f5e925dbb8e9d3fc30effe314",
+        "question": [
+          "How much revenue was given up to discounts on lines shipped in 1994?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "dba7ea3065e1575ea3f7fe4e773bd698",
+        "question": [
+          "What is total profit across all order lines?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Order Year` AS order_year, MEASURE(`Gross Charge`) AS gross_charge FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)\n",
+              "SELECT r.order_year, ROUND(p.profit / r.gross_charge, 4) AS profit_to_gross_charge FROM r JOIN p USING (order_year) ORDER BY r.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "dca68d509e53548eb759a7c03a5b11bd",
+        "question": [
+          "For each order year, what is profit as a fraction of gross charge?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "dcb6421d84395bcc9d248a237f763484",
+        "question": [
+          "What percent of order lines were returned overall?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH m AS (SELECT `Part Type` AS part_type, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),\n",
+              "p AS (SELECT `Part Type` AS part_type, MEASURE(`Profit`) AS profit, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),\n",
+              "c AS (SELECT `Part Type` AS part_type, MEASURE(`Average Supply Cost`) AS avg_supply_cost FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)\n",
+              "SELECT p.part_type, m.market_volume, ROUND(p.profit_margin, 4) AS profit_margin, ROUND(c.avg_supply_cost, 2) AS avg_supply_cost FROM m JOIN p USING (part_type) JOIN c USING (part_type) ORDER BY p.profit DESC LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "dd15898b65ed524ba561ef1c2b9b61f7",
+        "question": [
+          "For the 10 part types with the most profit, show market volume, profit margin and average supply cost."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Order Month`, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Order Quarter` = DATE'1993-10-01' GROUP BY ALL ORDER BY `Order Month`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "de5b64a2c85e54c7b00dd18cccecfb5e",
+        "question": [
+          "Show the monthly returned revenue for orders placed in the fourth quarter of 1993."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH m AS (SELECT `Part Type` AS part_type, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),\n",
+              "p AS (SELECT `Part Type` AS part_type, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)\n",
+              "SELECT m.part_type, m.market_volume, p.profit FROM m JOIN p USING (part_type) ORDER BY m.market_volume DESC LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "dfb65b0ab97f5ce382353ab0b66dddf0",
+        "question": [
+          "For the 10 part types with the largest market volume, what is the profit?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Ship Mode`, MEASURE(`Average Discount`) AS average_discount FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY `Ship Mode` ORDER BY `Ship Mode`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e16e4a74b602561fa4d1b4b37bb4fcfd",
+        "question": [
+          "What is the mean discount rate on order lines, by ship mode?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Supplier Count`) AS suppliers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)\n",
+              "SELECT o.nation, ROUND(o.order_count / c.suppliers, 2) AS orders_per_supplier FROM o JOIN c USING (nation) ORDER BY orders_per_supplier DESC LIMIT 5"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e1c89476a2155d65a7dad17bcb32bd50",
+        "question": [
+          "Which 5 nations have the most orders per locally based supplier?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Market Volume`) FILTER (WHERE `Supplier Nation` = 'CHINA') / MEASURE(`Market Volume`) AS china_share FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Customer Region` = 'ASIA'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e22951317e70574bad676cdd104dc649",
+        "question": [
+          "What national market share did suppliers from CHINA hold in the ASIA customer region across all years?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Minimum Supply Cost`) AS minimum_supply_cost FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost WHERE `Part Size` = 51"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e34b1637e99b5303a78d439eaacb2ba7",
+        "question": [
+          "What is the minimum supply cost for parts of size 51, which is outside the valid size range?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Return Flag`, `Line Status`, MEASURE(`Quantity`) AS quantity, MEASURE(`Gross Sales`) AS gross_sales, MEASURE(`Revenue`) AS revenue, MEASURE(`Gross Charge`) AS gross_charge, MEASURE(`Average Discount`) AS average_discount FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY `Return Flag`, `Line Status` ORDER BY `Return Flag`, `Line Status`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e39b82749c425921a064da1a2bb6a96c",
+        "question": [
+          "For each return flag and line status, show quantity, gross sales, net revenue, charged amount and average discount."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Ship Mode`, MEASURE(`Line Item Count`) AS line_item_count, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY `Ship Mode` ORDER BY `Ship Mode`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e3e5b240dbaa5de6a1bd1a7b7b85d3cd",
+        "question": [
+          "Break down line count and revenue by ship mode."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Market Segment`, MEASURE(`Average Order Value`) AS average_order_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY `Market Segment` ORDER BY `Market Segment`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e492d7ca00ec5ff099019d5fe9f8f8e9",
+        "question": [
+          "What is the net revenue per order on the line-item basis, by market segment?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Part Type`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY `Part Type` ORDER BY market_volume DESC LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e5a59901376158dcb27c565c886b4469",
+        "question": [
+          "Which ten part types have the highest market volume?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE YEAR(`Ship Date`) = 1994 GROUP BY ALL),\n",
+              "f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Q12 Late Receipt Count`) AS q12_late_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE YEAR(`Ship Date`) = 1994 GROUP BY ALL)\n",
+              "SELECT r.ship_mode, r.revenue, f.q12_late_lines FROM r JOIN f USING (ship_mode) ORDER BY r.ship_mode"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e640d9439b8c51668111180d28b2e942",
+        "question": [
+          "In 1994 shipments, by ship mode, show revenue and the number of Q12-style late lines (shipped before commit but received after it)."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Order Month` = DATE'1998-08-01'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e685817b74835be39c576fa8d64c4513",
+        "question": [
+          "What was the return line rate for orders placed in the last order month in the data, August 1998?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Line Status` = 'O' AND `Order Year` < 1995"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e74dfa10b3be56a1a913e6aef06cd1f6",
+        "question": [
+          "What net revenue is on lines that are still open (line status O) but were ordered before 1995?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`On-Time Shipped Line Count`) AS on_time_shipped_lines, MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e83d2f748c65542c8bd0ead947126b1a",
+        "question": [
+          "Lines that shipped exactly on the commit date count as on time: how many on-time shipped lines were there in total, and how many lines in total?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Part Name` LIKE '%plaid%'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e8b23eaa4b9c50fcac129ed9a5a65f38",
+        "question": [
+          "What profit was earned on parts whose name contains a color word that no part uses, such as 'plaid'?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Order Year` = 1998"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "ea5288dc7c965605a68483ae04b9655b",
+        "question": [
+          "What was the profit margin for orders placed in 1998, the last and partial order year?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Ship Month` AS ship_month, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE YEAR(`Ship Month`) = 1997 GROUP BY ALL),\n",
+              "f AS (SELECT `Ship Month` AS ship_month, MEASURE(`Average Transit Days`) AS avg_transit_days FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE YEAR(`Ship Month`) = 1997 GROUP BY ALL)\n",
+              "SELECT r.ship_month, r.revenue, ROUND(f.avg_transit_days, 2) AS avg_transit_days FROM r JOIN f USING (ship_month) ORDER BY r.ship_month"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "ea73e9c2387f568180ec921ff3d0ef14",
+        "question": [
+          "For each ship month in 1997, show net revenue shipped and the average transit days."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Market Segment` AS segment, MEASURE(`Quantity`) AS quantity_sold FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "t AS (SELECT `Market Segment` AS segment, MEASURE(`Returned Quantity`) AS returned_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)\n",
+              "SELECT r.segment, r.quantity_sold, t.returned_quantity, ROUND(t.returned_quantity / r.quantity_sold, 4) AS returned_share FROM r JOIN t USING (segment) ORDER BY r.segment"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "eb6a40b3d1055e7180a84f3bcf04a6b9",
+        "question": [
+          "How much of each market segment's sales came back as refunds, in quantity terms (returned quantity versus total quantity sold)?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Supplier Count`) AS supplier_count, MEASURE(`Part Count`) AS part_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "ecbfb0aeb952510f83bd464c0de04523",
+        "question": [
+          "How many distinct suppliers and distinct parts have offers?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Ship Mode`, MEASURE(`Discount Revenue`) AS discount_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY `Ship Mode` ORDER BY `Ship Mode`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "ed4779ff6e5b58bd809bb1c6b5c826eb",
+        "question": [
+          "What is the total discount amount by transport mode?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Order Priority` AS priority, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "f AS (SELECT `Order Priority` AS priority, MEASURE(`Average Ship Lag Days`) AS avg_ship_lag_days FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)\n",
+              "SELECT r.priority, r.revenue, ROUND(f.avg_ship_lag_days, 2) AS avg_ship_lag_days FROM r JOIN f USING (priority) ORDER BY r.priority"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "ee0d91c78934597b831b241ec1aa21f9",
+        "question": [
+          "By order priority, show net revenue alongside the average days between order and shipment."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Priority` AS priority, MEASURE(`Average Order Total`) AS avg_order_total FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "r AS (SELECT `Order Priority` AS priority, MEASURE(`Average Order Value`) AS avg_order_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL)\n",
+              "SELECT o.priority, ROUND(o.avg_order_total, 2) AS avg_order_total, ROUND(r.avg_order_value, 2) AS avg_order_value FROM o JOIN r USING (priority) ORDER BY o.priority"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "eea09bdcb0ba5871bca2cc4ef6314ea5",
+        "question": [
+          "By order priority, how does the average order total on the header compare with the average order value computed from net line revenue?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Discount Revenue`) / MEASURE(`Gross Sales`) AS discount_share FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "eed31146e5885ca6890b21f7f2e73cc9",
+        "question": [
+          "What fraction of gross sales was given up through discounts?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)\n",
+              "SELECT r.ship_mode, r.revenue, ROUND(t.return_rate, 4) AS return_rate FROM r JOIN t USING (ship_mode) ORDER BY r.revenue DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "ef5e77be9c305034985a5033051653ed",
+        "question": [
+          "By ship mode, show net revenue and the quantity return rate."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Priority` AS priority, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "r AS (SELECT `Order Priority` AS priority, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "f AS (SELECT `Order Priority` AS priority, MEASURE(`On-Time Shipping Rate`) AS on_time_shipping_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)\n",
+              "SELECT o.priority, o.order_count, r.revenue, ROUND(f.on_time_shipping_rate, 4) AS on_time_shipping_rate FROM o JOIN r USING (priority) JOIN f USING (priority) ORDER BY o.priority"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "f0a4bcf155c15b3fbb5d93f909dbaec2",
+        "question": [
+          "By order priority, show the number of orders, net revenue and on-time shipping rate."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Key`, `Customer Name`, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Order Quarter` = DATE'1993-10-01' GROUP BY ALL ORDER BY returned_revenue DESC, `Customer Key` LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "f46b90f6000f52e29b8731f9cbcd859d",
+        "question": [
+          "Following TPC-H Q10, list the top 10 customers (key and name) by revenue lost to returns on orders placed from October through December 1993."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Customer Nation` AS nation, MEASURE(`Line Item Count`) AS revenue_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "m AS (SELECT `Customer Nation` AS nation, MEASURE(`Line Item Count`) AS market_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)\n",
+              "SELECT r.nation, r.revenue_lines, m.market_lines FROM r JOIN m USING (nation) ORDER BY r.nation"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "f4f03cc8fabc5ca0afa94350d883a363",
+        "question": [
+          "By customer nation, compare line item counts in the revenue view and the market share view."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),\n",
+              "r AS (SELECT `Order Year` AS order_year, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL)\n",
+              "SELECT o.order_year, o.order_count, r.revenue FROM o JOIN r USING (order_year) ORDER BY o.order_year"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "f5f66b3dc9905818b920c00377ee8040",
+        "question": [
+          "For each order year, how many orders were placed and how much net revenue was booked?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Manufacturer`, MEASURE(`Revenue`) AS revenue, MEASURE(`Cost of Goods Sold`) AS cost_of_goods_sold FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL ORDER BY `Manufacturer`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "f7edea747da55b229ebeee8f7e5edb98",
+        "question": [
+          "Break down revenue and cost of goods sold by manufacturer."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Ship Mode`, MEASURE(`On-Time Shipping Rate`) AS on_time_shipping_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL ORDER BY `Ship Mode`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "f95a28883bdb506d9366abec7fb83a9c",
+        "question": [
+          "What is OTS by transport mode?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Order Priority`, MEASURE(`Late Receipt Count`) AS late_receipts FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL ORDER BY `Order Priority`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "f9e108f1094b50c7a4f8ca267bc03fc0",
+        "question": [
+          "How many late deliveries were there by priority?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),\n",
+              "f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`On-Time Delivery Rate`) AS on_time_delivery_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)\n",
+              "SELECT r.ship_mode, r.revenue, ROUND(t.return_rate, 4) AS return_rate, ROUND(f.on_time_delivery_rate, 4) AS on_time_delivery_rate FROM r JOIN t USING (ship_mode) JOIN f USING (ship_mode) ORDER BY r.ship_mode"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "fa3982562af158a6a2edf024a1feaac9",
+        "question": [
+          "By ship mode, show net revenue, quantity return rate and on-time delivery rate."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Supplier Region`, MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL ORDER BY `Supplier Region`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "fa9e05f068c7546abe2900f56c9bed25",
+        "question": [
+          "Show inventory value by supplier region."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Quantity`) AS quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "fb001fd30afb5014921a6311aeb25dfe",
+        "question": [
+          "How many units were sold in total?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Ship Mode` = 'REG AIR'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "fceb2a444f1c53dd8b1e9e4903d4edaa",
+        "question": [
+          "What percentage of lines shipped by REG AIR came back?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH r AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Line Item Count`) AS revenue_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),\n",
+              "t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Line Item Count`) AS returns_lines, MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)\n",
+              "SELECT r.ship_mode, r.revenue_lines, t.returns_lines, ROUND(t.return_line_rate, 4) AS return_line_rate FROM r JOIN t USING (ship_mode) ORDER BY r.ship_mode"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "fd486eea8e89574d909dfcb6f9d5b0b9",
+        "question": [
+          "By ship mode, compare the line item counts reported by the revenue view and the returns view, with the return line rate."
+        ]
+      }
+    ]
+  },
   "config": {
     "sample_questions": [
       {

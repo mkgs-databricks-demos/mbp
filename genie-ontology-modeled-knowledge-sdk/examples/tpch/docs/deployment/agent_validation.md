@@ -68,3 +68,15 @@ ORDER BY `Order Year` ASC, `Revenue` DESC
 ## Notes for prd
 
 Users other than the owner need `USE CATALOG`, `USE SCHEMA` and `SELECT` on the metric views (plus `CAN_RUN` on the agent, from the bundle's `agent_permissions`: `account users` outside `dev`) to use the agent. Dev is owner-only.
+
+## Build 1 re-check (wave 1-7, session 35, 2026-11-26)
+
+After loading 233 benchmark questions into the agent (no instruction or example-SQL change), the agents bundle passed `bundle validate --strict --target dev` and `bundle deploy --target dev` (no resource change needed: the space already held the 233 benchmarks). The same 3 probes were re-run with `benchmark.run_benchmark` (timeout 300 s).
+
+**Result: 3 of 3 probes generated SQL and the statement SUCCEEDED.**
+
+| ID | SQL generated | Statement status | Rows |
+|---|---|---|---|
+| p1 | yes | SUCCEEDED | 7 |
+| p2 | yes | SUCCEEDED | 25 |
+| p3 | yes | SUCCEEDED | 35 |
