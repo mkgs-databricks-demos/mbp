@@ -188,6 +188,21 @@ def test_upsert_updates_only_changed_fields_and_keeps_state(terms):
     assert client.pages[pid]["state"] == "PUBLISHED"
 
 
+def test_upsert_ignores_synonym_order_from_the_api(terms):
+    # The Pages API returns synonyms sorted; a second upsert must still report no change.
+    unsorted = copy.deepcopy(terms)
+    unsorted[0].synonyms = ["zeta rebate", "alpha markdown", "mid reduction"]
+    client = FakePagesClient()
+    upsert_pages(unsorted, client, dry_run=False, domain_id=DOMAIN)
+    for page in client.pages.values():
+        page["synonyms"] = sorted(page.get("synonyms") or [])  # what the API stores
+    assert any(p["synonyms"] == ["alpha markdown", "mid reduction", "zeta rebate"] for p in client.pages.values())
+    client.calls.clear()
+    again = upsert_pages(unsorted, client, dry_run=False, domain_id=DOMAIN)
+    assert [r.action for r in again] == ["unchanged"] * len(unsorted)
+    assert client.writes == []
+
+
 def test_upsert_matches_titles_case_insensitively_and_never_deletes(terms):
     existing = {
         "name": "pages/p1",

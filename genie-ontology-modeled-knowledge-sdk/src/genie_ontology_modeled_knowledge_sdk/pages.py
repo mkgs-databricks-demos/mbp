@@ -596,7 +596,8 @@ def to_page_payload(term: Term, domain_id: str | None = None) -> dict:
 
 def _normalize(field_name: str, value: Any) -> Any:
     if field_name == "synonyms":
-        return list(value or [])
+        # Order-insensitive: the Pages API stores synonyms sorted, so a reordered list is not a change.
+        return sorted(value or [])
     if isinstance(value, str):
         return value.strip()
     return value or ""
