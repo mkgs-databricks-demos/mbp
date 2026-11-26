@@ -83,6 +83,10 @@ class SdkConfig:
     repo_path: str | None = None
     # Published SDK skills location: {"catalog", "schema", "ids"} (build-1 R1).
     skills: dict[str, Any] | None = None
+    # Run kit (build-1 R3): Discover domain for UC Pages, live page status, SDK distribution mode.
+    pages_domain_id: str | None = None
+    pages_status: str | None = None
+    sdk_distribution: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a ``sdk_config.json``-shaped dict.

@@ -6,11 +6,11 @@ Render and deploy the `ontology-genie-agents` bundle to the `{{bundle_target}}` 
 ## Context
 * Skill: none required. `ontology-genie-agents/README.md` documents the render step, the overrides file and deploy (`genie_spaces` resource, `engine: direct`).
 * Workspace values come from the gitignored `ontology-genie-agents/.databricks/bundle/{{bundle_target}}/variable-overrides.json`, written by the owner. Never print, edit or commit it. If it is missing, stop with `status: "blocked"`.
-* Approvals: `bundle.deploy` of this bundle is implied by `allow_deploy`. Asking a question through the Genie conversation API is a read of the deployed agent.
+* Approvals: `bundle.deploy` of `ontology-genie-agents` (`{{bundle_target}}`) is in the session's `authorizations`. Asking a question through the Genie conversation API is a read of the deployed agent.
 * Do not edit agent files here. A defect in an agent file is session 08's: record a `request` and stop with `status: "fail"`.
 
 ## Tasks
-1. From `ontology-genie-agents/`, run the render step (if any), `bundle validate --strict --target {{bundle_target}}`, then `bundle deploy --target {{bundle_target}}`.
+1. Render the agents with `python -m genie_ontology_modeled_knowledge_sdk.geniespace render <src> <dst> --params docs/registration/resolved_target.json --check` (resolved catalog and schema from session 06). From `ontology-genie-agents/`, run `bundle validate --strict --target {{bundle_target}}`, then `bundle deploy --target {{bundle_target}}`.
 2. Read each deployed space id from `bundle summary`.
 3. For each agent, run `w.genie.start_conversation_and_wait(space_id, <first sample question>)`. Check that it returns a query attachment and that `get_message_attachment_query_result` is `SUCCEEDED`.
 4. Write `docs/deployment/deployment_results.md` with one row per agent: resource key, space id, deploy time, probe question, attachment type, query state, error.

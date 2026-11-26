@@ -25,6 +25,8 @@ SAMPLE_VALUES = {
     "project_name": "sample_project",
     "domain_name": "sample_domain",
     "bundle_target": "dev",
+    "branch": "genie-build-sample_project",
+    "sdk_version": "0.1.0",
 }
 TOKEN_RE = re.compile(r"\{\{\s*(\w+)\s*\}\}")
 KIT_FILES = ["waves.json", "INDEX.md", "PROJECT_MEMORY.md", "README.md"]
@@ -76,18 +78,110 @@ def test_only_known_tokens_and_all_rendered():
         assert "{{" not in render(text), f"{f.name}: token left after render"
 
 
-def test_validate_manifest_zero_errors(manifest):
+def _waves_manifest_module():
     gbw = _find_build_waves()
     if gbw is None:
         pytest.skip("genie-build-waves not found (set GENIE_BUILD_WAVES_DIR or place it next to the SDK)")
     sys.path.insert(0, str(gbw / "src" / "notebooks"))
     try:
-        wm = importlib.import_module("waves_manifest")
+        return importlib.import_module("waves_manifest"), importlib.import_module("authorizations")
     finally:
         sys.path.pop(0)
+
+
+def test_validate_manifest_zero_errors(manifest):
+    wm, auth = _waves_manifest_module()
     errors, warnings = wm.validate_manifest(manifest)
     assert errors == [], errors
-    print("validate_manifest warnings:", warnings)
+    assert warnings == [], warnings
+    a_errors, a_warnings = auth.validate_authorizations(manifest)
+    assert a_errors == [] and a_warnings == [], (a_errors, a_warnings)
+    n = wm.job_task_count(manifest)
+    print("job_task_count:", n)
+    assert n < 1000
+
+
+def _structural_problems(m: dict) -> list[str]:
+    """Run-kit rules beyond validate_manifest (build-1 R3). Empty = ok."""
+    problems = []
+    br = m.get("branch")
+    if not isinstance(br, str) or not br.strip() or br.strip() in ("main", "master"):
+        problems.append("top-level branch missing or main/master")
+    pol = (m.get("authorization_policy") or {}).get("monitor_may_authorize") or []
+    if {(e.get("action"), e.get("scope")) for e in pol} < {
+        (a, "owned_assets") for a in ("jobs.run_now", "bundle.deploy", "volume.write", "workspace.write")
+    }:
+        problems.append("authorization_policy.monitor_may_authorize incomplete")
+    sessions = [(w, s) for w in m.get("waves") or [] for s in w.get("sessions") or []]
+    for w, s in sessions:
+        auths = s.get("authorizations") or []
+        sid = s.get("session_id")
+        if s.get("allow_deploy"):
+            deploy = [a["target"] for a in auths if a.get("action") == "bundle.deploy"]
+            if not any(t.startswith("bundle:ontology-") for t in deploy):
+                problems.append(f"session {sid}: allow_deploy without bundle.deploy naming a project bundle")
+        targets = [a.get("target") for a in auths]
+        if any(t not in (s.get("owned_assets") or []) for t in targets):
+            problems.append(f"session {sid}: authorization target not in owned_assets")
+        if "register_metric_views" in (s.get("scope") or "") and not any(
+            a.get("action") == "jobs.run_now" for a in auths
+        ):
+            problems.append(f"session {sid}: runs register_metric_views without jobs.run_now")
+    pages = [s for _, s in sessions if s.get("plan_file") == "plans/07_uc_pages.md"]
+    pages_waves = [w for w, s in sessions if s in pages]
+    if not pages or not any(
+        "pages_domain_id" in p.get("title", "") for w in pages_waves for p in w.get("manual_prereqs") or []
+    ):
+        problems.append("Pages wave has no pages_domain_id manual_prereqs")
+    iters = [w for w in m.get("waves") or [] if "Tuning Iteration" in w.get("name", "")]
+    mandatory = [w for w in iters if "mandatory" in w["name"]]
+    if len(mandatory) < 3:
+        problems.append("fewer than 3 mandatory tuning iteration waves")
+    if not iters or "asymptote" not in (iters[-1].get("required_checks") or []):
+        problems.append("last tuning iteration wave has no asymptote required check")
+    return problems
+
+
+def test_run_kit_structure(manifest):
+    assert _structural_problems(manifest) == []
+
+
+@pytest.mark.parametrize("breakage", ["no_branch", "deploy_without_bundle_deploy"])
+def test_broken_copy_fails(manifest, breakage):
+    import copy
+
+    broken = copy.deepcopy(manifest)
+    if breakage == "no_branch":
+        del broken["branch"]
+    else:
+        s = next(s for w in broken["waves"] for s in w["sessions"] if s.get("allow_deploy"))
+        s["authorizations"] = [a for a in s["authorizations"] if a["action"] != "bundle.deploy"]
+    assert _structural_problems(broken), breakage
+
+
+def test_tuning_and_report_waves(manifest):
+    names = [w["name"] for w in manifest["waves"]]
+    assert any(n.startswith("Benchmark Authoring") for n in names)
+    assert any(n.startswith("Benchmark Baseline") for n in names)
+    assert sum("conditional" in n for n in names) == 3
+    assert names[-1] == "Independent Report Simulation"
+    checks = {c for w in manifest["waves"] for c in w.get("required_checks", [])}
+    assert {"benchmark_coverage", "asymptote", "report_simulation"} <= checks
+
+
+def test_registration_wave_has_wheel_prereq(manifest):
+    reg = next(w for w in manifest["waves"] if w["name"] == "Metric View Registration")
+    assert any(p["session_id"] == "P-wheel" and "0.1.0" in p["title"] for p in reg["manual_prereqs"])
+
+
+def test_no_vendored_paths_in_kit():
+    # Gate check run_kit_no_vendored_paths: the vendored copy is only mentioned for vendor=True.
+    for f in [RUN_DIR / n for n in KIT_FILES] + plan_paths():
+        for line in f.read_text().splitlines():
+            assert "PYTHONPATH=" not in line, f"{f.name}: {line}"
+            assert "sys.path" not in line, f"{f.name}: {line}"
+            if "_vendored" in line:
+                assert "vendor=True" in line, f"{f.name}: {line}"
 
 
 def test_every_plan_file_exists(manifest):
@@ -145,8 +239,8 @@ def test_single_deployer_per_wave(manifest):
 def test_required_checks_and_bundle_validation(manifest):
     by_id = {w["wave_id"]: w for w in manifest["waves"]}
     checks = {c for w in manifest["waves"] for c in w.get("required_checks", [])}
-    assert {"registration_job", "mv_smoke", "agent_probe", "benchmark_results"} <= checks
-    for wid in ["2", "3", "4", "5", "6"]:
+    assert {"registration_job", "mv_smoke", "resolved_target", "agent_probe", "baseline_results"} <= checks
+    for wid in ["2", "3", "4", "5", "7", "8", "9", "10", "11", "12", "13"]:
         roots = {vb["root"] for vb in by_id[wid].get("validate_bundles", [])}
         assert roots == {"ontology-metric-views", "ontology-genie-agents"}, wid
 
@@ -176,3 +270,55 @@ def test_plans_have_planner_sections():
         text = p.read_text()
         for sec in sections:
             assert sec in text, f"{p.name}: missing {sec}"
+
+
+def _scaffold(tmp_path, cfg, **kw):
+    from genie_ontology_modeled_knowledge_sdk.scaffold import scaffold_project
+
+    target = tmp_path / "proj"
+    scaffold_project(cfg, target, SDK_ROOT, **kw)
+    return target, json.loads((target / "docs" / "plans" / "waves.json").read_text())
+
+
+def test_scaffold_renders_branch_and_sdk_version(tmp_path, tpch_config):
+    from genie_ontology_modeled_knowledge_sdk.scaffold import _sdk_version
+
+    target, m = _scaffold(tmp_path, tpch_config, branch="genie-build-tpch")
+    assert m["branch"] == "genie-build-tpch"
+    text = (target / "docs" / "plans" / "waves.json").read_text()
+    assert "{{" not in text and _sdk_version(SDK_ROOT) in text
+    assert json.loads((target / "sdk_config.json").read_text())["sdk_distribution"] == "wheel"
+    assert _structural_problems(m) == []
+
+
+def test_scaffolded_kit_validates(tmp_path, tpch_config):
+    _, m = _scaffold(tmp_path, tpch_config)
+    wm, auth = _waves_manifest_module()
+    assert wm.validate_manifest(m) == ([], [])
+    assert auth.validate_authorizations(m) == ([], [])
+
+
+def test_scaffold_vendor_drops_wheel_prereq(tmp_path, tpch_config):
+    target, m = _scaffold(tmp_path, tpch_config, vendor=True)
+    prereqs = [p for w in m["waves"] for p in w.get("manual_prereqs") or []]
+    assert not any(p["session_id"] == "P-wheel" for p in prereqs)
+    assert any("pages_domain_id" in p["title"] for p in prereqs)
+    assert json.loads((target / "sdk_config.json").read_text())["sdk_distribution"] == "vendored"
+
+
+@pytest.mark.parametrize("branch", ["main", "master"])
+def test_scaffold_rejects_main_branch(tmp_path, tpch_config, branch):
+    from genie_ontology_modeled_knowledge_sdk.scaffold import scaffold_project
+
+    with pytest.raises(ValueError):
+        scaffold_project(tpch_config, tmp_path / "p", SDK_ROOT, branch=branch)
+
+
+def test_config_run_kit_keys(tpch_config):
+    from genie_ontology_modeled_knowledge_sdk.config import config_from_dict, validate_config
+
+    d = {**tpch_config, "pages_domain_id": "dom-1", "pages_status": "DRAFT", "sdk_distribution": "wheel"}
+    assert validate_config(d) == []
+    assert config_from_dict(d).to_dict()["pages_domain_id"] == "dom-1"
+    assert validate_config({**tpch_config, "pages_status": "LIVE"})
+    assert validate_config({**tpch_config, "sdk_distribution": "pip"})

@@ -2,7 +2,7 @@
 
 Public API (cross-session contract, see ``docs/plans/INDEX.md``):
 
-* ``scaffold_project(cfg, target_dir, sdk_root, *, force=False, vendor=False) -> ScaffoldReport``
+* ``scaffold_project(cfg, target_dir, sdk_root, *, force=False, branch=None, vendor=False) -> ScaffoldReport``
 * ``vendored_modules(sdk_root) -> tuple[str, ...]`` - import closure vendored with ``vendor=True``
 * ``ScaffoldReport`` - what was written, left unchanged, skipped or overwritten
 * CLI: ``python -m genie_ontology_modeled_knowledge_sdk.scaffold --config sdk_config.json --target <dir>``
@@ -22,8 +22,9 @@ What it creates (``docs/plans/INDEX.md`` "Run project layout")::
 
 Rules:
 
-* Only the run-kit tokens ``{{project_name}}``, ``{{domain_name}}`` and
-  ``{{bundle_target}}`` are rendered. Every other ``{{...}}`` (Jobs dynamic value
+* Only the run-kit tokens ``{{project_name}}``, ``{{domain_name}}``,
+  ``{{bundle_target}}``, ``{{branch}}`` (the build feature branch; never
+  ``main``/``master``) and ``{{sdk_version}}`` (the SDK version) are rendered. Every other ``{{...}}`` (Jobs dynamic value
   references such as ``{{input.name}}``) and every ``${...}`` stay as they are.
 * ``ontology-metric-views/databricks.yml``: the ``schema_name`` variable default
   is set to ``sdk_config.target_schema`` (the template's generic ``ontology``
@@ -43,7 +44,10 @@ Rules:
 * ``vendor=True`` (opt-in, for workspaces without package egress) copies the
   import closure of every SDK module the template notebooks import, byte for
   byte from ``src/genie_ontology_modeled_knowledge_sdk/``, plus the folder's
-  README and a ``VENDORED_VERSION`` file with the SDK version.
+  README and a ``VENDORED_VERSION`` file with the SDK version. The run kit's
+  SDK-wheel ``manual_prereqs`` entry (``P-wheel``) is then dropped from
+  ``docs/plans/waves.json``. ``sdk_config.json`` records the mode as
+  ``sdk_distribution: wheel | vendored``.
 
 Pure Python: no Spark, no Databricks API calls.
 """
@@ -55,7 +59,7 @@ import json
 import re
 import sys
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -75,7 +79,9 @@ __all__ = [
     "main",
 ]
 
-RUN_TOKENS = ("project_name", "domain_name", "bundle_target")
+RUN_TOKENS = ("project_name", "domain_name", "bundle_target", "branch", "sdk_version")
+WHEEL_PREREQ_ID = "P-wheel"
+_PROTECTED_BRANCHES = ("main", "master")
 _TOKEN_RE = re.compile(r"\{\{\s*(" + "|".join(RUN_TOKENS) + r")\s*\}\}")
 
 VENDORED_DIR = Path("ontology-metric-views/src/genie_ontology_modeled_knowledge_sdk_vendored")
@@ -241,6 +247,21 @@ def _iter_files(root: Path) -> Iterator[Path]:
             yield p
 
 
+def _drop_wheel_prereq(data: bytes) -> bytes:
+    """Remove the SDK-wheel ``manual_prereqs`` entry from a rendered run-kit manifest (vendor mode)."""
+    m = json.loads(data.decode("utf-8"))
+    for wave in m.get("waves") or []:
+        prereqs = wave.get("manual_prereqs")
+        if not prereqs:
+            continue
+        kept = [p for p in prereqs if not (isinstance(p, dict) and p.get("session_id") == WHEEL_PREREQ_ID)]
+        if kept:
+            wave["manual_prereqs"] = kept
+        else:
+            del wave["manual_prereqs"]
+    return (json.dumps(m, indent=2) + "\n").encode("utf-8")
+
+
 def _is_protected(rel: Path) -> bool:
     return any(part in PROTECTED_DIRS for part in rel.parts)
 
@@ -294,7 +315,10 @@ def _plan(sdk_root: Path, cfg: SdkConfig, values: dict[str, str], vendor: bool =
             for f in _iter_files(p):
                 out.append((Path("docs/plans") / f.relative_to(run), _render_bytes(f.read_bytes(), values)))
         elif p.is_file():
-            out.append((Path("docs/plans") / name, _render_bytes(p.read_bytes(), values)))
+            content = _render_bytes(p.read_bytes(), values)
+            if vendor and name == "waves.json":
+                content = _drop_wheel_prereq(content)
+            out.append((Path("docs/plans") / name, content))
         else:
             raise FileNotFoundError(f"run kit file missing: {p}")
     memory = run / "PROJECT_MEMORY.md"
@@ -333,6 +357,7 @@ def scaffold_project(
     force: bool = False,
     project_name: str | None = None,
     bundle_target: str = "dev",
+    branch: str | None = None,
     vendor: bool = False,
 ) -> ScaffoldReport:
     """Create (or complete) a run project in ``target_dir`` from ``sdk_root``.
@@ -341,15 +366,25 @@ def scaffold_project(
     defaults to the name of ``target_dir``; ``bundle_target`` to ``dev``.
     Existing files are kept unless ``force``; ``.databricks/`` and ``.rendered/``
     are never touched. ``vendor=True`` copies the SDK modules the notebooks
-    import (opt-in; the default installs the SDK wheel instead).
+    import (opt-in; the default installs the SDK wheel instead). ``branch`` is
+    the build feature branch written to the run kit's top-level ``branch``
+    (default ``genie-build-<project_name>``; ``main``/``master`` raise
+    ``ValueError``).
     """
     c = cfg if isinstance(cfg, SdkConfig) else config_from_dict(cfg)
+    c = replace(c, sdk_distribution="vendored" if vendor else "wheel")
     target = Path(target_dir)
     sdk = Path(sdk_root)
+    name = project_name or target.resolve().name
+    branch_name = (branch or f"genie-build-{name}").strip()
+    if not branch_name or branch_name in _PROTECTED_BRANCHES:
+        raise ValueError(f"branch must be a feature branch, not {branch_name!r}")
     values = {
-        "project_name": project_name or target.resolve().name,
+        "project_name": name,
         "domain_name": c.domain_name,
         "bundle_target": bundle_target,
+        "branch": branch_name,
+        "sdk_version": _sdk_version(sdk),
     }
     report = ScaffoldReport(target_dir=str(target))
 
@@ -390,6 +425,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--sdk-root", default=None, help="SDK root (default: this package's repo)")
     parser.add_argument("--project-name", default=None)
     parser.add_argument("--bundle-target", default="dev")
+    parser.add_argument("--branch", default=None, help="build feature branch (default genie-build-<project>)")
     parser.add_argument("--force", action="store_true", help="overwrite files that differ")
     parser.add_argument(
         "--vendor",
@@ -406,6 +442,7 @@ def main(argv: list[str] | None = None) -> int:
             force=args.force,
             project_name=args.project_name,
             bundle_target=args.bundle_target,
+            branch=args.branch,
             vendor=args.vendor,
         )
     except (ValueError, FileNotFoundError) as e:

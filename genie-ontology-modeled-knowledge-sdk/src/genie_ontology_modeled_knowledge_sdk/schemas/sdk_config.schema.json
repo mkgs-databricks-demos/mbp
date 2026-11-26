@@ -78,6 +78,21 @@
       "type": "string", "minLength": 1,
       "description": "Workspace Git folder path the developer can write to (L100)."
     },
+    "pages_domain_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Existing Discover domain id for the project's UC Pages (run kit Pages wave). Absent: the Pages session runs the dry run only ('publishing deferred')."
+    },
+    "pages_status": {
+      "type": "string",
+      "enum": ["DRAFT", "PUBLISHED"],
+      "description": "Status for live UC Pages upserts. Default DRAFT."
+    },
+    "sdk_distribution": {
+      "type": "string",
+      "enum": ["wheel", "vendored"],
+      "description": "How the project loads the SDK: the installed wheel (default) or the vendored copy (scaffold_project(vendor=True)). Recorded by scaffold_project."
+    },
     "skills": {
       "type": "object",
       "additionalProperties": false,

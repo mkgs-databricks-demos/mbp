@@ -6,6 +6,8 @@ Sessions are listed in reverse chronological order.
 
 | Date | Session | Summary |
 |---|---|---|
+| 2026-11-26 | [W1-4 / 29 Guided Setup Notebook (R6)](2026-11-26_w1-4-29-guided-setup.md) | Wave 1-4, session 29, mode edit, status pass: setup_project.py, setup_sdk and init_ontology_project notebooks, docs/usage.md; guided_setup check pass (run 288268071022101) |
+| 2026-11-26 | [W1-4 / 28 Run Kit Fixes & Exhaustive Tuning Waves (R3)](2026-11-26_w1-4-28-run-kit.md) | Wave 1-4, session 28, mode edit, status pass: run kit branch/authorization/wheel/tuning-wave fixes, tests/test_run_kit.py; pytest 488 pass (run 288268071022101) |
 | 2026-11-26 | [W1-3 / 27 Publish SDK Skills to the Unity Gateway Skills Library (R1)](2026-11-26_w1-3-27-skills-publishing.md) | Wave 1-3, session 27, mode edit, status pass: six ontology-* skills published (9 then 0 changes), R1 spike recorded, workspace-folder fallback documented (run 288268071022101) |
 | 2026-11-26 | [W1-2b / 23b Publish the SDK Wheel to the UC Volume (R7a)](2026-11-26_w1-2b-23b-wheel-publish.md) | Wave 1-2b, session 23b, mode edit, status pass: SDK bundle deployed to dev, one 0.1.0 wheel at the stable .internal/ path, sdk_smoke SUCCESS (run 288268071022101) |
 | 2026-11-25 | [W1-2 / 26 Exhaustive Tuning Protocol Skill & Skills Index (R8)](2026-11-25_w1-2-26-tuning-skill.md) | Wave 1-2, session 26, mode edit, status pass: already completed, re-validated (run 288268071022101) |

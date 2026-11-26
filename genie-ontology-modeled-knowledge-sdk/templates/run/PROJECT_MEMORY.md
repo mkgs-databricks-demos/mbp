@@ -9,7 +9,7 @@ This project stands up modeled knowledge for `{{domain_name}}`. It takes Unity C
 ## Status
 
 * Phase: **scaffolded, no build run yet.**
-* Bundle target: `{{bundle_target}}`.
+* Bundle target: `{{bundle_target}}`. Build branch: `{{branch}}`. SDK: `{{sdk_version}}` (`sdk_config.json` `sdk_distribution`).
 * History: see `docs/sessions/INDEX.md`.
 
 ## Layout
@@ -21,13 +21,17 @@ This project stands up modeled knowledge for `{{domain_name}}`. It takes Unity C
 | `ontology-genie-agents/` | Bundle 2: `.geniespace.json` agents via the `genie_spaces` resource |
 | `docs/plans/` | Run manifest `waves.json`, `INDEX.md`, `plans/` |
 | `docs/research/`, `docs/semantics/`, `docs/context/`, `docs/data_profiles/` | Discovery outputs (wave 1) |
-| `docs/registration/`, `docs/pages/`, `docs/deployment/`, `docs/tuning/` | Runtime results (waves 3-6) |
+| `docs/registration/`, `docs/pages/`, `docs/deployment/`, `docs/tuning/` | Runtime results (waves 3-13); `docs/registration/resolved_target.json` feeds agent rendering |
+| `docs/evaluation/` | Independent report simulation (wave 14) |
 | `docs/sessions/` | Session summaries + INDEX |
 
 ## Owner prerequisites (before the build)
 
 * `ontology-metric-views/.databricks/bundle/{{bundle_target}}/variable-overrides.json` and `ontology-genie-agents/.databricks/bundle/{{bundle_target}}/variable-overrides.json` hold the workspace values (see each bundle README). They are gitignored. Sessions never print, edit or commit them.
 * Read access to every source table and volume. The `inputs_report` session (wave `0`) checks this.
+* Wheel mode: the SDK wheel `{{sdk_version}}` in the SDK `sdk_wheels` volume, `sdk_volume_path` in the metric-views overrides, and `READ VOLUME` for the run-as principals (wave `3` `manual_prereqs`).
+* `sdk_config.json` `pages_domain_id` (an existing Discover domain), or the Pages session runs the dry run only (wave `4` `manual_prereqs`).
+* SDK skills published to Unity Catalog before the build starts, recorded in `sdk_config.json` `skills`.
 
 ## Conventions
 

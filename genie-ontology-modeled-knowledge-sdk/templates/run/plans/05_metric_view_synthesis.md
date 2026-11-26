@@ -6,7 +6,7 @@ Turn the discovery outputs for `{{domain_name}}` into parameterized metric view 
 ## Context
 * Skill: load `skills/ontology-mv-synthesis/SKILL.md` (and the platform `metric-views` skill it points to).
 * Inputs: `docs/research/**`, `docs/semantics/**`, `docs/context/**`, `docs/data_profiles/**`, `sdk_config.json`.
-* SDK functions: `genie_ontology_modeled_knowledge_sdk.mv_yaml` `load_mv`, `validate_mv`, CLI `python -m genie_ontology_modeled_knowledge_sdk.mv_yaml validate <dir>`; `genie_ontology_modeled_knowledge_sdk.manifest` `build_manifest(metric_views_dir)`, `write_manifest(...)`, `validate_manifest_json(list)`. In the project, use the vendored copy (`PYTHONPATH=ontology-metric-views/src`, module `genie_ontology_modeled_knowledge_sdk_vendored.mv_yaml`).
+* SDK functions: `genie_ontology_modeled_knowledge_sdk.mv_yaml` `load_mv`, `validate_mv`, CLI `python -m genie_ontology_modeled_knowledge_sdk.mv_yaml validate <dir>`; `genie_ontology_modeled_knowledge_sdk.manifest` `build_manifest(metric_views_dir)`, `write_manifest(...)`, `validate_manifest_json(list)`. In the project, use the installed SDK wheel `{{sdk_version}}` (`python -m genie_ontology_modeled_knowledge_sdk.mv_yaml validate` or the `gos-*` CLIs). Only a project scaffolded with `vendor=True` (`sdk_config.json` `sdk_distribution: vendored`) loads the vendored copy, through the notebooks' `load_sdk()` cell.
 * Parameters: `${source_catalog}`, `${source_schema}`, `${target_catalog}`, `${target_schema}`. A literal catalog in `source:` is rule MV004.
 * `manifest.json` entries: `{name, yaml_path, domain, subdomain}`, `yaml_path` relative to the metric-views bundle root, sorted by `name`.
 
