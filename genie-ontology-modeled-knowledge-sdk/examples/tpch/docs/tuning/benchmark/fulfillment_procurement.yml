@@ -129,18 +129,18 @@
   tags: ['type:ratio', 'view:mv_tpch_supply_chain_returns', 'measure:Return Rate', 'dimension:Customer Nation']
 - id: f029
   question: What percent of order lines were returned overall?
-  expected_sql: SELECT MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns
-  expected_answer: 0.24688
+  expected_sql: SELECT 100 * MEASURE(`Return Line Rate`) AS return_line_pct FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns
+  expected_answer: 24.688
   tags: ['type:ratio', 'view:mv_tpch_supply_chain_returns', 'measure:Return Line Rate']
 - id: f030
   question: What is the return rate for the AUTOMOBILE market segment, in percent?
-  expected_sql: SELECT MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Market Segment` = 'AUTOMOBILE'
-  expected_answer: 0.246876
+  expected_sql: SELECT 100 * MEASURE(`Return Rate`) AS return_rate_pct FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Market Segment` = 'AUTOMOBILE'
+  expected_answer: 24.6876
   tags: ['type:ratio', 'view:mv_tpch_supply_chain_returns', 'measure:Return Rate', 'dimension:Market Segment']
 - id: f031
   question: What percentage of lines shipped by REG AIR came back?
-  expected_sql: SELECT MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Ship Mode` = 'REG AIR'
-  expected_answer: 0.247017
+  expected_sql: SELECT 100 * MEASURE(`Return Line Rate`) AS return_line_pct FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Ship Mode` = 'REG AIR'
+  expected_answer: 24.7017
   tags: ['type:ratio', 'view:mv_tpch_supply_chain_returns', 'measure:Return Line Rate', 'dimension:Ship Mode']
 - id: f032
   question: What is the product return rate by customer segment?
