@@ -63,7 +63,7 @@ Checked with Databricks CLI **v1.27.0** (`databricks version`).
 Projects install `<sdk_volume_path>/<sdk_wheel_subpath>/genie_ontology_modeled_knowledge_sdk-<sdk_version>-py3-none-any.whl`:
 
 * `sdk_volume_path`: `/Volumes/<sdk_catalog>/<sdk_schema>/sdk_wheels` (no default; set in the project's gitignored overrides).
-* `sdk_wheel_subpath`: the sub-folder the CLI uploads artifacts to. The template default is `.internal`; the publish step (session 23b) confirms the real upload path and, only if it is not stable across deploys, copies the wheel to `releases/<version>/` and records that here.
+* `sdk_wheel_subpath`: the sub-folder the CLI uploads artifacts to: `.internal` (template default). Session 23b confirmed with CLI v1.27.0 that the upload path is `<sdk_volume_path>/.internal/<wheel>`, stable across deploys, so no `releases/<version>/` copy is made. See [wheel_publish.md](wheel_publish.md).
 * `sdk_version`: rendered by the scaffold from `pyproject.toml`.
 
 ## Grants
