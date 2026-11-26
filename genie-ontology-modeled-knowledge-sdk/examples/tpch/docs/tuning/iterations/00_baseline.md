@@ -85,9 +85,9 @@ Holdout is reported as the overall number only. Per-view and per-type rows overl
 |---|---|---|
 | Unit / format | 11 | s036, f002, s053, x042, x034, s059, s052, x014, x070, x046, x054 |
 | Benchmark defect | 6 | f029, f030, f031, x078, x101, x045 |
-| Filter / edge | 6 | f051, s040, f034, s058, f011, x097 |
+| Filter / edge | 7 | f051, s040, f034, s058, f011, x097, x058 |
 | Missing measure | 1 | x023 |
-| Ambiguity | 7 | x003, x017, x028, x032, x058, x062, x093 |
+| Ambiguity | 6 | x003, x017, x028, x032, x062, x093 |
 
 `needs_review` (counted as misses): x062, f011. `unit_mismatch`: 0 flagged, because the eval-run result details did not include result rows (0 rows on all 31 failures), so `_unit_mismatch` could not compare values. The Unit / format category was assigned from the generated SQL (`100 *` on a 0-1 ratio where the question asks for a fraction or share).
 

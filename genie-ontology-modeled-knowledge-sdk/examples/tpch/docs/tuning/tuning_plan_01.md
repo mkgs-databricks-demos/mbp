@@ -4,7 +4,7 @@ Written by: iteration 0 (baseline, 2026-11-26), from the tuning-split failures i
 Applied by: iteration 1.
 Rule: MV-first (ladder steps 1-8 before 9-10). Holdout: numbers only (83.3%, 35/42); no holdout question is cited here.
 
-Baseline tuning accuracy 83.8% (160/191). 31 tuning-split failures, each with one category: Unit / format 11, Ambiguity 7, Filter / edge 6, Benchmark defect 6 (not tuned), Missing measure 1. Triage is from the generated SQL versus the expected SQL: the eval-run result details carried no result rows, so values were not compared.
+Baseline tuning accuracy 83.8% (160/191). 31 tuning-split failures, each with one category: Unit / format 11, Filter / edge 7, Ambiguity 6, Benchmark defect 6 (not tuned), Missing measure 1. Triage is from the generated SQL versus the expected SQL: the eval-run result details carried no result rows, so values were not compared.
 
 ## Actions by metric view
 
@@ -35,7 +35,7 @@ Baseline tuning accuracy 83.8% (160/191). 31 tuning-split failures, each with on
 | # | Question ids | Category | Ladder step | Change | Expected effect | Status | Outcome |
 |---|---|---|---|---|---|---|---|
 | 8 | s036 | Unit / format | 6 new measure | add `Discount Share` = `Discount Revenue / Gross Sales` with a percentage `format` (0-1) | the fraction of gross sales given up is one measure | planned | |
-| 9 | x093, x014 | Ambiguity | 1 comment | `Order Count` comment in this view: orders with at least one line in the selection; for order volume by order date use `mv_tpch_supply_chain_orders` | order counts come from the orders view | planned | |
+| 9 | x093 | Ambiguity | 1 comment | `Order Count` comment in this view: orders with at least one line in the selection; for order volume by order date use `mv_tpch_supply_chain_orders` | order counts come from the orders view | planned | |
 | 10 | x003 | Ambiguity | 1 comment | `Revenue` comment: compare with order-header `Order Total Price` as a ratio (net revenue / order total price) | ratio column as expected | planned | |
 | 11 | x046, x054 | Unit / format | 4 format | set `format` with explicit decimal places on `Average Discount` (4) | rounding matches the expected 4 decimals | planned | |
 | 12 | s040 | Filter / edge | 1 comment | `Revenue` comment: an empty selection returns NULL; do not coalesce to 0 | NULL returned for an empty filter | planned | |
