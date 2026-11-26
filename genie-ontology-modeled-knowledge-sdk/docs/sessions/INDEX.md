@@ -6,6 +6,7 @@ Sessions are listed in reverse chronological order.
 
 | Date | Session | Summary |
 |---|---|---|
+| 2026-11-26 | [W1-7 / 35 TPC-H Benchmarks in the Agent & Baseline Evaluation](2026-11-26_w1-7-35-tuning-baseline.md) | Wave 1-7, session 35, mode edit, status blocked: 233 benchmarks in the agent, deployed to dev, eval run 01f1e94fcc711598bd98b2859ae28ec0 DONE; benchmark._eval_result scores 0/233 (manual_assessment=false treated as BAD; raw 195 GOOD), owner fix needed; agent file left uncommitted (run 629243800379582) |
 | 2026-11-26 | [W1-6 / 34 Benchmark Questions: Cross-View](2026-11-26_w1-6-34-benchmark-cross-view.md) | Wave 1-6, session 34, mode edit, status pass: already completed, re-validated; 105/105 expected_sql SUCCEEDED, full-set coverage 233 questions, 45.1% cross-view (run 629243800379582) |
 | 2026-11-26 | [W1-6 / 33 Benchmark Questions: Fulfillment & Procurement Views](2026-11-26_w1-6-33-benchmark-fulfillment-procurement.md) | Wave 1-6, session 33, mode edit, status pass: already completed, re-validated; 69/69 expected_sql SUCCEEDED (run 629243800379582) |
 | 2026-11-26 | [W1-6 / 32 Benchmark Questions: Sales Views](2026-11-26_w1-6-32-benchmark-sales.md) | Wave 1-6, session 32, mode edit, status pass: already completed, re-validated; 59/59 expected_sql SUCCEEDED (run 629243800379582) |
