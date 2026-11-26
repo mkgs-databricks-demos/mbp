@@ -1,0 +1,311 @@
+# Benchmark questions: fulfillment and procurement metric views (session 33, build 1).
+# Views: mv_tpch_supply_chain_fulfillment, _returns, _profit, _supply_cost. Single-view questions only.
+# expected_sql is tokenized (${target_catalog}.${target_schema}); render with examples/tpch/docs/registration/resolved_target.json.
+# Ratio expected_answer values are 0-1 fractions (build-0 observation 30): a percentage answer scores as unit_mismatch.
+# Statement state of every expected_sql: fulfillment_procurement_notes.md.
+- id: f001
+  question: How many order lines are there in total?
+  expected_sql: SELECT MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment
+  expected_answer: 29999795
+  tags: ['type:simple', 'view:mv_tpch_supply_chain_fulfillment', 'measure:Line Item Count']
+- id: f002
+  question: What share of order lines shipped on or before their commit date, across all data?
+  expected_sql: SELECT MEASURE(`On-Time Shipping Rate`) AS on_time_shipping_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment
+  expected_answer: 0.495897
+  tags: ['type:simple', 'view:mv_tpch_supply_chain_fulfillment', 'measure:On-Time Shipping Rate']
+- id: f003
+  question: Break down the number of lines that shipped on time by shipping method.
+  expected_sql: SELECT `Ship Mode`, MEASURE(`On-Time Shipped Line Count`) AS on_time_shipped_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL ORDER BY `Ship Mode`
+  tags: ['type:breakdown', 'view:mv_tpch_supply_chain_fulfillment', 'measure:On-Time Shipped Line Count', 'dimension:Ship Mode']
+- id: f004
+  question: Show average transit days from shipment to receipt for each order priority.
+  expected_sql: SELECT `Order Priority`, MEASURE(`Average Transit Days`) AS avg_transit_days FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL ORDER BY `Order Priority`
+  tags: ['type:breakdown', 'view:mv_tpch_supply_chain_fulfillment', 'measure:Average Transit Days', 'dimension:Order Priority']
+- id: f005
+  question: How did the count of late receipts trend by receipt month during 1995?
+  expected_sql: SELECT `Receipt Month`, MEASURE(`Late Receipt Count`) AS late_receipts FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `Receipt Year` = 1995 GROUP BY ALL ORDER BY `Receipt Month`
+  tags: ['type:time', 'view:mv_tpch_supply_chain_fulfillment', 'measure:Late Receipt Count', 'dimension:Receipt Month', 'dimension:Receipt Year']
+- id: f006
+  question: What was the average number of days between order placement and shipment for each ship month in 1996?
+  expected_sql: SELECT `Ship Month`, MEASURE(`Average Ship Lag Days`) AS avg_ship_lag_days FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE YEAR(`Ship Month`) = 1996 GROUP BY ALL ORDER BY `Ship Month`
+  tags: ['type:time', 'view:mv_tpch_supply_chain_fulfillment', 'measure:Average Ship Lag Days', 'dimension:Ship Month']
+- id: f007
+  question: How many lines were received in each calendar year?
+  expected_sql: SELECT `Receipt Year`, MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL ORDER BY `Receipt Year`
+  tags: ['type:time', 'view:mv_tpch_supply_chain_fulfillment', 'measure:Line Item Count', 'dimension:Receipt Year']
+- id: f008
+  question: For TPC-H query 12, how many lines shipped by MAIL or SHIP were received late despite shipping before the commit date in 1994, split by high versus low priority?
+  expected_sql: SELECT `Ship Mode`, `High Priority`, MEASURE(`Q12 Late Receipt Count`) AS q12_late_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `Ship Mode` IN ('MAIL', 'SHIP') AND `Receipt Year` = 1994 GROUP BY ALL ORDER BY `Ship Mode`, `High Priority`
+  tags: ['type:filter', 'view:mv_tpch_supply_chain_fulfillment', 'measure:Q12 Late Receipt Count', 'dimension:Ship Mode', 'dimension:High Priority', 'dimension:Receipt Year']
+- id: f009
+  question: What was the on-time delivery rate for urgent and high priority orders only?
+  expected_sql: SELECT MEASURE(`On-Time Delivery Rate`) AS on_time_delivery_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `High Priority`
+  expected_answer: 0.367648
+  tags: ['type:filter', 'view:mv_tpch_supply_chain_fulfillment', 'measure:On-Time Delivery Rate', 'dimension:High Priority']
+- id: f010
+  question: How many order lines are still open (line status O)?
+  expected_sql: SELECT MEASURE(`Line Item Count`) AS open_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `Line Status` = 'O'
+  expected_answer: 14997114
+  tags: ['type:filter', 'view:mv_tpch_supply_chain_fulfillment', 'measure:Line Item Count', 'dimension:Line Status']
+- id: f011
+  question: What is the on-time shipping rate for lines shipped by AIR, as a fraction?
+  expected_sql: SELECT MEASURE(`On-Time Shipping Rate`) AS on_time_shipping_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `Ship Mode` = 'AIR'
+  expected_answer: 0.495389
+  tags: ['type:ratio', 'view:mv_tpch_supply_chain_fulfillment', 'measure:On-Time Shipping Rate', 'dimension:Ship Mode']
+- id: f012
+  question: Which ship mode has the highest on-time delivery rate?
+  expected_sql: SELECT `Ship Mode`, MEASURE(`On-Time Delivery Rate`) AS on_time_delivery_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL ORDER BY on_time_delivery_rate DESC LIMIT 1
+  tags: ['type:ratio', 'view:mv_tpch_supply_chain_fulfillment', 'measure:On-Time Delivery Rate', 'dimension:Ship Mode']
+- id: f013
+  question: What is the overall order cycle time in days?
+  expected_sql: SELECT MEASURE(`Average Fulfillment Cycle Days`) AS avg_fulfillment_cycle_days FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment
+  expected_answer: 76.4981
+  tags: ['type:synonym', 'view:mv_tpch_supply_chain_fulfillment', 'measure:Average Fulfillment Cycle Days']
+- id: f014
+  question: What is OTS by transport mode?
+  expected_sql: SELECT `Ship Mode`, MEASURE(`On-Time Shipping Rate`) AS on_time_shipping_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL ORDER BY `Ship Mode`
+  tags: ['type:synonym', 'view:mv_tpch_supply_chain_fulfillment', 'measure:On-Time Shipping Rate', 'dimension:Ship Mode']
+- id: f015
+  question: How many late deliveries were there by priority?
+  expected_sql: SELECT `Order Priority`, MEASURE(`Late Receipt Count`) AS late_receipts FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL ORDER BY `Order Priority`
+  tags: ['type:synonym', 'view:mv_tpch_supply_chain_fulfillment', 'measure:Late Receipt Count', 'dimension:Order Priority']
+- id: f016
+  question: How many lines shipped on the very first ship date in the data, January 2, 1992?
+  expected_sql: SELECT MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `Ship Date` = DATE'1992-01-02'
+  expected_answer: 92
+  tags: ['type:edge', 'view:mv_tpch_supply_chain_fulfillment', 'measure:Line Item Count', 'dimension:Ship Date']
+- id: f017
+  question: How many lines were received on December 31, 1998 (after the last ship date)?
+  expected_sql: SELECT MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `Receipt Date` = DATE'1998-12-31'
+  expected_answer: 2
+  tags: ['type:edge', 'view:mv_tpch_supply_chain_fulfillment', 'measure:Line Item Count', 'dimension:Receipt Date']
+- id: f018
+  question: 'Lines that shipped exactly on the commit date count as on time: how many on-time shipped lines were there in total, and how many lines in total?'
+  expected_sql: SELECT MEASURE(`On-Time Shipped Line Count`) AS on_time_shipped_lines, MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment
+  tags: ['type:edge', 'view:mv_tpch_supply_chain_fulfillment', 'measure:On-Time Shipped Line Count', 'measure:Line Item Count']
+- id: f019
+  question: How much discounted revenue was lost to returned lines overall?
+  expected_sql: SELECT MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns
+  expected_answer: 269147687267.2029
+  tags: ['type:simple', 'view:mv_tpch_supply_chain_returns', 'measure:Returned Revenue']
+- id: f020
+  question: How many units were returned in total?
+  expected_sql: SELECT MEASURE(`Returned Quantity`) AS returned_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns
+  expected_answer: 188960009
+  tags: ['type:simple', 'view:mv_tpch_supply_chain_returns', 'measure:Returned Quantity']
+- id: f021
+  question: Show total units shipped and returned for each market segment.
+  expected_sql: SELECT `Market Segment`, MEASURE(`Shipped Quantity`) AS shipped_quantity, MEASURE(`Returned Quantity`) AS returned_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL ORDER BY `Market Segment`
+  tags: ['type:breakdown', 'view:mv_tpch_supply_chain_returns', 'measure:Shipped Quantity', 'measure:Returned Quantity', 'dimension:Market Segment']
+- id: f022
+  question: How many order lines carry each return flag value?
+  expected_sql: SELECT `Return Flag`, MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL ORDER BY `Return Flag`
+  tags: ['type:breakdown', 'view:mv_tpch_supply_chain_returns', 'measure:Line Item Count', 'dimension:Return Flag']
+- id: f023
+  question: Which 5 customer nations lost the most revenue to returns?
+  expected_sql: SELECT `Customer Nation`, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL ORDER BY returned_revenue DESC LIMIT 5
+  tags: ['type:breakdown', 'view:mv_tpch_supply_chain_returns', 'measure:Returned Revenue', 'dimension:Customer Nation']
+- id: f024
+  question: How many returned lines were there by order quarter in 1993?
+  expected_sql: SELECT `Order Quarter`, MEASURE(`Returned Line Count`) AS returned_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE YEAR(`Order Quarter`) = 1993 GROUP BY ALL ORDER BY `Order Quarter`
+  tags: ['type:time', 'view:mv_tpch_supply_chain_returns', 'measure:Returned Line Count', 'dimension:Order Quarter']
+- id: f025
+  question: Show the monthly returned revenue for orders placed in the fourth quarter of 1993.
+  expected_sql: SELECT `Order Month`, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Order Quarter` = DATE'1993-10-01' GROUP BY ALL ORDER BY `Order Month`
+  tags: ['type:time', 'view:mv_tpch_supply_chain_returns', 'measure:Returned Revenue', 'dimension:Order Month', 'dimension:Order Quarter']
+- id: f026
+  question: Following TPC-H Q10, list the top 10 customers (key and name) by revenue lost to returns on orders placed from October through December 1993.
+  expected_sql: SELECT `Customer Key`, `Customer Name`, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Order Quarter` = DATE'1993-10-01' GROUP BY ALL ORDER BY returned_revenue DESC, `Customer Key` LIMIT 10
+  tags: ['type:filter', 'view:mv_tpch_supply_chain_returns', 'measure:Returned Revenue', 'dimension:Customer Key', 'dimension:Customer Name', 'dimension:Order Quarter']
+- id: f027
+  question: How many lines were returned for orders shipped by TRUCK?
+  expected_sql: SELECT MEASURE(`Returned Line Count`) AS returned_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Ship Mode` = 'TRUCK'
+  expected_answer: 1057937
+  tags: ['type:filter', 'view:mv_tpch_supply_chain_returns', 'measure:Returned Line Count', 'dimension:Ship Mode']
+- id: f028
+  question: What is the return rate for customers in GERMANY? Give it as a fraction between 0 and 1.
+  expected_sql: SELECT MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Customer Nation` = 'GERMANY'
+  expected_answer: 0.246947
+  tags: ['type:ratio', 'view:mv_tpch_supply_chain_returns', 'measure:Return Rate', 'dimension:Customer Nation']
+- id: f029
+  question: What percent of order lines were returned overall?
+  expected_sql: SELECT MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns
+  expected_answer: 0.24688
+  tags: ['type:ratio', 'view:mv_tpch_supply_chain_returns', 'measure:Return Line Rate']
+- id: f030
+  question: What is the return rate for the AUTOMOBILE market segment, in percent?
+  expected_sql: SELECT MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Market Segment` = 'AUTOMOBILE'
+  expected_answer: 0.246876
+  tags: ['type:ratio', 'view:mv_tpch_supply_chain_returns', 'measure:Return Rate', 'dimension:Market Segment']
+- id: f031
+  question: What percentage of lines shipped by REG AIR came back?
+  expected_sql: SELECT MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Ship Mode` = 'REG AIR'
+  expected_answer: 0.247017
+  tags: ['type:ratio', 'view:mv_tpch_supply_chain_returns', 'measure:Return Line Rate', 'dimension:Ship Mode']
+- id: f032
+  question: What is the product return rate by customer segment?
+  expected_sql: SELECT `Market Segment`, MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL ORDER BY `Market Segment`
+  tags: ['type:synonym', 'view:mv_tpch_supply_chain_returns', 'measure:Return Rate', 'dimension:Market Segment']
+- id: f033
+  question: How much returned item revenue was there by shipping mode?
+  expected_sql: SELECT `Ship Mode`, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL ORDER BY `Ship Mode`
+  tags: ['type:synonym', 'view:mv_tpch_supply_chain_returns', 'measure:Returned Revenue', 'dimension:Ship Mode']
+- id: f034
+  question: How much returned revenue is on lines whose return flag is N (not returned)?
+  expected_sql: SELECT MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Return Flag` = 'N'
+  tags: ['type:edge', 'view:mv_tpch_supply_chain_returns', 'measure:Returned Revenue', 'dimension:Return Flag']
+- id: f035
+  question: What was the return line rate for orders placed in the last order month in the data, August 1998?
+  expected_sql: SELECT MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Order Month` = DATE'1998-08-01'
+  expected_answer: 0.0
+  tags: ['type:edge', 'view:mv_tpch_supply_chain_returns', 'measure:Return Line Rate', 'dimension:Order Month']
+- id: f036
+  question: What is total profit across all order lines?
+  expected_sql: SELECT MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit
+  expected_answer: 706871347530.0355
+  tags: ['type:simple', 'view:mv_tpch_supply_chain_profit', 'measure:Profit']
+- id: f037
+  question: What was the total cost of goods sold?
+  expected_sql: SELECT MEASURE(`Cost of Goods Sold`) AS cost_of_goods_sold FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit
+  expected_answer: 382963831717.18
+  tags: ['type:simple', 'view:mv_tpch_supply_chain_profit', 'measure:Cost of Goods Sold']
+- id: f038
+  question: How many units were sold in total?
+  expected_sql: SELECT MEASURE(`Quantity`) AS quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit
+  expected_answer: 765092358
+  tags: ['type:simple', 'view:mv_tpch_supply_chain_profit', 'measure:Quantity']
+- id: f039
+  question: Show profit by supplier nation.
+  expected_sql: SELECT `Supplier Nation`, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL ORDER BY `Supplier Nation`
+  tags: ['type:breakdown', 'view:mv_tpch_supply_chain_profit', 'measure:Profit', 'dimension:Supplier Nation']
+- id: f040
+  question: Break down revenue and cost of goods sold by manufacturer.
+  expected_sql: SELECT `Manufacturer`, MEASURE(`Revenue`) AS revenue, MEASURE(`Cost of Goods Sold`) AS cost_of_goods_sold FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL ORDER BY `Manufacturer`
+  tags: ['type:breakdown', 'view:mv_tpch_supply_chain_profit', 'measure:Revenue', 'measure:Cost of Goods Sold', 'dimension:Manufacturer']
+- id: f041
+  question: Which 5 part brands earned the most profit?
+  expected_sql: SELECT `Part Brand`, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL ORDER BY profit DESC LIMIT 5
+  tags: ['type:breakdown', 'view:mv_tpch_supply_chain_profit', 'measure:Profit', 'dimension:Part Brand']
+- id: f042
+  question: How did yearly profit change from 1992 through 1998?
+  expected_sql: SELECT `Order Year`, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL ORDER BY `Order Year`
+  tags: ['type:time', 'view:mv_tpch_supply_chain_profit', 'measure:Profit', 'dimension:Order Year']
+- id: f043
+  question: What was net revenue for orders placed in 1997?
+  expected_sql: SELECT MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Order Year` = 1997
+  expected_answer: 165246449758.4782
+  tags: ['type:time', 'view:mv_tpch_supply_chain_profit', 'measure:Revenue', 'dimension:Order Year']
+- id: f044
+  question: Following TPC-H Q9, what is profit by supplier nation and order year for parts whose name contains 'green'?
+  expected_sql: SELECT `Supplier Nation`, `Order Year`, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Part Name` LIKE '%green%' GROUP BY ALL ORDER BY `Supplier Nation`, `Order Year` DESC
+  tags: ['type:filter', 'view:mv_tpch_supply_chain_profit', 'measure:Profit', 'dimension:Supplier Nation', 'dimension:Order Year', 'dimension:Part Name']
+- id: f045
+  question: How much profit came from parts of type 'ECONOMY ANODIZED STEEL'?
+  expected_sql: SELECT MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Part Type` = 'ECONOMY ANODIZED STEEL'
+  expected_answer: 4882721990.5787
+  tags: ['type:filter', 'view:mv_tpch_supply_chain_profit', 'measure:Profit', 'dimension:Part Type']
+- id: f046
+  question: What is the overall profit margin as a fraction of net revenue?
+  expected_sql: SELECT MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit
+  expected_answer: 0.648604
+  tags: ['type:ratio', 'view:mv_tpch_supply_chain_profit', 'measure:Profit Margin']
+- id: f047
+  question: Which manufacturer has the highest profit margin?
+  expected_sql: SELECT `Manufacturer`, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL ORDER BY profit_margin DESC LIMIT 1
+  tags: ['type:ratio', 'view:mv_tpch_supply_chain_profit', 'measure:Profit Margin', 'dimension:Manufacturer']
+- id: f048
+  question: What is COGS by product type for the 5 product types with the highest COGS?
+  expected_sql: SELECT `Part Type`, MEASURE(`Cost of Goods Sold`) AS cost_of_goods_sold FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL ORDER BY cost_of_goods_sold DESC LIMIT 5
+  tags: ['type:synonym', 'view:mv_tpch_supply_chain_profit', 'measure:Cost of Goods Sold', 'dimension:Part Type']
+- id: f049
+  question: What is the gross profit and margin for each vendor country in 1995?
+  expected_sql: SELECT `Supplier Nation`, MEASURE(`Profit`) AS profit, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Order Year` = 1995 GROUP BY ALL ORDER BY `Supplier Nation`
+  tags: ['type:synonym', 'view:mv_tpch_supply_chain_profit', 'measure:Profit', 'measure:Profit Margin', 'dimension:Supplier Nation', 'dimension:Order Year']
+- id: f050
+  question: How many units of brand Brand#13 were sold?
+  expected_sql: SELECT MEASURE(`Quantity`) AS quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Part Brand` = 'Brand#13'
+  expected_answer: 30529089
+  tags: ['type:filter', 'view:mv_tpch_supply_chain_profit', 'measure:Quantity', 'dimension:Part Brand']
+- id: f051
+  question: What profit was earned on parts whose name contains a color word that no part uses, such as 'plaid'?
+  expected_sql: SELECT MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Part Name` LIKE '%plaid%'
+  tags: ['type:edge', 'view:mv_tpch_supply_chain_profit', 'measure:Profit', 'dimension:Part Name']
+- id: f052
+  question: What was the profit margin for orders placed in 1998, the last and partial order year?
+  expected_sql: SELECT MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Order Year` = 1998
+  expected_answer: 0.648538
+  tags: ['type:edge', 'view:mv_tpch_supply_chain_profit', 'measure:Profit Margin', 'dimension:Order Year']
+- id: f053
+  question: How many part-supplier offers are there?
+  expected_sql: SELECT MEASURE(`Offer Count`) AS offer_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost
+  expected_answer: 4000000
+  tags: ['type:simple', 'view:mv_tpch_supply_chain_supply_cost', 'measure:Offer Count']
+- id: f054
+  question: What is the total value of available inventory at supply cost?
+  expected_sql: SELECT MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost
+  expected_answer: 10013791114563.83
+  tags: ['type:simple', 'view:mv_tpch_supply_chain_supply_cost', 'measure:Inventory Value']
+- id: f055
+  question: How many distinct suppliers and distinct parts have offers?
+  expected_sql: SELECT MEASURE(`Supplier Count`) AS supplier_count, MEASURE(`Part Count`) AS part_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost
+  tags: ['type:simple', 'view:mv_tpch_supply_chain_supply_cost', 'measure:Supplier Count', 'measure:Part Count']
+- id: f056
+  question: Show inventory value by supplier region.
+  expected_sql: SELECT `Supplier Region`, MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL ORDER BY `Supplier Region`
+  tags: ['type:breakdown', 'view:mv_tpch_supply_chain_supply_cost', 'measure:Inventory Value', 'dimension:Supplier Region']
+- id: f057
+  question: What is the average unit supply cost for each manufacturer?
+  expected_sql: SELECT `Manufacturer`, MEASURE(`Average Supply Cost`) AS average_supply_cost FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL ORDER BY `Manufacturer`
+  tags: ['type:breakdown', 'view:mv_tpch_supply_chain_supply_cost', 'measure:Average Supply Cost', 'dimension:Manufacturer']
+- id: f058
+  question: Which 10 parts have the highest inventory value for suppliers in GERMANY?
+  expected_sql: SELECT `Part Key`, MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost WHERE `Supplier Nation` = 'GERMANY' GROUP BY ALL ORDER BY inventory_value DESC, `Part Key` LIMIT 10
+  tags: ['type:filter', 'view:mv_tpch_supply_chain_supply_cost', 'measure:Inventory Value', 'dimension:Part Key', 'dimension:Supplier Nation']
+- id: f059
+  question: Following TPC-H Q2, what is the lowest supply cost for size 15 parts of a BRASS type from suppliers in EUROPE?
+  expected_sql: SELECT MEASURE(`Minimum Supply Cost`) AS minimum_supply_cost FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost WHERE `Part Size` = 15 AND `Part Type` LIKE '%BRASS' AND `Supplier Region` = 'EUROPE'
+  expected_answer: 1.33
+  tags: ['type:filter', 'view:mv_tpch_supply_chain_supply_cost', 'measure:Minimum Supply Cost', 'dimension:Part Size', 'dimension:Part Type', 'dimension:Supplier Region']
+- id: f060
+  question: How many units are available from offers on parts of size 50?
+  expected_sql: SELECT MEASURE(`Available Quantity`) AS available_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost WHERE `Part Size` = 50
+  expected_answer: 397261324
+  tags: ['type:filter', 'view:mv_tpch_supply_chain_supply_cost', 'measure:Available Quantity', 'dimension:Part Size']
+- id: f061
+  question: Which 5 suppliers hold the most available units?
+  expected_sql: SELECT `Supplier Name`, MEASURE(`Available Quantity`) AS available_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL ORDER BY available_quantity DESC, `Supplier Name` LIMIT 5
+  tags: ['type:breakdown', 'view:mv_tpch_supply_chain_supply_cost', 'measure:Available Quantity', 'dimension:Supplier Name']
+- id: f062
+  question: What share of total inventory value sits with suppliers in ASIA, as a fraction?
+  expected_sql: SELECT MEASURE(`Inventory Value`) FILTER (WHERE `Supplier Region` = 'ASIA') / MEASURE(`Inventory Value`) AS asia_share FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost
+  expected_answer: 0.2011
+  tags: ['type:ratio', 'view:mv_tpch_supply_chain_supply_cost', 'measure:Inventory Value', 'dimension:Supplier Region']
+- id: f063
+  question: What is the average inventory value per offer by brand, for the 5 brands with the highest value per offer?
+  expected_sql: SELECT `Part Brand`, MEASURE(`Inventory Value`) / MEASURE(`Offer Count`) AS inventory_value_per_offer FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL ORDER BY inventory_value_per_offer DESC LIMIT 5
+  tags: ['type:ratio', 'view:mv_tpch_supply_chain_supply_cost', 'measure:Inventory Value', 'measure:Offer Count', 'dimension:Part Brand']
+- id: f064
+  question: What is the stock on hand by vendor country?
+  expected_sql: SELECT `Supplier Nation`, MEASURE(`Available Quantity`) AS available_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL ORDER BY `Supplier Nation`
+  tags: ['type:synonym', 'view:mv_tpch_supply_chain_supply_cost', 'measure:Available Quantity', 'dimension:Supplier Nation']
+- id: f065
+  question: What is the unit cost by product type for STANDARD POLISHED parts?
+  expected_sql: SELECT `Part Type`, MEASURE(`Average Supply Cost`) AS average_supply_cost FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost WHERE `Part Type` LIKE 'STANDARD POLISHED%' GROUP BY ALL ORDER BY `Part Type`
+  tags: ['type:synonym', 'view:mv_tpch_supply_chain_supply_cost', 'measure:Average Supply Cost', 'dimension:Part Type']
+- id: f066
+  question: How many suppliers offer part key 1?
+  expected_sql: SELECT MEASURE(`Supplier Count`) AS supplier_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost WHERE `Part Key` = 1
+  expected_answer: 4
+  tags: ['type:edge', 'view:mv_tpch_supply_chain_supply_cost', 'measure:Supplier Count', 'dimension:Part Key']
+- id: f067
+  question: How many distinct parts are offered by suppliers in each region (a part offered in several regions counts in each)?
+  expected_sql: SELECT `Supplier Region`, MEASURE(`Part Count`) AS part_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL ORDER BY `Supplier Region`
+  tags: ['type:edge', 'view:mv_tpch_supply_chain_supply_cost', 'measure:Part Count', 'dimension:Supplier Region']
+- id: f068
+  question: What is the minimum supply cost for parts of size 51, which is outside the valid size range?
+  expected_sql: SELECT MEASURE(`Minimum Supply Cost`) AS minimum_supply_cost FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost WHERE `Part Size` = 51
+  tags: ['type:edge', 'view:mv_tpch_supply_chain_supply_cost', 'measure:Minimum Supply Cost', 'dimension:Part Size']
+- id: f069
+  question: What is the lowest unit supply cost offered for each part brand?
+  expected_sql: SELECT `Part Brand`, MEASURE(`Minimum Supply Cost`) AS minimum_supply_cost FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL ORDER BY `Part Brand`
+  tags: ['type:breakdown', 'view:mv_tpch_supply_chain_supply_cost', 'measure:Minimum Supply Cost', 'dimension:Part Brand']

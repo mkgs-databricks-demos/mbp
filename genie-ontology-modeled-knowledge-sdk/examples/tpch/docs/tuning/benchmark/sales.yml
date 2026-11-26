@@ -1,0 +1,584 @@
+# Benchmark questions: sales metric views (orders, revenue, market_share).
+# Session 32 (build 1, wave 1-6). expected_sql is tokenized; render ${target_catalog}/${target_schema}
+# from examples/tpch/docs/registration/resolved_target.json. Statement states are in sales_notes.md.
+questions:
+  - id: s001
+    question: "How many orders are on record in total?"
+    expected_sql: |-
+      SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders
+    expected_answer: 7500000
+    tags:
+      - "type:simple"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Order Count"
+  - id: s002
+    question: "What is the combined header total price of all orders?"
+    expected_sql: |-
+      SELECT MEASURE(`Order Total Price`) AS order_total_price FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders
+    expected_answer: 1133439215246.25
+    tags:
+      - "type:simple"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Order Total Price"
+  - id: s003
+    question: "How many distinct customers have placed at least one order?"
+    expected_sql: |-
+      SELECT MEASURE(`Ordering Customer Count`) AS ordering_customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders
+    expected_answer: 499989
+    tags:
+      - "type:simple"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Ordering Customer Count"
+  - id: s004
+    question: "Break down the number of orders by order status code."
+    expected_sql: |-
+      SELECT `Order Status`, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY `Order Status` ORDER BY `Order Status`
+    tags:
+      - "type:breakdown"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Order Count"
+      - "dimension:mv_tpch_supply_chain_orders.Order Status"
+  - id: s005
+    question: "Show order count and header order total for each customer region."
+    expected_sql: |-
+      SELECT `Customer Region`, MEASURE(`Order Count`) AS order_count, MEASURE(`Order Total Price`) AS order_total_price FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY `Customer Region` ORDER BY `Customer Region`
+    tags:
+      - "type:breakdown"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Order Count"
+      - "measure:mv_tpch_supply_chain_orders.Order Total Price"
+      - "dimension:mv_tpch_supply_chain_orders.Customer Region"
+  - id: s006
+    question: "Which five customer nations have the most ordering customers?"
+    expected_sql: |-
+      SELECT `Customer Nation`, MEASURE(`Ordering Customer Count`) AS ordering_customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY `Customer Nation` ORDER BY ordering_customers DESC, `Customer Nation` LIMIT 5
+    tags:
+      - "type:breakdown"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Ordering Customer Count"
+      - "dimension:mv_tpch_supply_chain_orders.Customer Nation"
+  - id: s007
+    question: "How many orders were placed each year?"
+    expected_sql: |-
+      SELECT `Order Year`, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY `Order Year` ORDER BY `Order Year`
+    tags:
+      - "type:time"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Order Count"
+      - "dimension:mv_tpch_supply_chain_orders.Order Year"
+  - id: s008
+    question: "Give the monthly header order total for 1997."
+    expected_sql: |-
+      SELECT `Order Month`, MEASURE(`Order Total Price`) AS order_total_price FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1997 GROUP BY `Order Month` ORDER BY `Order Month`
+    tags:
+      - "type:time"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Order Total Price"
+      - "dimension:mv_tpch_supply_chain_orders.Order Month"
+      - "dimension:mv_tpch_supply_chain_orders.Order Year"
+  - id: s009
+    question: "How many orders were placed on 1995-03-15?"
+    expected_sql: |-
+      SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Date` = DATE'1995-03-15'
+    expected_answer: 3103
+    tags:
+      - "type:time"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Order Count"
+      - "dimension:mv_tpch_supply_chain_orders.Order Date"
+  - id: s010
+    question: "How many urgent or high priority orders do we have?"
+    expected_sql: |-
+      SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `High Priority` = true
+    expected_answer: 3000292
+    tags:
+      - "type:filter"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Order Count"
+      - "dimension:mv_tpch_supply_chain_orders.High Priority"
+  - id: s011
+    question: "What is the header order total for customers in the AUTOMOBILE segment located in EUROPE?"
+    expected_sql: |-
+      SELECT MEASURE(`Order Total Price`) AS order_total_price FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Market Segment` = 'AUTOMOBILE' AND `Customer Region` = 'EUROPE'
+    expected_answer: 45921910890.87
+    tags:
+      - "type:filter"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Order Total Price"
+      - "dimension:mv_tpch_supply_chain_orders.Market Segment"
+      - "dimension:mv_tpch_supply_chain_orders.Customer Region"
+  - id: s012
+    question: "What is the average header total per order, by order priority?"
+    expected_sql: |-
+      SELECT `Order Priority`, MEASURE(`Average Order Total`) AS average_order_total FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY `Order Priority` ORDER BY `Order Priority`
+    tags:
+      - "type:ratio"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Average Order Total"
+      - "dimension:mv_tpch_supply_chain_orders.Order Priority"
+  - id: s013
+    question: "On average, how many orders does each ordering customer place, per market segment?"
+    expected_sql: |-
+      SELECT `Market Segment`, MEASURE(`Orders per Customer`) AS orders_per_customer FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY `Market Segment` ORDER BY `Market Segment`
+    tags:
+      - "type:ratio"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Orders per Customer"
+      - "dimension:mv_tpch_supply_chain_orders.Market Segment"
+  - id: s014
+    question: "What share of all orders are high priority?"
+    expected_sql: |-
+      SELECT SUM(CASE WHEN high_priority THEN n ELSE 0 END) / SUM(n) AS high_priority_share FROM (SELECT `High Priority` AS high_priority, MEASURE(`Order Count`) AS n FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY `High Priority`)
+    expected_answer: 0.400039
+    tags:
+      - "type:ratio"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Order Count"
+      - "dimension:mv_tpch_supply_chain_orders.High Priority"
+  - id: s015
+    question: "What was our order volume in 1996?"
+    expected_sql: |-
+      SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1996
+    expected_answer: 1141556
+    tags:
+      - "type:synonym"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Order Count"
+      - "dimension:mv_tpch_supply_chain_orders.Order Year"
+  - id: s016
+    question: "Show total bookings by customer country for the BUILDING segment."
+    expected_sql: |-
+      SELECT `Customer Nation`, MEASURE(`Order Total Price`) AS order_total_price FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Market Segment` = 'BUILDING' GROUP BY `Customer Nation` ORDER BY `Customer Nation`
+    tags:
+      - "type:synonym"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Order Total Price"
+      - "dimension:mv_tpch_supply_chain_orders.Customer Nation"
+      - "dimension:mv_tpch_supply_chain_orders.Market Segment"
+  - id: s017
+    question: "How many orders are only partially fulfilled (status P)?"
+    expected_sql: |-
+      SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Status` = 'P'
+    expected_answer: 191189
+    tags:
+      - "type:edge"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Order Count"
+      - "dimension:mv_tpch_supply_chain_orders.Order Status"
+  - id: s018
+    question: "How many orders were placed in 1999?"
+    expected_sql: |-
+      SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1999
+    expected_answer: 0
+    tags:
+      - "type:edge"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Order Count"
+      - "dimension:mv_tpch_supply_chain_orders.Order Year"
+  - id: s019
+    question: "How many orders were placed in 1998, the last and partial year of data?"
+    expected_sql: |-
+      SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1998
+    expected_answer: 668101
+    tags:
+      - "type:edge"
+      - "view:mv_tpch_supply_chain_orders"
+      - "measure:mv_tpch_supply_chain_orders.Order Count"
+      - "dimension:mv_tpch_supply_chain_orders.Order Year"
+  - id: s020
+    question: "What is total net revenue after discounts?"
+    expected_sql: |-
+      SELECT MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue
+    expected_answer: 1089835179247.2155
+    tags:
+      - "type:simple"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Revenue"
+  - id: s021
+    question: "What is total gross sales before any discount?"
+    expected_sql: |-
+      SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue
+    expected_answer: 1147191013439.2
+    tags:
+      - "type:simple"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Gross Sales"
+  - id: s022
+    question: "How many units were ordered in total across all order lines?"
+    expected_sql: |-
+      SELECT MEASURE(`Quantity`) AS quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue
+    expected_answer: 765092358.0
+    tags:
+      - "type:simple"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Quantity"
+  - id: s023
+    question: "How many order lines are there?"
+    expected_sql: |-
+      SELECT MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue
+    expected_answer: 29999795
+    tags:
+      - "type:simple"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Line Item Count"
+  - id: s024
+    question: "Show net revenue by customer region."
+    expected_sql: |-
+      SELECT `Customer Region`, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY `Customer Region` ORDER BY `Customer Region`
+    tags:
+      - "type:breakdown"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Revenue"
+      - "dimension:mv_tpch_supply_chain_revenue.Customer Region"
+  - id: s025
+    question: "For each return flag and line status, show quantity, gross sales, net revenue, charged amount and average discount."
+    expected_sql: |-
+      SELECT `Return Flag`, `Line Status`, MEASURE(`Quantity`) AS quantity, MEASURE(`Gross Sales`) AS gross_sales, MEASURE(`Revenue`) AS revenue, MEASURE(`Gross Charge`) AS gross_charge, MEASURE(`Average Discount`) AS average_discount FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY `Return Flag`, `Line Status` ORDER BY `Return Flag`, `Line Status`
+    tags:
+      - "type:breakdown"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Quantity"
+      - "measure:mv_tpch_supply_chain_revenue.Gross Sales"
+      - "measure:mv_tpch_supply_chain_revenue.Revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Gross Charge"
+      - "measure:mv_tpch_supply_chain_revenue.Average Discount"
+      - "dimension:mv_tpch_supply_chain_revenue.Return Flag"
+      - "dimension:mv_tpch_supply_chain_revenue.Line Status"
+  - id: s026
+    question: "Break down line count and revenue by ship mode."
+    expected_sql: |-
+      SELECT `Ship Mode`, MEASURE(`Line Item Count`) AS line_item_count, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY `Ship Mode` ORDER BY `Ship Mode`
+    tags:
+      - "type:breakdown"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Line Item Count"
+      - "measure:mv_tpch_supply_chain_revenue.Revenue"
+      - "dimension:mv_tpch_supply_chain_revenue.Ship Mode"
+  - id: s027
+    question: "What was net revenue for each order year?"
+    expected_sql: |-
+      SELECT `Order Year`, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY `Order Year` ORDER BY `Order Year`
+    tags:
+      - "type:time"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Revenue"
+      - "dimension:mv_tpch_supply_chain_revenue.Order Year"
+  - id: s028
+    question: "Show the monthly count of shipped lines in 1994 by ship month."
+    expected_sql: |-
+      SELECT `Ship Month`, MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Ship Month` >= DATE'1994-01-01' AND `Ship Month` < DATE'1995-01-01' GROUP BY `Ship Month` ORDER BY `Ship Month`
+    tags:
+      - "type:time"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Line Item Count"
+      - "dimension:mv_tpch_supply_chain_revenue.Ship Month"
+  - id: s029
+    question: "What revenue came from lines that shipped on or before 1998-09-02?"
+    expected_sql: |-
+      SELECT MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Ship Date` <= DATE'1998-09-02'
+    expected_answer: 1074486804580.5469
+    tags:
+      - "type:time"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Revenue"
+      - "dimension:mv_tpch_supply_chain_revenue.Ship Date"
+  - id: s030
+    question: "Show net revenue by order month for the first quarter of 1995."
+    expected_sql: |-
+      SELECT `Order Month`, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Order Month` >= DATE'1995-01-01' AND `Order Month` < DATE'1995-04-01' GROUP BY `Order Month` ORDER BY `Order Month`
+    tags:
+      - "type:time"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Revenue"
+      - "dimension:mv_tpch_supply_chain_revenue.Order Month"
+  - id: s031
+    question: "How much revenue was given up to discounts on lines shipped in 1994?"
+    expected_sql: |-
+      SELECT MEASURE(`Discount Revenue`) AS discount_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Ship Date` >= DATE'1994-01-01' AND `Ship Date` < DATE'1995-01-01'
+    expected_answer: 8703608024.8928
+    tags:
+      - "type:filter"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Discount Revenue"
+      - "dimension:mv_tpch_supply_chain_revenue.Ship Date"
+  - id: s032
+    question: "What was net revenue from customers in the ASIA region for orders placed in 1994, by customer nation?"
+    expected_sql: |-
+      SELECT `Customer Nation`, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Customer Region` = 'ASIA' AND `Order Date` >= DATE'1994-01-01' AND `Order Date` < DATE'1995-01-01' GROUP BY `Customer Nation` ORDER BY revenue DESC
+    tags:
+      - "type:filter"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Revenue"
+      - "dimension:mv_tpch_supply_chain_revenue.Customer Region"
+      - "dimension:mv_tpch_supply_chain_revenue.Customer Nation"
+      - "dimension:mv_tpch_supply_chain_revenue.Order Date"
+  - id: s033
+    question: "What is the number of distinct orders and the net revenue for 1-URGENT orders in the MACHINERY segment?"
+    expected_sql: |-
+      SELECT MEASURE(`Order Count`) AS order_count, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Order Priority` = '1-URGENT' AND `Market Segment` = 'MACHINERY'
+    expected_answer: [299424, 43515957909.657]
+    tags:
+      - "type:filter"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Order Count"
+      - "measure:mv_tpch_supply_chain_revenue.Revenue"
+      - "dimension:mv_tpch_supply_chain_revenue.Order Priority"
+      - "dimension:mv_tpch_supply_chain_revenue.Market Segment"
+  - id: s034
+    question: "What is the net revenue per order on the line-item basis, by market segment?"
+    expected_sql: |-
+      SELECT `Market Segment`, MEASURE(`Average Order Value`) AS average_order_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY `Market Segment` ORDER BY `Market Segment`
+    tags:
+      - "type:ratio"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Average Order Value"
+      - "dimension:mv_tpch_supply_chain_revenue.Market Segment"
+  - id: s035
+    question: "What is the mean discount rate on order lines, by ship mode?"
+    expected_sql: |-
+      SELECT `Ship Mode`, MEASURE(`Average Discount`) AS average_discount FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY `Ship Mode` ORDER BY `Ship Mode`
+    tags:
+      - "type:ratio"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Average Discount"
+      - "dimension:mv_tpch_supply_chain_revenue.Ship Mode"
+  - id: s036
+    question: "What fraction of gross sales was given up through discounts?"
+    expected_sql: |-
+      SELECT MEASURE(`Discount Revenue`) / MEASURE(`Gross Sales`) AS discount_share FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue
+    expected_answer: 0.049997
+    tags:
+      - "type:ratio"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Discount Revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Gross Sales"
+  - id: s037
+    question: "What is our AOV for orders placed in 1997?"
+    expected_sql: |-
+      SELECT MEASURE(`Average Order Value`) AS average_order_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Order Year` = 1997
+    expected_answer: 145293.9571
+    tags:
+      - "type:synonym"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Average Order Value"
+      - "dimension:mv_tpch_supply_chain_revenue.Order Year"
+  - id: s038
+    question: "Show sum_charge by returned indicator."
+    expected_sql: |-
+      SELECT `Return Flag`, MEASURE(`Gross Charge`) AS gross_charge FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY `Return Flag` ORDER BY `Return Flag`
+    tags:
+      - "type:synonym"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Gross Charge"
+      - "dimension:mv_tpch_supply_chain_revenue.Return Flag"
+  - id: s039
+    question: "What is the total discount amount by transport mode?"
+    expected_sql: |-
+      SELECT `Ship Mode`, MEASURE(`Discount Revenue`) AS discount_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY `Ship Mode` ORDER BY `Ship Mode`
+    tags:
+      - "type:synonym"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Discount Revenue"
+      - "dimension:mv_tpch_supply_chain_revenue.Ship Mode"
+  - id: s040
+    question: "What net revenue is on lines that are still open (line status O) but were ordered before 1995?"
+    expected_sql: |-
+      SELECT MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Line Status` = 'O' AND `Order Year` < 1995
+    tags:
+      - "type:edge"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Revenue"
+      - "dimension:mv_tpch_supply_chain_revenue.Line Status"
+      - "dimension:mv_tpch_supply_chain_revenue.Order Year"
+  - id: s041
+    question: "How much revenue including tax was charged on lines shipped after the last order date, 1998-08-02?"
+    expected_sql: |-
+      SELECT MEASURE(`Gross Charge`) AS gross_charge FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Ship Date` > DATE'1998-08-02'
+    expected_answer: 28784503344.21691
+    tags:
+      - "type:edge"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Gross Charge"
+      - "dimension:mv_tpch_supply_chain_revenue.Ship Date"
+  - id: s042
+    question: "How many distinct orders contain at least one returned line?"
+    expected_sql: |-
+      SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Return Flag` = 'R'
+    expected_answer: 3230539
+    tags:
+      - "type:edge"
+      - "view:mv_tpch_supply_chain_revenue"
+      - "measure:mv_tpch_supply_chain_revenue.Order Count"
+      - "dimension:mv_tpch_supply_chain_revenue.Return Flag"
+  - id: s043
+    question: "What is total market volume across all lines?"
+    expected_sql: |-
+      SELECT MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share
+    expected_answer: 1089835179247.2155
+    tags:
+      - "type:simple"
+      - "view:mv_tpch_supply_chain_market_share"
+      - "measure:mv_tpch_supply_chain_market_share.Market Volume"
+  - id: s044
+    question: "How many order lines are in the market data?"
+    expected_sql: |-
+      SELECT MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share
+    expected_answer: 29999795
+    tags:
+      - "type:simple"
+      - "view:mv_tpch_supply_chain_market_share"
+      - "measure:mv_tpch_supply_chain_market_share.Line Item Count"
+  - id: s045
+    question: "Show market volume by supplier nation, largest first."
+    expected_sql: |-
+      SELECT `Supplier Nation`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY `Supplier Nation` ORDER BY market_volume DESC
+    tags:
+      - "type:breakdown"
+      - "view:mv_tpch_supply_chain_market_share"
+      - "measure:mv_tpch_supply_chain_market_share.Market Volume"
+      - "dimension:mv_tpch_supply_chain_market_share.Supplier Nation"
+  - id: s046
+    question: "Break down market volume and line count by customer region."
+    expected_sql: |-
+      SELECT `Customer Region`, MEASURE(`Market Volume`) AS market_volume, MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY `Customer Region` ORDER BY `Customer Region`
+    tags:
+      - "type:breakdown"
+      - "view:mv_tpch_supply_chain_market_share"
+      - "measure:mv_tpch_supply_chain_market_share.Market Volume"
+      - "measure:mv_tpch_supply_chain_market_share.Line Item Count"
+      - "dimension:mv_tpch_supply_chain_market_share.Customer Region"
+  - id: s047
+    question: "Which ten part types have the highest market volume?"
+    expected_sql: |-
+      SELECT `Part Type`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY `Part Type` ORDER BY market_volume DESC LIMIT 10
+    tags:
+      - "type:breakdown"
+      - "view:mv_tpch_supply_chain_market_share"
+      - "measure:mv_tpch_supply_chain_market_share.Market Volume"
+      - "dimension:mv_tpch_supply_chain_market_share.Part Type"
+  - id: s048
+    question: "How did market volume change year over year by order year?"
+    expected_sql: |-
+      SELECT `Order Year`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY `Order Year` ORDER BY `Order Year`
+    tags:
+      - "type:time"
+      - "view:mv_tpch_supply_chain_market_share"
+      - "measure:mv_tpch_supply_chain_market_share.Market Volume"
+      - "dimension:mv_tpch_supply_chain_market_share.Order Year"
+  - id: s049
+    question: "Compare market volume supplied by BRAZIL in 1995 and 1996."
+    expected_sql: |-
+      SELECT `Order Year`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Supplier Nation` = 'BRAZIL' AND `Order Year` IN (1995, 1996) GROUP BY `Order Year` ORDER BY `Order Year`
+    tags:
+      - "type:time"
+      - "view:mv_tpch_supply_chain_market_share"
+      - "measure:mv_tpch_supply_chain_market_share.Market Volume"
+      - "dimension:mv_tpch_supply_chain_market_share.Order Year"
+      - "dimension:mv_tpch_supply_chain_market_share.Supplier Nation"
+  - id: s050
+    question: "What is market volume for ECONOMY ANODIZED STEEL parts bought by customers in AMERICA?"
+    expected_sql: |-
+      SELECT MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Part Type` = 'ECONOMY ANODIZED STEEL' AND `Customer Region` = 'AMERICA'
+    expected_answer: 1489319675.2526
+    tags:
+      - "type:filter"
+      - "view:mv_tpch_supply_chain_market_share"
+      - "measure:mv_tpch_supply_chain_market_share.Market Volume"
+      - "dimension:mv_tpch_supply_chain_market_share.Part Type"
+      - "dimension:mv_tpch_supply_chain_market_share.Customer Region"
+  - id: s051
+    question: "How many lines did customers in GERMANY buy from suppliers in FRANCE?"
+    expected_sql: |-
+      SELECT MEASURE(`Line Item Count`) AS line_item_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Customer Nation` = 'GERMANY' AND `Supplier Nation` = 'FRANCE'
+    expected_answer: 48293
+    tags:
+      - "type:filter"
+      - "view:mv_tpch_supply_chain_market_share"
+      - "measure:mv_tpch_supply_chain_market_share.Line Item Count"
+      - "dimension:mv_tpch_supply_chain_market_share.Customer Nation"
+      - "dimension:mv_tpch_supply_chain_market_share.Supplier Nation"
+  - id: s052
+    question: "What was BRAZIL's national market share of ECONOMY ANODIZED STEEL volume in the AMERICA customer region, by year for 1995 and 1996?"
+    expected_sql: |-
+      SELECT t.`Order Year`, COALESCE(b.market_volume, 0) / t.market_volume AS brazil_share FROM
+      (SELECT `Order Year`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Customer Region` = 'AMERICA' AND `Part Type` = 'ECONOMY ANODIZED STEEL' AND `Order Year` IN (1995, 1996) GROUP BY `Order Year`) t
+      LEFT JOIN (SELECT `Order Year`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Customer Region` = 'AMERICA' AND `Part Type` = 'ECONOMY ANODIZED STEEL' AND `Supplier Nation` = 'BRAZIL' AND `Order Year` IN (1995, 1996) GROUP BY `Order Year`) b
+      ON t.`Order Year` = b.`Order Year` ORDER BY t.`Order Year`
+    tags:
+      - "type:ratio"
+      - "view:mv_tpch_supply_chain_market_share"
+      - "measure:mv_tpch_supply_chain_market_share.Market Volume"
+      - "dimension:mv_tpch_supply_chain_market_share.Supplier Nation"
+      - "dimension:mv_tpch_supply_chain_market_share.Customer Region"
+      - "dimension:mv_tpch_supply_chain_market_share.Part Type"
+      - "dimension:mv_tpch_supply_chain_market_share.Order Year"
+  - id: s053
+    question: "What share of total market volume does each customer region account for?"
+    expected_sql: |-
+      SELECT `Customer Region`, market_volume / SUM(market_volume) OVER () AS volume_share FROM (SELECT `Customer Region`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY `Customer Region`) ORDER BY `Customer Region`
+    tags:
+      - "type:ratio"
+      - "view:mv_tpch_supply_chain_market_share"
+      - "measure:mv_tpch_supply_chain_market_share.Market Volume"
+      - "dimension:mv_tpch_supply_chain_market_share.Customer Region"
+  - id: s054
+    question: "What is the average market volume per order line, by supplier nation?"
+    expected_sql: |-
+      SELECT `Supplier Nation`, MEASURE(`Market Volume`) / MEASURE(`Line Item Count`) AS volume_per_line FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY `Supplier Nation` ORDER BY `Supplier Nation`
+    tags:
+      - "type:ratio"
+      - "view:mv_tpch_supply_chain_market_share"
+      - "measure:mv_tpch_supply_chain_market_share.Market Volume"
+      - "measure:mv_tpch_supply_chain_market_share.Line Item Count"
+      - "dimension:mv_tpch_supply_chain_market_share.Supplier Nation"
+  - id: s055
+    question: "Show market revenue by vendor country for 1996."
+    expected_sql: |-
+      SELECT `Supplier Nation`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Order Year` = 1996 GROUP BY `Supplier Nation` ORDER BY `Supplier Nation`
+    tags:
+      - "type:synonym"
+      - "view:mv_tpch_supply_chain_market_share"
+      - "measure:mv_tpch_supply_chain_market_share.Market Volume"
+      - "dimension:mv_tpch_supply_chain_market_share.Supplier Nation"
+      - "dimension:mv_tpch_supply_chain_market_share.Order Year"
+  - id: s056
+    question: "What is the volume by product type for customers in the MIDDLE EAST, top five?"
+    expected_sql: |-
+      SELECT `Part Type`, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Customer Region` = 'MIDDLE EAST' GROUP BY `Part Type` ORDER BY market_volume DESC LIMIT 5
+    tags:
+      - "type:synonym"
+      - "view:mv_tpch_supply_chain_market_share"
+      - "measure:mv_tpch_supply_chain_market_share.Market Volume"
+      - "dimension:mv_tpch_supply_chain_market_share.Part Type"
+      - "dimension:mv_tpch_supply_chain_market_share.Customer Region"
+  - id: s057
+    question: "How much volume did customers in JAPAN buy from suppliers in their own nation?"
+    expected_sql: |-
+      SELECT MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Customer Nation` = 'JAPAN' AND `Supplier Nation` = 'JAPAN'
+    expected_answer: 1715125450.8839
+    tags:
+      - "type:edge"
+      - "view:mv_tpch_supply_chain_market_share"
+      - "measure:mv_tpch_supply_chain_market_share.Market Volume"
+      - "dimension:mv_tpch_supply_chain_market_share.Customer Nation"
+      - "dimension:mv_tpch_supply_chain_market_share.Supplier Nation"
+  - id: s058
+    question: "What was market volume for orders placed in 1999?"
+    expected_sql: |-
+      SELECT MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Order Year` = 1999
+    tags:
+      - "type:edge"
+      - "view:mv_tpch_supply_chain_market_share"
+      - "measure:mv_tpch_supply_chain_market_share.Market Volume"
+      - "dimension:mv_tpch_supply_chain_market_share.Order Year"
+  - id: s059
+    question: "What national market share did suppliers from CHINA hold in the ASIA customer region across all years?"
+    expected_sql: |-
+      SELECT MEASURE(`Market Volume`) FILTER (WHERE `Supplier Nation` = 'CHINA') / MEASURE(`Market Volume`) AS china_share FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Customer Region` = 'ASIA'
+    expected_answer: 0.039837
+    tags:
+      - "type:edge"
+      - "view:mv_tpch_supply_chain_market_share"
+      - "measure:mv_tpch_supply_chain_market_share.Market Volume"
+      - "dimension:mv_tpch_supply_chain_market_share.Supplier Nation"
+      - "dimension:mv_tpch_supply_chain_market_share.Customer Region"

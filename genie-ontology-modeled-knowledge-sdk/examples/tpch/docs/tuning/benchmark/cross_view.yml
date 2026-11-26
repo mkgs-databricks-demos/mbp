@@ -1,0 +1,759 @@
+# Cross-view benchmark questions (session 34, build-1 wave 1-6). Ids prefixed "x".
+# Every question needs two or more TPC-H metric views. expected_sql is tokenized with
+# ${target_catalog}.${target_schema} and joins per-view MEASURE() CTEs on a shared dimension.
+questions:
+  - id: x001
+    question: "For each order year, how many orders were placed and how much net revenue was booked?"
+    expected_sql: |-
+      WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      r AS (SELECT `Order Year` AS order_year, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL)
+      SELECT o.order_year, o.order_count, r.revenue FROM o JOIN r USING (order_year) ORDER BY o.order_year
+    tags: ["type:cross_view", "type:time", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_revenue.Revenue", "dimension:mv_tpch_supply_chain_orders.Order Year", "dimension:mv_tpch_supply_chain_revenue.Order Year"]
+  - id: x002
+    question: "Which customer region earns the most net revenue per order, dividing line-level revenue by the order count from the orders view?"
+    expected_sql: |-
+      WITH o AS (SELECT `Customer Region` AS region, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      r AS (SELECT `Customer Region` AS region, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL)
+      SELECT o.region, ROUND(r.revenue / o.order_count, 2) AS revenue_per_order FROM o JOIN r USING (region) ORDER BY revenue_per_order DESC
+    tags: ["type:cross_view", "type:ratio", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_revenue.Revenue", "dimension:mv_tpch_supply_chain_orders.Customer Region", "dimension:mv_tpch_supply_chain_revenue.Customer Region"]
+  - id: x003
+    question: "By market segment, compare the total order price on order headers with the net revenue from line items."
+    expected_sql: |-
+      WITH o AS (SELECT `Market Segment` AS segment, MEASURE(`Order Total Price`) AS order_total_price FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      r AS (SELECT `Market Segment` AS segment, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL)
+      SELECT o.segment, o.order_total_price, r.revenue, ROUND(r.revenue / o.order_total_price, 4) AS revenue_to_order_price FROM o JOIN r USING (segment) ORDER BY o.segment
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "measure:mv_tpch_supply_chain_orders.Order Total Price", "measure:mv_tpch_supply_chain_revenue.Revenue", "dimension:mv_tpch_supply_chain_orders.Market Segment", "dimension:mv_tpch_supply_chain_revenue.Market Segment"]
+  - id: x004
+    question: "For each month of 1995, show the number of orders placed next to gross sales before discounts."
+    expected_sql: |-
+      WITH o AS (SELECT `Order Month` AS order_month, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1995 GROUP BY ALL),
+      r AS (SELECT `Order Month` AS order_month, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Order Year` = 1995 GROUP BY ALL)
+      SELECT o.order_month, o.order_count, r.gross_sales FROM o JOIN r USING (order_month) ORDER BY o.order_month
+    tags: ["type:cross_view", "type:time", "type:filter", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_revenue.Gross Sales", "dimension:mv_tpch_supply_chain_orders.Order Month", "dimension:mv_tpch_supply_chain_orders.Order Year", "dimension:mv_tpch_supply_chain_revenue.Order Month", "dimension:mv_tpch_supply_chain_revenue.Order Year"]
+  - id: x005
+    question: "Which 5 customer nations have the most orders, and how much discount was given on their line items?"
+    expected_sql: |-
+      WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      r AS (SELECT `Customer Nation` AS nation, MEASURE(`Discount Revenue`) AS discount_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL)
+      SELECT o.nation, o.order_count, r.discount_revenue FROM o JOIN r USING (nation) ORDER BY o.order_count DESC LIMIT 5
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_revenue.Discount Revenue", "dimension:mv_tpch_supply_chain_orders.Customer Nation", "dimension:mv_tpch_supply_chain_revenue.Customer Nation"]
+  - id: x006
+    question: "By order priority, how does the average order total on the header compare with the average order value computed from net line revenue?"
+    expected_sql: |-
+      WITH o AS (SELECT `Order Priority` AS priority, MEASURE(`Average Order Total`) AS avg_order_total FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      r AS (SELECT `Order Priority` AS priority, MEASURE(`Average Order Value`) AS avg_order_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL)
+      SELECT o.priority, ROUND(o.avg_order_total, 2) AS avg_order_total, ROUND(r.avg_order_value, 2) AS avg_order_value FROM o JOIN r USING (priority) ORDER BY o.priority
+    tags: ["type:cross_view", "type:ratio", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "measure:mv_tpch_supply_chain_orders.Average Order Total", "measure:mv_tpch_supply_chain_revenue.Average Order Value", "dimension:mv_tpch_supply_chain_orders.Order Priority", "dimension:mv_tpch_supply_chain_revenue.Order Priority"]
+  - id: x007
+    question: "What were 1998 sales and order volume by customer region?"
+    expected_sql: |-
+      WITH o AS (SELECT `Customer Region` AS region, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1998 GROUP BY ALL),
+      r AS (SELECT `Customer Region` AS region, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Order Year` = 1998 GROUP BY ALL)
+      SELECT o.region, o.order_count, r.revenue FROM o JOIN r USING (region) ORDER BY r.revenue DESC
+    tags: ["type:cross_view", "type:synonym", "type:filter", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_revenue.Revenue", "dimension:mv_tpch_supply_chain_orders.Customer Region", "dimension:mv_tpch_supply_chain_orders.Order Year", "dimension:mv_tpch_supply_chain_revenue.Customer Region", "dimension:mv_tpch_supply_chain_revenue.Order Year"]
+  - id: x008
+    question: "On 1995-03-15, how many orders were placed and what was the net revenue of their line items?"
+    expected_sql: |-
+      WITH o AS (SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Date` = DATE'1995-03-15'),
+      r AS (SELECT MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Order Date` = DATE'1995-03-15')
+      SELECT o.order_count, r.revenue FROM o CROSS JOIN r
+    tags: ["type:cross_view", "type:edge", "type:filter", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_revenue.Revenue", "dimension:mv_tpch_supply_chain_orders.Order Date", "dimension:mv_tpch_supply_chain_revenue.Order Date"]
+  - id: x009
+    question: "Compare open (O) and fulfilled (F) work: order count by order status next to line item count and quantity by line status."
+    expected_sql: |-
+      WITH o AS (SELECT `Order Status` AS status, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Status` IN ('O', 'F') GROUP BY ALL),
+      r AS (SELECT `Line Status` AS status, MEASURE(`Line Item Count`) AS line_items, MEASURE(`Quantity`) AS quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL)
+      SELECT o.status, o.order_count, r.line_items, r.quantity FROM o JOIN r USING (status) ORDER BY o.status
+    tags: ["type:cross_view", "type:edge", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_revenue.Line Item Count", "measure:mv_tpch_supply_chain_revenue.Quantity", "dimension:mv_tpch_supply_chain_orders.Order Status", "dimension:mv_tpch_supply_chain_revenue.Line Status"]
+  - id: x010
+    question: "By market segment, show the number of orders and the quantity return rate."
+    expected_sql: |-
+      WITH o AS (SELECT `Market Segment` AS segment, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      t AS (SELECT `Market Segment` AS segment, MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)
+      SELECT o.segment, o.order_count, ROUND(t.return_rate, 4) AS return_rate FROM o JOIN t USING (segment) ORDER BY o.segment
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_returns.Return Rate", "dimension:mv_tpch_supply_chain_orders.Market Segment", "dimension:mv_tpch_supply_chain_returns.Market Segment"]
+  - id: x011
+    question: "For each customer nation, how many distinct customers placed orders and how much revenue was returned?"
+    expected_sql: |-
+      WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Ordering Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      t AS (SELECT `Customer Nation` AS nation, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)
+      SELECT o.nation, o.customers, t.returned_revenue FROM o JOIN t USING (nation) ORDER BY t.returned_revenue DESC
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_orders.Ordering Customer Count", "measure:mv_tpch_supply_chain_returns.Returned Revenue", "dimension:mv_tpch_supply_chain_orders.Customer Nation", "dimension:mv_tpch_supply_chain_returns.Customer Nation"]
+  - id: x012
+    question: "Month by month in 1994, compare orders placed with the quantity of items returned."
+    expected_sql: |-
+      WITH o AS (SELECT `Order Month` AS order_month, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1994 GROUP BY ALL),
+      t AS (SELECT `Order Month` AS order_month, MEASURE(`Returned Quantity`) AS returned_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE YEAR(`Order Month`) = 1994 GROUP BY ALL)
+      SELECT o.order_month, o.order_count, t.returned_quantity FROM o JOIN t USING (order_month) ORDER BY o.order_month
+    tags: ["type:cross_view", "type:time", "type:filter", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_returns.Returned Quantity", "dimension:mv_tpch_supply_chain_orders.Order Month", "dimension:mv_tpch_supply_chain_orders.Order Year", "dimension:mv_tpch_supply_chain_returns.Order Month"]
+  - id: x013
+    question: "Which 10 customer nations have the highest returned revenue per order?"
+    expected_sql: |-
+      WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      t AS (SELECT `Customer Nation` AS nation, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)
+      SELECT o.nation, ROUND(t.returned_revenue / o.order_count, 2) AS returned_revenue_per_order FROM o JOIN t USING (nation) ORDER BY returned_revenue_per_order DESC LIMIT 10
+    tags: ["type:cross_view", "type:ratio", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_returns.Returned Revenue", "dimension:mv_tpch_supply_chain_orders.Customer Nation", "dimension:mv_tpch_supply_chain_returns.Customer Nation"]
+  - id: x014
+    question: "For each order quarter of 1993, show the order count and the share of order lines that were returned."
+    expected_sql: |-
+      WITH o AS (SELECT DATE_TRUNC('QUARTER', `Order Month`) AS order_quarter, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1993 GROUP BY ALL),
+      t AS (SELECT `Order Quarter` AS order_quarter, MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE YEAR(`Order Quarter`) = 1993 GROUP BY ALL)
+      SELECT o.order_quarter, o.order_count, ROUND(t.return_line_rate, 4) AS return_line_rate FROM o JOIN t USING (order_quarter) ORDER BY o.order_quarter
+    tags: ["type:cross_view", "type:time", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_returns.Return Line Rate", "dimension:mv_tpch_supply_chain_orders.Order Month", "dimension:mv_tpch_supply_chain_orders.Order Year", "dimension:mv_tpch_supply_chain_returns.Order Quarter"]
+  - id: x015
+    question: "How many customers with refunds (returned lines) are there per market segment, compared with the customers ordering in that segment?"
+    expected_sql: |-
+      WITH o AS (SELECT `Market Segment` AS segment, MEASURE(`Ordering Customer Count`) AS ordering_customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      t AS (SELECT `Market Segment` AS segment, COUNT(DISTINCT `Customer Key`) AS customers_with_returns
+            FROM (SELECT `Market Segment`, `Customer Key`, MEASURE(`Returned Line Count`) AS returned_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL) WHERE returned_lines > 0 GROUP BY segment)
+      SELECT o.segment, o.ordering_customers, t.customers_with_returns FROM o JOIN t USING (segment) ORDER BY o.segment
+    tags: ["type:cross_view", "type:synonym", "type:edge", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_orders.Ordering Customer Count", "measure:mv_tpch_supply_chain_returns.Returned Line Count", "dimension:mv_tpch_supply_chain_orders.Market Segment", "dimension:mv_tpch_supply_chain_returns.Market Segment", "dimension:mv_tpch_supply_chain_returns.Customer Key"]
+  - id: x016
+    question: "By order priority, show the number of orders and the on-time shipping rate of their lines."
+    expected_sql: |-
+      WITH o AS (SELECT `Order Priority` AS priority, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      f AS (SELECT `Order Priority` AS priority, MEASURE(`On-Time Shipping Rate`) AS on_time_shipping_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)
+      SELECT o.priority, o.order_count, ROUND(f.on_time_shipping_rate, 4) AS on_time_shipping_rate FROM o JOIN f USING (priority) ORDER BY o.priority
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_fulfillment.On-Time Shipping Rate", "dimension:mv_tpch_supply_chain_orders.Order Priority", "dimension:mv_tpch_supply_chain_fulfillment.Order Priority"]
+  - id: x017
+    question: "Compare high-priority orders with all other orders: order count and average fulfillment cycle in days."
+    expected_sql: |-
+      WITH o AS (SELECT `High Priority` AS high_priority, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      f AS (SELECT `High Priority` AS high_priority, MEASURE(`Average Fulfillment Cycle Days`) AS avg_cycle_days FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)
+      SELECT o.high_priority, o.order_count, ROUND(f.avg_cycle_days, 2) AS avg_cycle_days FROM o JOIN f USING (high_priority) ORDER BY o.high_priority
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_fulfillment.Average Fulfillment Cycle Days", "dimension:mv_tpch_supply_chain_orders.High Priority", "dimension:mv_tpch_supply_chain_fulfillment.High Priority"]
+  - id: x018
+    question: "For each order priority, show the average order total and the on-time delivery rate."
+    expected_sql: |-
+      WITH o AS (SELECT `Order Priority` AS priority, MEASURE(`Average Order Total`) AS avg_order_total FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      f AS (SELECT `Order Priority` AS priority, MEASURE(`On-Time Delivery Rate`) AS on_time_delivery_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)
+      SELECT o.priority, ROUND(o.avg_order_total, 2) AS avg_order_total, ROUND(f.on_time_delivery_rate, 4) AS on_time_delivery_rate FROM o JOIN f USING (priority) ORDER BY o.priority
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_orders.Average Order Total", "measure:mv_tpch_supply_chain_fulfillment.On-Time Delivery Rate", "dimension:mv_tpch_supply_chain_orders.Order Priority", "dimension:mv_tpch_supply_chain_fulfillment.Order Priority"]
+  - id: x019
+    question: "Which order priority has the most late-received lines per order?"
+    expected_sql: |-
+      WITH o AS (SELECT `Order Priority` AS priority, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      f AS (SELECT `Order Priority` AS priority, MEASURE(`Late Receipt Count`) AS late_receipts FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)
+      SELECT o.priority, ROUND(f.late_receipts / o.order_count, 4) AS late_receipts_per_order FROM o JOIN f USING (priority) ORDER BY late_receipts_per_order DESC LIMIT 1
+    tags: ["type:cross_view", "type:ratio", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_fulfillment.Late Receipt Count", "dimension:mv_tpch_supply_chain_orders.Order Priority", "dimension:mv_tpch_supply_chain_fulfillment.Order Priority"]
+  - id: x020
+    question: "For urgent and high-priority orders only, how many orders were there and how many lines were shipped on time but received late (TPC-H Q12 late lines)?"
+    expected_sql: |-
+      WITH o AS (SELECT MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `High Priority`),
+      f AS (SELECT MEASURE(`Q12 Late Receipt Count`) AS q12_late_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `High Priority`)
+      SELECT o.order_count, f.q12_late_lines FROM o CROSS JOIN f
+    tags: ["type:cross_view", "type:filter", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_fulfillment.Q12 Late Receipt Count", "dimension:mv_tpch_supply_chain_orders.High Priority", "dimension:mv_tpch_supply_chain_fulfillment.High Priority"]
+  - id: x021
+    question: "By customer region, show the number of orders and the market volume."
+    expected_sql: |-
+      WITH o AS (SELECT `Customer Region` AS region, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      m AS (SELECT `Customer Region` AS region, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)
+      SELECT o.region, o.order_count, m.market_volume FROM o JOIN m USING (region) ORDER BY m.market_volume DESC
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_market_share", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_market_share.Market Volume", "dimension:mv_tpch_supply_chain_orders.Customer Region", "dimension:mv_tpch_supply_chain_market_share.Customer Region"]
+  - id: x022
+    question: "For each order year, show orders per customer alongside total market volume."
+    expected_sql: |-
+      WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Orders per Customer`) AS orders_per_customer FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      m AS (SELECT `Order Year` AS order_year, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)
+      SELECT o.order_year, ROUND(o.orders_per_customer, 4) AS orders_per_customer, m.market_volume FROM o JOIN m USING (order_year) ORDER BY o.order_year
+    tags: ["type:cross_view", "type:time", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_market_share", "measure:mv_tpch_supply_chain_orders.Orders per Customer", "measure:mv_tpch_supply_chain_market_share.Market Volume", "dimension:mv_tpch_supply_chain_orders.Order Year", "dimension:mv_tpch_supply_chain_market_share.Order Year"]
+  - id: x023
+    question: "In 1996, what was the market volume per order for each customer nation?"
+    expected_sql: |-
+      WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1996 GROUP BY ALL),
+      m AS (SELECT `Customer Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Order Year` = 1996 GROUP BY ALL)
+      SELECT o.nation, ROUND(m.market_volume / o.order_count, 2) AS market_volume_per_order FROM o JOIN m USING (nation) ORDER BY market_volume_per_order DESC
+    tags: ["type:cross_view", "type:ratio", "type:filter", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_market_share", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_market_share.Market Volume", "dimension:mv_tpch_supply_chain_orders.Customer Nation", "dimension:mv_tpch_supply_chain_orders.Order Year", "dimension:mv_tpch_supply_chain_market_share.Customer Nation", "dimension:mv_tpch_supply_chain_market_share.Order Year"]
+  - id: x024
+    question: "What share of total market volume comes from each customer region, and how many orders does each region place?"
+    expected_sql: |-
+      WITH o AS (SELECT `Customer Region` AS region, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      m AS (SELECT `Customer Region` AS region, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)
+      SELECT o.region, o.order_count, ROUND(m.market_volume / SUM(m.market_volume) OVER (), 4) AS market_share FROM o JOIN m USING (region) ORDER BY market_share DESC
+    tags: ["type:cross_view", "type:ratio", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_market_share", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_market_share.Market Volume", "dimension:mv_tpch_supply_chain_orders.Customer Region", "dimension:mv_tpch_supply_chain_market_share.Customer Region"]
+  - id: x025
+    question: "By order year, show the number of orders and the profit."
+    expected_sql: |-
+      WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)
+      SELECT o.order_year, o.order_count, p.profit FROM o JOIN p USING (order_year) ORDER BY o.order_year
+    tags: ["type:cross_view", "type:time", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_profit.Profit", "dimension:mv_tpch_supply_chain_orders.Order Year", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x026
+    question: "What was the profit per order in each order year?"
+    expected_sql: |-
+      WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)
+      SELECT o.order_year, ROUND(p.profit / o.order_count, 2) AS profit_per_order FROM o JOIN p USING (order_year) ORDER BY o.order_year
+    tags: ["type:cross_view", "type:ratio", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_profit.Profit", "dimension:mv_tpch_supply_chain_orders.Order Year", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x027
+    question: "In which order year was the profit margin highest, and how many orders were placed that year?"
+    expected_sql: |-
+      WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)
+      SELECT p.order_year, ROUND(p.profit_margin, 4) AS profit_margin, o.order_count FROM o JOIN p USING (order_year) ORDER BY p.profit_margin DESC LIMIT 1
+    tags: ["type:cross_view", "type:edge", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_profit.Profit Margin", "dimension:mv_tpch_supply_chain_orders.Order Year", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x028
+    question: "Year over year, how did the change in profit compare with the change in order count?"
+    expected_sql: |-
+      WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),
+      j AS (SELECT o.order_year, o.order_count, p.profit FROM o JOIN p USING (order_year))
+      SELECT order_year, order_count - LAG(order_count) OVER (ORDER BY order_year) AS order_count_change, profit - LAG(profit) OVER (ORDER BY order_year) AS profit_change FROM j ORDER BY order_year
+    tags: ["type:cross_view", "type:time", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_profit.Profit", "dimension:mv_tpch_supply_chain_orders.Order Year", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x029
+    question: "For each nation, compare the number of customers who placed orders with the number of suppliers based there."
+    expected_sql: |-
+      WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Ordering Customer Count`) AS ordering_customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Supplier Count`) AS suppliers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)
+      SELECT o.nation, o.ordering_customers, c.suppliers FROM o JOIN c USING (nation) ORDER BY o.nation
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_orders.Ordering Customer Count", "measure:mv_tpch_supply_chain_supply_cost.Supplier Count", "dimension:mv_tpch_supply_chain_orders.Customer Nation", "dimension:mv_tpch_supply_chain_supply_cost.Supplier Nation"]
+  - id: x030
+    question: "By region, show orders placed by customers in the region and the inventory value held by suppliers in the same region."
+    expected_sql: |-
+      WITH o AS (SELECT `Customer Region` AS region, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      c AS (SELECT `Supplier Region` AS region, MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)
+      SELECT o.region, o.order_count, c.inventory_value FROM o JOIN c USING (region) ORDER BY o.region
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_supply_cost.Inventory Value", "dimension:mv_tpch_supply_chain_orders.Customer Region", "dimension:mv_tpch_supply_chain_supply_cost.Supplier Region"]
+  - id: x031
+    question: "Which 5 nations have the most orders per locally based supplier?"
+    expected_sql: |-
+      WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Supplier Count`) AS suppliers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)
+      SELECT o.nation, ROUND(o.order_count / c.suppliers, 2) AS orders_per_supplier FROM o JOIN c USING (nation) ORDER BY orders_per_supplier DESC LIMIT 5
+    tags: ["type:cross_view", "type:ratio", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_supply_cost.Supplier Count", "dimension:mv_tpch_supply_chain_orders.Customer Nation", "dimension:mv_tpch_supply_chain_supply_cost.Supplier Nation"]
+  - id: x032
+    question: "Are there any nations with more suppliers than ordering customers?"
+    expected_sql: |-
+      WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Ordering Customer Count`) AS ordering_customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Supplier Count`) AS suppliers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)
+      SELECT o.nation, o.ordering_customers, c.suppliers FROM o JOIN c USING (nation) WHERE c.suppliers > o.ordering_customers ORDER BY o.nation
+    tags: ["type:cross_view", "type:edge", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_orders.Ordering Customer Count", "measure:mv_tpch_supply_chain_supply_cost.Supplier Count", "dimension:mv_tpch_supply_chain_orders.Customer Nation", "dimension:mv_tpch_supply_chain_supply_cost.Supplier Nation"]
+  - id: x033
+    question: "By ship mode, show net revenue and the quantity return rate."
+    expected_sql: |-
+      WITH r AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)
+      SELECT r.ship_mode, r.revenue, ROUND(t.return_rate, 4) AS return_rate FROM r JOIN t USING (ship_mode) ORDER BY r.revenue DESC
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_returns.Return Rate", "dimension:mv_tpch_supply_chain_revenue.Ship Mode", "dimension:mv_tpch_supply_chain_returns.Ship Mode"]
+  - id: x034
+    question: "For each market segment, what fraction of net revenue was returned?"
+    expected_sql: |-
+      WITH r AS (SELECT `Market Segment` AS segment, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      t AS (SELECT `Market Segment` AS segment, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)
+      SELECT r.segment, ROUND(t.returned_revenue / r.revenue, 4) AS returned_share FROM r JOIN t USING (segment) ORDER BY returned_share DESC
+    tags: ["type:cross_view", "type:ratio", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_returns.Returned Revenue", "dimension:mv_tpch_supply_chain_revenue.Market Segment", "dimension:mv_tpch_supply_chain_returns.Market Segment"]
+  - id: x035
+    question: "Month by month in 1993, compare net revenue with returned revenue."
+    expected_sql: |-
+      WITH r AS (SELECT `Order Month` AS order_month, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Order Year` = 1993 GROUP BY ALL),
+      t AS (SELECT `Order Month` AS order_month, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE YEAR(`Order Month`) = 1993 GROUP BY ALL)
+      SELECT r.order_month, r.revenue, t.returned_revenue FROM r JOIN t USING (order_month) ORDER BY r.order_month
+    tags: ["type:cross_view", "type:time", "type:filter", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_returns.Returned Revenue", "dimension:mv_tpch_supply_chain_revenue.Order Month", "dimension:mv_tpch_supply_chain_revenue.Order Year", "dimension:mv_tpch_supply_chain_returns.Order Month"]
+  - id: x036
+    question: "Which 5 customer nations have the largest returned revenue, and what is their total net revenue?"
+    expected_sql: |-
+      WITH r AS (SELECT `Customer Nation` AS nation, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      t AS (SELECT `Customer Nation` AS nation, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)
+      SELECT t.nation, t.returned_revenue, r.revenue FROM r JOIN t USING (nation) ORDER BY t.returned_revenue DESC LIMIT 5
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_returns.Returned Revenue", "dimension:mv_tpch_supply_chain_revenue.Customer Nation", "dimension:mv_tpch_supply_chain_returns.Customer Nation"]
+  - id: x037
+    question: "By return flag, show net revenue and the number of returned lines."
+    expected_sql: |-
+      WITH r AS (SELECT `Return Flag` AS return_flag, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      t AS (SELECT `Return Flag` AS return_flag, MEASURE(`Returned Line Count`) AS returned_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)
+      SELECT r.return_flag, r.revenue, t.returned_lines FROM r JOIN t USING (return_flag) ORDER BY r.return_flag
+    tags: ["type:cross_view", "type:edge", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_returns.Returned Line Count", "dimension:mv_tpch_supply_chain_revenue.Return Flag", "dimension:mv_tpch_supply_chain_returns.Return Flag"]
+  - id: x038
+    question: "How much of each market segment's sales came back as refunds, in quantity terms (returned quantity versus total quantity sold)?"
+    expected_sql: |-
+      WITH r AS (SELECT `Market Segment` AS segment, MEASURE(`Quantity`) AS quantity_sold FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      t AS (SELECT `Market Segment` AS segment, MEASURE(`Returned Quantity`) AS returned_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)
+      SELECT r.segment, r.quantity_sold, t.returned_quantity, ROUND(t.returned_quantity / r.quantity_sold, 4) AS returned_share FROM r JOIN t USING (segment) ORDER BY r.segment
+    tags: ["type:cross_view", "type:synonym", "type:ratio", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_revenue.Quantity", "measure:mv_tpch_supply_chain_returns.Returned Quantity", "dimension:mv_tpch_supply_chain_revenue.Market Segment", "dimension:mv_tpch_supply_chain_returns.Market Segment"]
+  - id: x039
+    question: "For the customer nation GERMANY, by ship mode, compare gross charge (with tax) and shipped quantity from the returns view."
+    expected_sql: |-
+      WITH r AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Gross Charge`) AS gross_charge FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Customer Nation` = 'GERMANY' GROUP BY ALL),
+      t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Shipped Quantity`) AS shipped_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Customer Nation` = 'GERMANY' GROUP BY ALL)
+      SELECT r.ship_mode, r.gross_charge, t.shipped_quantity FROM r JOIN t USING (ship_mode) ORDER BY r.ship_mode
+    tags: ["type:cross_view", "type:filter", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_revenue.Gross Charge", "measure:mv_tpch_supply_chain_returns.Shipped Quantity", "dimension:mv_tpch_supply_chain_revenue.Ship Mode", "dimension:mv_tpch_supply_chain_revenue.Customer Nation", "dimension:mv_tpch_supply_chain_returns.Ship Mode", "dimension:mv_tpch_supply_chain_returns.Customer Nation"]
+  - id: x040
+    question: "By ship mode, compare net revenue with the on-time delivery rate."
+    expected_sql: |-
+      WITH r AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`On-Time Delivery Rate`) AS on_time_delivery_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)
+      SELECT r.ship_mode, r.revenue, ROUND(f.on_time_delivery_rate, 4) AS on_time_delivery_rate FROM r JOIN f USING (ship_mode) ORDER BY r.ship_mode
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_fulfillment.On-Time Delivery Rate", "dimension:mv_tpch_supply_chain_revenue.Ship Mode", "dimension:mv_tpch_supply_chain_fulfillment.Ship Mode"]
+  - id: x041
+    question: "For each ship month in 1997, show net revenue shipped and the average transit days."
+    expected_sql: |-
+      WITH r AS (SELECT `Ship Month` AS ship_month, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE YEAR(`Ship Month`) = 1997 GROUP BY ALL),
+      f AS (SELECT `Ship Month` AS ship_month, MEASURE(`Average Transit Days`) AS avg_transit_days FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE YEAR(`Ship Month`) = 1997 GROUP BY ALL)
+      SELECT r.ship_month, r.revenue, ROUND(f.avg_transit_days, 2) AS avg_transit_days FROM r JOIN f USING (ship_month) ORDER BY r.ship_month
+    tags: ["type:cross_view", "type:time", "type:filter", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_fulfillment.Average Transit Days", "dimension:mv_tpch_supply_chain_revenue.Ship Month", "dimension:mv_tpch_supply_chain_fulfillment.Ship Month"]
+  - id: x042
+    question: "By line status, what share of line items shipped on time?"
+    expected_sql: |-
+      WITH r AS (SELECT `Line Status` AS line_status, MEASURE(`Line Item Count`) AS line_items FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      f AS (SELECT `Line Status` AS line_status, MEASURE(`On-Time Shipped Line Count`) AS on_time_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)
+      SELECT r.line_status, r.line_items, f.on_time_lines, ROUND(f.on_time_lines / r.line_items, 4) AS on_time_share FROM r JOIN f USING (line_status) ORDER BY r.line_status
+    tags: ["type:cross_view", "type:ratio", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_revenue.Line Item Count", "measure:mv_tpch_supply_chain_fulfillment.On-Time Shipped Line Count", "dimension:mv_tpch_supply_chain_revenue.Line Status", "dimension:mv_tpch_supply_chain_fulfillment.Line Status"]
+  - id: x043
+    question: "By order priority, show net revenue alongside the average days between order and shipment."
+    expected_sql: |-
+      WITH r AS (SELECT `Order Priority` AS priority, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      f AS (SELECT `Order Priority` AS priority, MEASURE(`Average Ship Lag Days`) AS avg_ship_lag_days FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)
+      SELECT r.priority, r.revenue, ROUND(f.avg_ship_lag_days, 2) AS avg_ship_lag_days FROM r JOIN f USING (priority) ORDER BY r.priority
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_fulfillment.Average Ship Lag Days", "dimension:mv_tpch_supply_chain_revenue.Order Priority", "dimension:mv_tpch_supply_chain_fulfillment.Order Priority"]
+  - id: x044
+    question: "In 1994 shipments, by ship mode, show revenue and the number of Q12-style late lines (shipped before commit but received after it)."
+    expected_sql: |-
+      WITH r AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE YEAR(`Ship Date`) = 1994 GROUP BY ALL),
+      f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Q12 Late Receipt Count`) AS q12_late_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE YEAR(`Ship Date`) = 1994 GROUP BY ALL)
+      SELECT r.ship_mode, r.revenue, f.q12_late_lines FROM r JOIN f USING (ship_mode) ORDER BY r.ship_mode
+    tags: ["type:cross_view", "type:filter", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_fulfillment.Q12 Late Receipt Count", "dimension:mv_tpch_supply_chain_revenue.Ship Mode", "dimension:mv_tpch_supply_chain_revenue.Ship Date", "dimension:mv_tpch_supply_chain_fulfillment.Ship Mode", "dimension:mv_tpch_supply_chain_fulfillment.Ship Date"]
+  - id: x045
+    question: "On ship date 1996-06-03, how much net revenue shipped and how many of those lines shipped on time?"
+    expected_sql: |-
+      WITH r AS (SELECT MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Ship Date` = DATE'1996-06-03'),
+      f AS (SELECT MEASURE(`On-Time Shipped Line Count`) AS on_time_lines, MEASURE(`Line Item Count`) AS line_items FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `Ship Date` = DATE'1996-06-03')
+      SELECT r.revenue, f.on_time_lines, f.line_items FROM r CROSS JOIN f
+    tags: ["type:cross_view", "type:edge", "type:filter", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_fulfillment.On-Time Shipped Line Count", "measure:mv_tpch_supply_chain_fulfillment.Line Item Count", "dimension:mv_tpch_supply_chain_revenue.Ship Date", "dimension:mv_tpch_supply_chain_fulfillment.Ship Date"]
+  - id: x046
+    question: "By ship mode, show the average discount next to the average transit days."
+    expected_sql: |-
+      WITH r AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Average Discount`) AS avg_discount FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Average Transit Days`) AS avg_transit_days FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)
+      SELECT r.ship_mode, ROUND(r.avg_discount, 4) AS avg_discount, ROUND(f.avg_transit_days, 2) AS avg_transit_days FROM r JOIN f USING (ship_mode) ORDER BY r.ship_mode
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_revenue.Average Discount", "measure:mv_tpch_supply_chain_fulfillment.Average Transit Days", "dimension:mv_tpch_supply_chain_revenue.Ship Mode", "dimension:mv_tpch_supply_chain_fulfillment.Ship Mode"]
+  - id: x047
+    question: "Do net revenue and market volume agree by customer region?"
+    expected_sql: |-
+      WITH r AS (SELECT `Customer Region` AS region, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      m AS (SELECT `Customer Region` AS region, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)
+      SELECT r.region, r.revenue, m.market_volume, ROUND(r.revenue - m.market_volume, 2) AS difference FROM r JOIN m USING (region) ORDER BY r.region
+    tags: ["type:cross_view", "type:edge", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_market_share", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_market_share.Market Volume", "dimension:mv_tpch_supply_chain_revenue.Customer Region", "dimension:mv_tpch_supply_chain_market_share.Customer Region"]
+  - id: x048
+    question: "For each order year, show the gross charge including tax and the market volume."
+    expected_sql: |-
+      WITH r AS (SELECT `Order Year` AS order_year, MEASURE(`Gross Charge`) AS gross_charge FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      m AS (SELECT `Order Year` AS order_year, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)
+      SELECT r.order_year, r.gross_charge, m.market_volume FROM r JOIN m USING (order_year) ORDER BY r.order_year
+    tags: ["type:cross_view", "type:time", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_market_share", "measure:mv_tpch_supply_chain_revenue.Gross Charge", "measure:mv_tpch_supply_chain_market_share.Market Volume", "dimension:mv_tpch_supply_chain_revenue.Order Year", "dimension:mv_tpch_supply_chain_market_share.Order Year"]
+  - id: x049
+    question: "Which customer nation has the highest average discount, and what is its market volume?"
+    expected_sql: |-
+      WITH r AS (SELECT `Customer Nation` AS nation, MEASURE(`Average Discount`) AS avg_discount FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      m AS (SELECT `Customer Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)
+      SELECT r.nation, ROUND(r.avg_discount, 5) AS avg_discount, m.market_volume FROM r JOIN m USING (nation) ORDER BY r.avg_discount DESC LIMIT 1
+    tags: ["type:cross_view", "type:edge", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_market_share", "measure:mv_tpch_supply_chain_revenue.Average Discount", "measure:mv_tpch_supply_chain_market_share.Market Volume", "dimension:mv_tpch_supply_chain_revenue.Customer Nation", "dimension:mv_tpch_supply_chain_market_share.Customer Nation"]
+  - id: x050
+    question: "By customer nation, compare line item counts in the revenue view and the market share view."
+    expected_sql: |-
+      WITH r AS (SELECT `Customer Nation` AS nation, MEASURE(`Line Item Count`) AS revenue_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      m AS (SELECT `Customer Nation` AS nation, MEASURE(`Line Item Count`) AS market_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)
+      SELECT r.nation, r.revenue_lines, m.market_lines FROM r JOIN m USING (nation) ORDER BY r.nation
+    tags: ["type:cross_view", "type:edge", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_market_share", "measure:mv_tpch_supply_chain_revenue.Line Item Count", "measure:mv_tpch_supply_chain_market_share.Line Item Count", "dimension:mv_tpch_supply_chain_revenue.Customer Nation", "dimension:mv_tpch_supply_chain_market_share.Customer Nation"]
+  - id: x051
+    question: "By order year, show gross sales and profit."
+    expected_sql: |-
+      WITH r AS (SELECT `Order Year` AS order_year, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)
+      SELECT r.order_year, r.gross_sales, p.profit FROM r JOIN p USING (order_year) ORDER BY r.order_year
+    tags: ["type:cross_view", "type:time", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_revenue.Gross Sales", "measure:mv_tpch_supply_chain_profit.Profit", "dimension:mv_tpch_supply_chain_revenue.Order Year", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x052
+    question: "For each order year, what is profit as a fraction of gross charge?"
+    expected_sql: |-
+      WITH r AS (SELECT `Order Year` AS order_year, MEASURE(`Gross Charge`) AS gross_charge FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)
+      SELECT r.order_year, ROUND(p.profit / r.gross_charge, 4) AS profit_to_gross_charge FROM r JOIN p USING (order_year) ORDER BY r.order_year
+    tags: ["type:cross_view", "type:ratio", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_revenue.Gross Charge", "measure:mv_tpch_supply_chain_profit.Profit", "dimension:mv_tpch_supply_chain_revenue.Order Year", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x053
+    question: "Which order year had the most discount revenue, and what was its cost of goods sold?"
+    expected_sql: |-
+      WITH r AS (SELECT `Order Year` AS order_year, MEASURE(`Discount Revenue`) AS discount_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      p AS (SELECT `Order Year` AS order_year, MEASURE(`Cost of Goods Sold`) AS cogs FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)
+      SELECT r.order_year, r.discount_revenue, p.cogs FROM r JOIN p USING (order_year) ORDER BY r.discount_revenue DESC LIMIT 1
+    tags: ["type:cross_view", "type:edge", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_revenue.Discount Revenue", "measure:mv_tpch_supply_chain_profit.Cost of Goods Sold", "dimension:mv_tpch_supply_chain_revenue.Order Year", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x054
+    question: "Show the margin trend: profit margin and average discount by order year."
+    expected_sql: |-
+      WITH r AS (SELECT `Order Year` AS order_year, MEASURE(`Average Discount`) AS avg_discount FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)
+      SELECT r.order_year, ROUND(p.profit_margin, 4) AS profit_margin, ROUND(r.avg_discount, 4) AS avg_discount FROM r JOIN p USING (order_year) ORDER BY r.order_year
+    tags: ["type:cross_view", "type:synonym", "type:time", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_revenue.Average Discount", "measure:mv_tpch_supply_chain_profit.Profit Margin", "dimension:mv_tpch_supply_chain_revenue.Order Year", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x055
+    question: "By ship mode, show the quantity return rate next to the on-time delivery rate."
+    expected_sql: |-
+      WITH t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),
+      f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`On-Time Delivery Rate`) AS on_time_delivery_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)
+      SELECT t.ship_mode, ROUND(t.return_rate, 4) AS return_rate, ROUND(f.on_time_delivery_rate, 4) AS on_time_delivery_rate FROM t JOIN f USING (ship_mode) ORDER BY t.ship_mode
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_returns", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_returns.Return Rate", "measure:mv_tpch_supply_chain_fulfillment.On-Time Delivery Rate", "dimension:mv_tpch_supply_chain_returns.Ship Mode", "dimension:mv_tpch_supply_chain_fulfillment.Ship Mode"]
+  - id: x056
+    question: "Which ship mode has the highest share of returned lines, and what is its average transit time in days?"
+    expected_sql: |-
+      WITH t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),
+      f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Average Transit Days`) AS avg_transit_days FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)
+      SELECT t.ship_mode, ROUND(t.return_line_rate, 5) AS return_line_rate, ROUND(f.avg_transit_days, 2) AS avg_transit_days FROM t JOIN f USING (ship_mode) ORDER BY t.return_line_rate DESC LIMIT 1
+    tags: ["type:cross_view", "type:edge", "view:mv_tpch_supply_chain_returns", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_returns.Return Line Rate", "measure:mv_tpch_supply_chain_fulfillment.Average Transit Days", "dimension:mv_tpch_supply_chain_returns.Ship Mode", "dimension:mv_tpch_supply_chain_fulfillment.Ship Mode"]
+  - id: x057
+    question: "For each ship mode, compare the quantity returned with the number of lines received after their commit date."
+    expected_sql: |-
+      WITH t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Returned Quantity`) AS returned_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),
+      f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Late Receipt Count`) AS late_receipts FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)
+      SELECT t.ship_mode, t.returned_quantity, f.late_receipts FROM t JOIN f USING (ship_mode) ORDER BY t.ship_mode
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_returns", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_returns.Returned Quantity", "measure:mv_tpch_supply_chain_fulfillment.Late Receipt Count", "dimension:mv_tpch_supply_chain_returns.Ship Mode", "dimension:mv_tpch_supply_chain_fulfillment.Ship Mode"]
+  - id: x058
+    question: "For air shipments only (AIR and REG AIR), show the return line rate and the on-time shipping rate."
+    expected_sql: |-
+      WITH t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE `Ship Mode` IN ('AIR', 'REG AIR') GROUP BY ALL),
+      f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`On-Time Shipping Rate`) AS on_time_shipping_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment WHERE `Ship Mode` IN ('AIR', 'REG AIR') GROUP BY ALL)
+      SELECT t.ship_mode, ROUND(t.return_line_rate, 4) AS return_line_rate, ROUND(f.on_time_shipping_rate, 4) AS on_time_shipping_rate FROM t JOIN f USING (ship_mode) ORDER BY t.ship_mode
+    tags: ["type:cross_view", "type:filter", "view:mv_tpch_supply_chain_returns", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_returns.Return Line Rate", "measure:mv_tpch_supply_chain_fulfillment.On-Time Shipping Rate", "dimension:mv_tpch_supply_chain_returns.Ship Mode", "dimension:mv_tpch_supply_chain_fulfillment.Ship Mode"]
+  - id: x059
+    question: "By customer nation, what is returned revenue as a fraction of market volume?"
+    expected_sql: |-
+      WITH t AS (SELECT `Customer Nation` AS nation, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),
+      m AS (SELECT `Customer Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)
+      SELECT t.nation, ROUND(t.returned_revenue / m.market_volume, 4) AS returned_share FROM t JOIN m USING (nation) ORDER BY returned_share DESC
+    tags: ["type:cross_view", "type:ratio", "view:mv_tpch_supply_chain_returns", "view:mv_tpch_supply_chain_market_share", "measure:mv_tpch_supply_chain_returns.Returned Revenue", "measure:mv_tpch_supply_chain_market_share.Market Volume", "dimension:mv_tpch_supply_chain_returns.Customer Nation", "dimension:mv_tpch_supply_chain_market_share.Customer Nation"]
+  - id: x060
+    question: "For the 5 customer nations with the largest market volume, what is the quantity return rate?"
+    expected_sql: |-
+      WITH t AS (SELECT `Customer Nation` AS nation, MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),
+      m AS (SELECT `Customer Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)
+      SELECT m.nation, m.market_volume, ROUND(t.return_rate, 4) AS return_rate FROM t JOIN m USING (nation) ORDER BY m.market_volume DESC LIMIT 5
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_returns", "view:mv_tpch_supply_chain_market_share", "measure:mv_tpch_supply_chain_returns.Return Rate", "measure:mv_tpch_supply_chain_market_share.Market Volume", "dimension:mv_tpch_supply_chain_returns.Customer Nation", "dimension:mv_tpch_supply_chain_market_share.Customer Nation"]
+  - id: x061
+    question: "For customer nations in the EUROPE region, show market volume and returned quantity."
+    expected_sql: |-
+      WITH m AS (SELECT `Customer Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Customer Region` = 'EUROPE' GROUP BY ALL),
+      t AS (SELECT `Customer Nation` AS nation, MEASURE(`Returned Quantity`) AS returned_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)
+      SELECT m.nation, m.market_volume, t.returned_quantity FROM m JOIN t USING (nation) ORDER BY m.nation
+    tags: ["type:cross_view", "type:filter", "view:mv_tpch_supply_chain_market_share", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_market_share.Market Volume", "measure:mv_tpch_supply_chain_returns.Returned Quantity", "dimension:mv_tpch_supply_chain_market_share.Customer Nation", "dimension:mv_tpch_supply_chain_market_share.Customer Region", "dimension:mv_tpch_supply_chain_returns.Customer Nation"]
+  - id: x062
+    question: "Which customer nations have a higher-than-average refund rate on lines, and what is their market volume?"
+    expected_sql: |-
+      WITH t AS (SELECT `Customer Nation` AS nation, MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),
+      m AS (SELECT `Customer Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),
+      overall AS (SELECT MEASURE(`Return Line Rate`) AS overall_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns)
+      SELECT t.nation, ROUND(t.return_line_rate, 5) AS return_line_rate, m.market_volume FROM t JOIN m USING (nation) CROSS JOIN overall WHERE t.return_line_rate > overall.overall_rate ORDER BY t.return_line_rate DESC
+    tags: ["type:cross_view", "type:synonym", "type:edge", "view:mv_tpch_supply_chain_returns", "view:mv_tpch_supply_chain_market_share", "measure:mv_tpch_supply_chain_returns.Return Line Rate", "measure:mv_tpch_supply_chain_market_share.Market Volume", "dimension:mv_tpch_supply_chain_returns.Customer Nation", "dimension:mv_tpch_supply_chain_market_share.Customer Nation"]
+  - id: x063
+    question: "By order year, show returned revenue and profit."
+    expected_sql: |-
+      WITH t AS (SELECT YEAR(`Order Quarter`) AS order_year, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),
+      p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)
+      SELECT p.order_year, t.returned_revenue, p.profit FROM t JOIN p USING (order_year) ORDER BY p.order_year
+    tags: ["type:cross_view", "type:time", "view:mv_tpch_supply_chain_returns", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_returns.Returned Revenue", "measure:mv_tpch_supply_chain_profit.Profit", "dimension:mv_tpch_supply_chain_returns.Order Quarter", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x064
+    question: "For each order year, what is returned revenue as a fraction of profit?"
+    expected_sql: |-
+      WITH t AS (SELECT YEAR(`Order Month`) AS order_year, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),
+      p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)
+      SELECT p.order_year, ROUND(t.returned_revenue / p.profit, 4) AS returned_to_profit FROM t JOIN p USING (order_year) ORDER BY p.order_year
+    tags: ["type:cross_view", "type:ratio", "view:mv_tpch_supply_chain_returns", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_returns.Returned Revenue", "measure:mv_tpch_supply_chain_profit.Profit", "dimension:mv_tpch_supply_chain_returns.Order Month", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x065
+    question: "For orders placed in 1998, the last and partial year, how many lines were returned and what was the profit margin?"
+    expected_sql: |-
+      WITH t AS (SELECT MEASURE(`Returned Line Count`) AS returned_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE YEAR(`Order Month`) = 1998),
+      p AS (SELECT MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Order Year` = 1998)
+      SELECT t.returned_lines, ROUND(p.profit_margin, 4) AS profit_margin FROM t CROSS JOIN p
+    tags: ["type:cross_view", "type:edge", "type:filter", "view:mv_tpch_supply_chain_returns", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_returns.Returned Line Count", "measure:mv_tpch_supply_chain_profit.Profit Margin", "dimension:mv_tpch_supply_chain_returns.Order Month", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x066
+    question: "By supplier nation, show market volume and profit margin."
+    expected_sql: |-
+      WITH m AS (SELECT `Supplier Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),
+      p AS (SELECT `Supplier Nation` AS nation, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)
+      SELECT m.nation, m.market_volume, ROUND(p.profit_margin, 4) AS profit_margin FROM m JOIN p USING (nation) ORDER BY m.market_volume DESC
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_market_share", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_market_share.Market Volume", "measure:mv_tpch_supply_chain_profit.Profit Margin", "dimension:mv_tpch_supply_chain_market_share.Supplier Nation", "dimension:mv_tpch_supply_chain_profit.Supplier Nation"]
+  - id: x067
+    question: "For each order year, compare market volume with cost of goods sold."
+    expected_sql: |-
+      WITH m AS (SELECT `Order Year` AS order_year, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),
+      p AS (SELECT `Order Year` AS order_year, MEASURE(`Cost of Goods Sold`) AS cogs FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)
+      SELECT m.order_year, m.market_volume, p.cogs FROM m JOIN p USING (order_year) ORDER BY m.order_year
+    tags: ["type:cross_view", "type:time", "view:mv_tpch_supply_chain_market_share", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_market_share.Market Volume", "measure:mv_tpch_supply_chain_profit.Cost of Goods Sold", "dimension:mv_tpch_supply_chain_market_share.Order Year", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x068
+    question: "For the 10 part types with the largest market volume, what is the profit?"
+    expected_sql: |-
+      WITH m AS (SELECT `Part Type` AS part_type, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),
+      p AS (SELECT `Part Type` AS part_type, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)
+      SELECT m.part_type, m.market_volume, p.profit FROM m JOIN p USING (part_type) ORDER BY m.market_volume DESC LIMIT 10
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_market_share", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_market_share.Market Volume", "measure:mv_tpch_supply_chain_profit.Profit", "dimension:mv_tpch_supply_chain_market_share.Part Type", "dimension:mv_tpch_supply_chain_profit.Part Type"]
+  - id: x069
+    question: "For part types made of brass, show market volume and profit margin."
+    expected_sql: |-
+      WITH m AS (SELECT `Part Type` AS part_type, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share WHERE `Part Type` LIKE '%BRASS' GROUP BY ALL),
+      p AS (SELECT `Part Type` AS part_type, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Part Type` LIKE '%BRASS' GROUP BY ALL)
+      SELECT m.part_type, m.market_volume, ROUND(p.profit_margin, 4) AS profit_margin FROM m JOIN p USING (part_type) ORDER BY m.part_type
+    tags: ["type:cross_view", "type:filter", "view:mv_tpch_supply_chain_market_share", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_market_share.Market Volume", "measure:mv_tpch_supply_chain_profit.Profit Margin", "dimension:mv_tpch_supply_chain_market_share.Part Type", "dimension:mv_tpch_supply_chain_profit.Part Type"]
+  - id: x070
+    question: "Which supplier nation earns the most profit, and what share of total market volume do its suppliers have?"
+    expected_sql: |-
+      WITH m AS (SELECT `Supplier Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),
+      p AS (SELECT `Supplier Nation` AS nation, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),
+      j AS (SELECT m.nation, p.profit, m.market_volume / SUM(m.market_volume) OVER () AS volume_share FROM m JOIN p USING (nation))
+      SELECT nation, profit, ROUND(volume_share, 4) AS volume_share FROM j ORDER BY profit DESC LIMIT 1
+    tags: ["type:cross_view", "type:ratio", "type:edge", "view:mv_tpch_supply_chain_market_share", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_market_share.Market Volume", "measure:mv_tpch_supply_chain_profit.Profit", "dimension:mv_tpch_supply_chain_market_share.Supplier Nation", "dimension:mv_tpch_supply_chain_profit.Supplier Nation"]
+  - id: x071
+    question: "By supplier nation, show market volume and inventory value."
+    expected_sql: |-
+      WITH m AS (SELECT `Supplier Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),
+      c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)
+      SELECT m.nation, m.market_volume, c.inventory_value FROM m JOIN c USING (nation) ORDER BY m.nation
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_market_share", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_market_share.Market Volume", "measure:mv_tpch_supply_chain_supply_cost.Inventory Value", "dimension:mv_tpch_supply_chain_market_share.Supplier Nation", "dimension:mv_tpch_supply_chain_supply_cost.Supplier Nation"]
+  - id: x072
+    question: "For the 10 part types with the highest stock value on hand, what is their market volume?"
+    expected_sql: |-
+      WITH m AS (SELECT `Part Type` AS part_type, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),
+      c AS (SELECT `Part Type` AS part_type, MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)
+      SELECT c.part_type, c.inventory_value, m.market_volume FROM m JOIN c USING (part_type) ORDER BY c.inventory_value DESC LIMIT 10
+    tags: ["type:cross_view", "type:synonym", "type:breakdown", "view:mv_tpch_supply_chain_market_share", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_market_share.Market Volume", "measure:mv_tpch_supply_chain_supply_cost.Inventory Value", "dimension:mv_tpch_supply_chain_market_share.Part Type", "dimension:mv_tpch_supply_chain_supply_cost.Part Type"]
+  - id: x073
+    question: "What is the market volume per supplier in each supplier nation?"
+    expected_sql: |-
+      WITH m AS (SELECT `Supplier Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),
+      c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Supplier Count`) AS suppliers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)
+      SELECT m.nation, ROUND(m.market_volume / c.suppliers, 2) AS market_volume_per_supplier FROM m JOIN c USING (nation) ORDER BY market_volume_per_supplier DESC
+    tags: ["type:cross_view", "type:ratio", "view:mv_tpch_supply_chain_market_share", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_market_share.Market Volume", "measure:mv_tpch_supply_chain_supply_cost.Supplier Count", "dimension:mv_tpch_supply_chain_market_share.Supplier Nation", "dimension:mv_tpch_supply_chain_supply_cost.Supplier Nation"]
+  - id: x074
+    question: "For supplier nations in ASIA, compare market volume with the quantity available from those suppliers."
+    expected_sql: |-
+      WITH c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Available Quantity`) AS available_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost WHERE `Supplier Region` = 'ASIA' GROUP BY ALL),
+      m AS (SELECT `Supplier Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)
+      SELECT c.nation, m.market_volume, c.available_quantity FROM c JOIN m USING (nation) ORDER BY c.nation
+    tags: ["type:cross_view", "type:filter", "view:mv_tpch_supply_chain_supply_cost", "view:mv_tpch_supply_chain_market_share", "measure:mv_tpch_supply_chain_supply_cost.Available Quantity", "measure:mv_tpch_supply_chain_market_share.Market Volume", "dimension:mv_tpch_supply_chain_supply_cost.Supplier Nation", "dimension:mv_tpch_supply_chain_supply_cost.Supplier Region", "dimension:mv_tpch_supply_chain_market_share.Supplier Nation"]
+  - id: x075
+    question: "By part type, how many supplier offers and distinct parts are there compared with the number of line items sold? Show the 10 types with the most offers."
+    expected_sql: |-
+      WITH m AS (SELECT `Part Type` AS part_type, MEASURE(`Line Item Count`) AS line_items FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),
+      c AS (SELECT `Part Type` AS part_type, MEASURE(`Offer Count`) AS offers, MEASURE(`Part Count`) AS parts FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)
+      SELECT c.part_type, c.offers, c.parts, m.line_items FROM m JOIN c USING (part_type) ORDER BY c.offers DESC, c.part_type LIMIT 10
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_market_share", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_market_share.Line Item Count", "measure:mv_tpch_supply_chain_supply_cost.Offer Count", "measure:mv_tpch_supply_chain_supply_cost.Part Count", "dimension:mv_tpch_supply_chain_market_share.Part Type", "dimension:mv_tpch_supply_chain_supply_cost.Part Type"]
+  - id: x076
+    question: "By manufacturer, show profit and inventory value."
+    expected_sql: |-
+      WITH p AS (SELECT `Manufacturer` AS mfgr, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),
+      c AS (SELECT `Manufacturer` AS mfgr, MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)
+      SELECT p.mfgr, p.profit, c.inventory_value FROM p JOIN c USING (mfgr) ORDER BY p.mfgr
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_profit", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_profit.Profit", "measure:mv_tpch_supply_chain_supply_cost.Inventory Value", "dimension:mv_tpch_supply_chain_profit.Manufacturer", "dimension:mv_tpch_supply_chain_supply_cost.Manufacturer"]
+  - id: x077
+    question: "For the 10 brands with the highest profit margin, what is the average supply cost?"
+    expected_sql: |-
+      WITH p AS (SELECT `Part Brand` AS brand, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),
+      c AS (SELECT `Part Brand` AS brand, MEASURE(`Average Supply Cost`) AS avg_supply_cost FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)
+      SELECT p.brand, ROUND(p.profit_margin, 4) AS profit_margin, ROUND(c.avg_supply_cost, 2) AS avg_supply_cost FROM p JOIN c USING (brand) ORDER BY p.profit_margin DESC LIMIT 10
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_profit", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_profit.Profit Margin", "measure:mv_tpch_supply_chain_supply_cost.Average Supply Cost", "dimension:mv_tpch_supply_chain_profit.Part Brand", "dimension:mv_tpch_supply_chain_supply_cost.Part Brand"]
+  - id: x078
+    question: "By supplier nation, show profit and the number of suppliers."
+    expected_sql: |-
+      WITH p AS (SELECT `Supplier Nation` AS nation, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),
+      c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Supplier Count`) AS suppliers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)
+      SELECT p.nation, p.profit, c.suppliers, ROUND(p.profit / c.suppliers, 2) AS profit_per_supplier FROM p JOIN c USING (nation) ORDER BY profit_per_supplier DESC
+    tags: ["type:cross_view", "type:ratio", "view:mv_tpch_supply_chain_profit", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_profit.Profit", "measure:mv_tpch_supply_chain_supply_cost.Supplier Count", "dimension:mv_tpch_supply_chain_profit.Supplier Nation", "dimension:mv_tpch_supply_chain_supply_cost.Supplier Nation"]
+  - id: x079
+    question: "By part type, what is the profit per unit of available supplier quantity? Show the top 10."
+    expected_sql: |-
+      WITH p AS (SELECT `Part Type` AS part_type, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),
+      c AS (SELECT `Part Type` AS part_type, MEASURE(`Available Quantity`) AS available_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)
+      SELECT p.part_type, ROUND(p.profit / c.available_quantity, 4) AS profit_per_available_unit FROM p JOIN c USING (part_type) ORDER BY profit_per_available_unit DESC LIMIT 10
+    tags: ["type:cross_view", "type:ratio", "view:mv_tpch_supply_chain_profit", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_profit.Profit", "measure:mv_tpch_supply_chain_supply_cost.Available Quantity", "dimension:mv_tpch_supply_chain_profit.Part Type", "dimension:mv_tpch_supply_chain_supply_cost.Part Type"]
+  - id: x080
+    question: "For Manufacturer#3, by brand, compare the quantity sold with the quantity suppliers have available."
+    expected_sql: |-
+      WITH p AS (SELECT `Part Brand` AS brand, MEASURE(`Quantity`) AS quantity_sold FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Manufacturer` = 'Manufacturer#3' GROUP BY ALL),
+      c AS (SELECT `Part Brand` AS brand, MEASURE(`Available Quantity`) AS available_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost WHERE `Manufacturer` = 'Manufacturer#3' GROUP BY ALL)
+      SELECT p.brand, p.quantity_sold, c.available_quantity FROM p JOIN c USING (brand) ORDER BY p.brand
+    tags: ["type:cross_view", "type:filter", "view:mv_tpch_supply_chain_profit", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_profit.Quantity", "measure:mv_tpch_supply_chain_supply_cost.Available Quantity", "dimension:mv_tpch_supply_chain_profit.Part Brand", "dimension:mv_tpch_supply_chain_profit.Manufacturer", "dimension:mv_tpch_supply_chain_supply_cost.Part Brand", "dimension:mv_tpch_supply_chain_supply_cost.Manufacturer"]
+  - id: x081
+    question: "By manufacturer, show the cheapest supply cost offered and the profit margin."
+    expected_sql: |-
+      WITH p AS (SELECT `Manufacturer` AS mfgr, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),
+      c AS (SELECT `Manufacturer` AS mfgr, MEASURE(`Minimum Supply Cost`) AS min_supply_cost FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)
+      SELECT p.mfgr, ROUND(p.profit_margin, 4) AS profit_margin, c.min_supply_cost FROM p JOIN c USING (mfgr) ORDER BY p.mfgr
+    tags: ["type:cross_view", "type:synonym", "view:mv_tpch_supply_chain_profit", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_profit.Profit Margin", "measure:mv_tpch_supply_chain_supply_cost.Minimum Supply Cost", "dimension:mv_tpch_supply_chain_profit.Manufacturer", "dimension:mv_tpch_supply_chain_supply_cost.Manufacturer"]
+  - id: x082
+    question: "Which brand has the lowest profit margin, and what are its average supply cost and number of distinct parts on offer?"
+    expected_sql: |-
+      WITH p AS (SELECT `Part Brand` AS brand, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),
+      c AS (SELECT `Part Brand` AS brand, MEASURE(`Average Supply Cost`) AS avg_supply_cost, MEASURE(`Part Count`) AS parts FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)
+      SELECT p.brand, ROUND(p.profit_margin, 4) AS profit_margin, ROUND(c.avg_supply_cost, 2) AS avg_supply_cost, c.parts FROM p JOIN c USING (brand) ORDER BY p.profit_margin ASC LIMIT 1
+    tags: ["type:cross_view", "type:edge", "view:mv_tpch_supply_chain_profit", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_profit.Profit Margin", "measure:mv_tpch_supply_chain_supply_cost.Average Supply Cost", "measure:mv_tpch_supply_chain_supply_cost.Part Count", "dimension:mv_tpch_supply_chain_profit.Part Brand", "dimension:mv_tpch_supply_chain_supply_cost.Part Brand"]
+  - id: x083
+    question: "By market segment, show order count, net revenue and quantity return rate."
+    expected_sql: |-
+      WITH o AS (SELECT `Market Segment` AS segment, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      r AS (SELECT `Market Segment` AS segment, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      t AS (SELECT `Market Segment` AS segment, MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)
+      SELECT o.segment, o.order_count, r.revenue, ROUND(t.return_rate, 4) AS return_rate FROM o JOIN r USING (segment) JOIN t USING (segment) ORDER BY o.segment
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_returns.Return Rate", "dimension:mv_tpch_supply_chain_orders.Market Segment", "dimension:mv_tpch_supply_chain_revenue.Market Segment", "dimension:mv_tpch_supply_chain_returns.Market Segment"]
+  - id: x084
+    question: "For each customer nation, show orders placed, net revenue and returned revenue."
+    expected_sql: |-
+      WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      r AS (SELECT `Customer Nation` AS nation, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      t AS (SELECT `Customer Nation` AS nation, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)
+      SELECT o.nation, o.order_count, r.revenue, t.returned_revenue FROM o JOIN r USING (nation) JOIN t USING (nation) ORDER BY r.revenue DESC
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_returns.Returned Revenue", "dimension:mv_tpch_supply_chain_orders.Customer Nation", "dimension:mv_tpch_supply_chain_revenue.Customer Nation", "dimension:mv_tpch_supply_chain_returns.Customer Nation"]
+  - id: x085
+    question: "By ship mode, show net revenue, quantity return rate and on-time delivery rate."
+    expected_sql: |-
+      WITH r AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Return Rate`) AS return_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),
+      f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`On-Time Delivery Rate`) AS on_time_delivery_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)
+      SELECT r.ship_mode, r.revenue, ROUND(t.return_rate, 4) AS return_rate, ROUND(f.on_time_delivery_rate, 4) AS on_time_delivery_rate FROM r JOIN t USING (ship_mode) JOIN f USING (ship_mode) ORDER BY r.ship_mode
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_returns", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_returns.Return Rate", "measure:mv_tpch_supply_chain_fulfillment.On-Time Delivery Rate", "dimension:mv_tpch_supply_chain_revenue.Ship Mode", "dimension:mv_tpch_supply_chain_returns.Ship Mode", "dimension:mv_tpch_supply_chain_fulfillment.Ship Mode"]
+  - id: x086
+    question: "By supplier nation, show market volume, profit and inventory value."
+    expected_sql: |-
+      WITH m AS (SELECT `Supplier Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),
+      p AS (SELECT `Supplier Nation` AS nation, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),
+      c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)
+      SELECT m.nation, m.market_volume, p.profit, c.inventory_value FROM m JOIN p USING (nation) JOIN c USING (nation) ORDER BY p.profit DESC
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_market_share", "view:mv_tpch_supply_chain_profit", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_market_share.Market Volume", "measure:mv_tpch_supply_chain_profit.Profit", "measure:mv_tpch_supply_chain_supply_cost.Inventory Value", "dimension:mv_tpch_supply_chain_market_share.Supplier Nation", "dimension:mv_tpch_supply_chain_profit.Supplier Nation", "dimension:mv_tpch_supply_chain_supply_cost.Supplier Nation"]
+  - id: x087
+    question: "For the 10 part types with the most profit, show market volume, profit margin and average supply cost."
+    expected_sql: |-
+      WITH m AS (SELECT `Part Type` AS part_type, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),
+      p AS (SELECT `Part Type` AS part_type, MEASURE(`Profit`) AS profit, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),
+      c AS (SELECT `Part Type` AS part_type, MEASURE(`Average Supply Cost`) AS avg_supply_cost FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)
+      SELECT p.part_type, m.market_volume, ROUND(p.profit_margin, 4) AS profit_margin, ROUND(c.avg_supply_cost, 2) AS avg_supply_cost FROM m JOIN p USING (part_type) JOIN c USING (part_type) ORDER BY p.profit DESC LIMIT 10
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_market_share", "view:mv_tpch_supply_chain_profit", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_market_share.Market Volume", "measure:mv_tpch_supply_chain_profit.Profit", "measure:mv_tpch_supply_chain_profit.Profit Margin", "measure:mv_tpch_supply_chain_supply_cost.Average Supply Cost", "dimension:mv_tpch_supply_chain_market_share.Part Type", "dimension:mv_tpch_supply_chain_profit.Part Type", "dimension:mv_tpch_supply_chain_supply_cost.Part Type"]
+  - id: x088
+    question: "By customer nation, show the number of ordering customers, market volume and return line rate."
+    expected_sql: |-
+      WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Ordering Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      m AS (SELECT `Customer Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),
+      t AS (SELECT `Customer Nation` AS nation, MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)
+      SELECT o.nation, o.customers, m.market_volume, ROUND(t.return_line_rate, 4) AS return_line_rate FROM o JOIN m USING (nation) JOIN t USING (nation) ORDER BY o.nation
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_market_share", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_orders.Ordering Customer Count", "measure:mv_tpch_supply_chain_market_share.Market Volume", "measure:mv_tpch_supply_chain_returns.Return Line Rate", "dimension:mv_tpch_supply_chain_orders.Customer Nation", "dimension:mv_tpch_supply_chain_market_share.Customer Nation", "dimension:mv_tpch_supply_chain_returns.Customer Nation"]
+  - id: x089
+    question: "By order year, show the number of orders, net revenue and profit margin."
+    expected_sql: |-
+      WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      r AS (SELECT `Order Year` AS order_year, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)
+      SELECT o.order_year, o.order_count, r.revenue, ROUND(p.profit_margin, 4) AS profit_margin FROM o JOIN r USING (order_year) JOIN p USING (order_year) ORDER BY o.order_year
+    tags: ["type:cross_view", "type:time", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_profit.Profit Margin", "dimension:mv_tpch_supply_chain_orders.Order Year", "dimension:mv_tpch_supply_chain_revenue.Order Year", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x090
+    question: "By order priority, show the number of orders, net revenue and on-time shipping rate."
+    expected_sql: |-
+      WITH o AS (SELECT `Order Priority` AS priority, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      r AS (SELECT `Order Priority` AS priority, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      f AS (SELECT `Order Priority` AS priority, MEASURE(`On-Time Shipping Rate`) AS on_time_shipping_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)
+      SELECT o.priority, o.order_count, r.revenue, ROUND(f.on_time_shipping_rate, 4) AS on_time_shipping_rate FROM o JOIN r USING (priority) JOIN f USING (priority) ORDER BY o.priority
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_fulfillment.On-Time Shipping Rate", "dimension:mv_tpch_supply_chain_orders.Order Priority", "dimension:mv_tpch_supply_chain_revenue.Order Priority", "dimension:mv_tpch_supply_chain_fulfillment.Order Priority"]
+  - id: x091
+    question: "By order year, show order count, net revenue, market volume and profit together."
+    expected_sql: |-
+      WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      r AS (SELECT `Order Year` AS order_year, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      m AS (SELECT `Order Year` AS order_year, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),
+      p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)
+      SELECT o.order_year, o.order_count, r.revenue, m.market_volume, p.profit FROM o JOIN r USING (order_year) JOIN m USING (order_year) JOIN p USING (order_year) ORDER BY o.order_year
+    tags: ["type:cross_view", "type:time", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_market_share", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_market_share.Market Volume", "measure:mv_tpch_supply_chain_profit.Profit", "dimension:mv_tpch_supply_chain_orders.Order Year", "dimension:mv_tpch_supply_chain_revenue.Order Year", "dimension:mv_tpch_supply_chain_market_share.Order Year", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x092
+    question: "For each nation, compare demand and supply: customers ordering from the nation, suppliers based in it, and market volume supplied by its suppliers."
+    expected_sql: |-
+      WITH o AS (SELECT `Customer Nation` AS nation, MEASURE(`Ordering Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      c AS (SELECT `Supplier Nation` AS nation, MEASURE(`Supplier Count`) AS suppliers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL),
+      m AS (SELECT `Supplier Nation` AS nation, MEASURE(`Market Volume`) AS supplied_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)
+      SELECT o.nation, o.customers, c.suppliers, m.supplied_volume FROM o JOIN c USING (nation) JOIN m USING (nation) ORDER BY o.nation
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_supply_cost", "view:mv_tpch_supply_chain_market_share", "measure:mv_tpch_supply_chain_orders.Ordering Customer Count", "measure:mv_tpch_supply_chain_supply_cost.Supplier Count", "measure:mv_tpch_supply_chain_market_share.Market Volume", "dimension:mv_tpch_supply_chain_orders.Customer Nation", "dimension:mv_tpch_supply_chain_supply_cost.Supplier Nation", "dimension:mv_tpch_supply_chain_market_share.Supplier Nation"]
+  - id: x093
+    question: "Month by month in 1995, show orders placed, net revenue and returned revenue."
+    expected_sql: |-
+      WITH o AS (SELECT `Order Month` AS order_month, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders WHERE `Order Year` = 1995 GROUP BY ALL),
+      r AS (SELECT `Order Month` AS order_month, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue WHERE `Order Year` = 1995 GROUP BY ALL),
+      t AS (SELECT `Order Month` AS order_month, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE YEAR(`Order Month`) = 1995 GROUP BY ALL)
+      SELECT o.order_month, o.order_count, r.revenue, t.returned_revenue FROM o JOIN r USING (order_month) JOIN t USING (order_month) ORDER BY o.order_month
+    tags: ["type:cross_view", "type:time", "type:filter", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_returns.Returned Revenue", "dimension:mv_tpch_supply_chain_orders.Order Month", "dimension:mv_tpch_supply_chain_orders.Order Year", "dimension:mv_tpch_supply_chain_revenue.Order Month", "dimension:mv_tpch_supply_chain_revenue.Order Year", "dimension:mv_tpch_supply_chain_returns.Order Month"]
+  - id: x094
+    question: "By ship mode, how do sales, refunds and late arrivals compare? Show net revenue, returned revenue and late receipt count."
+    expected_sql: |-
+      WITH r AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),
+      f AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Late Receipt Count`) AS late_receipts FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)
+      SELECT r.ship_mode, r.revenue, t.returned_revenue, f.late_receipts FROM r JOIN t USING (ship_mode) JOIN f USING (ship_mode) ORDER BY r.ship_mode
+    tags: ["type:cross_view", "type:synonym", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_returns", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_returns.Returned Revenue", "measure:mv_tpch_supply_chain_fulfillment.Late Receipt Count", "dimension:mv_tpch_supply_chain_revenue.Ship Mode", "dimension:mv_tpch_supply_chain_returns.Ship Mode", "dimension:mv_tpch_supply_chain_fulfillment.Ship Mode"]
+  - id: x095
+    question: "By manufacturer, show profit, cost of goods sold and inventory value, and the ratio of inventory value to cost of goods sold."
+    expected_sql: |-
+      WITH p AS (SELECT `Manufacturer` AS mfgr, MEASURE(`Profit`) AS profit, MEASURE(`Cost of Goods Sold`) AS cogs FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL),
+      c AS (SELECT `Manufacturer` AS mfgr, MEASURE(`Inventory Value`) AS inventory_value FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_supply_cost GROUP BY ALL)
+      SELECT p.mfgr, p.profit, p.cogs, c.inventory_value, ROUND(c.inventory_value / p.cogs, 4) AS inventory_to_cogs FROM p JOIN c USING (mfgr) ORDER BY p.mfgr
+    tags: ["type:cross_view", "type:ratio", "view:mv_tpch_supply_chain_profit", "view:mv_tpch_supply_chain_supply_cost", "measure:mv_tpch_supply_chain_profit.Profit", "measure:mv_tpch_supply_chain_profit.Cost of Goods Sold", "measure:mv_tpch_supply_chain_supply_cost.Inventory Value", "dimension:mv_tpch_supply_chain_profit.Manufacturer", "dimension:mv_tpch_supply_chain_supply_cost.Manufacturer"]
+  - id: x096
+    question: "By customer region, show order count, net revenue and market volume, and flag any region where revenue and market volume differ."
+    expected_sql: |-
+      WITH o AS (SELECT `Customer Region` AS region, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      r AS (SELECT `Customer Region` AS region, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      m AS (SELECT `Customer Region` AS region, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)
+      SELECT o.region, o.order_count, r.revenue, m.market_volume, ABS(r.revenue - m.market_volume) > 0.01 AS differs FROM o JOIN r USING (region) JOIN m USING (region) ORDER BY o.region
+    tags: ["type:cross_view", "type:edge", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_market_share", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_market_share.Market Volume", "dimension:mv_tpch_supply_chain_orders.Customer Region", "dimension:mv_tpch_supply_chain_revenue.Customer Region", "dimension:mv_tpch_supply_chain_market_share.Customer Region"]
+  - id: x097
+    question: "By order year, show net revenue, returned revenue and profit, and profit after subtracting returned revenue."
+    expected_sql: |-
+      WITH r AS (SELECT `Order Year` AS order_year, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      t AS (SELECT YEAR(`Order Month`) AS order_year, MEASURE(`Returned Revenue`) AS returned_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL),
+      p AS (SELECT `Order Year` AS order_year, MEASURE(`Profit`) AS profit FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)
+      SELECT r.order_year, r.revenue, t.returned_revenue, p.profit, p.profit - t.returned_revenue AS profit_after_returns FROM r JOIN t USING (order_year) JOIN p USING (order_year) ORDER BY r.order_year
+    tags: ["type:cross_view", "type:time", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_returns", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_returns.Returned Revenue", "measure:mv_tpch_supply_chain_profit.Profit", "dimension:mv_tpch_supply_chain_revenue.Order Year", "dimension:mv_tpch_supply_chain_returns.Order Month", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x098
+    question: "For high-priority orders versus others, show order count, net revenue and on-time delivery rate."
+    expected_sql: |-
+      WITH o AS (SELECT `High Priority` AS high_priority, MEASURE(`Order Count`) AS order_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      r AS (SELECT `Order Priority` IN ('1-URGENT', '2-HIGH') AS high_priority, MEASURE(`Revenue`) AS revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      f AS (SELECT `High Priority` AS high_priority, MEASURE(`On-Time Delivery Rate`) AS on_time_delivery_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_fulfillment GROUP BY ALL)
+      SELECT o.high_priority, o.order_count, r.revenue, ROUND(f.on_time_delivery_rate, 4) AS on_time_delivery_rate FROM o JOIN r USING (high_priority) JOIN f USING (high_priority) ORDER BY o.high_priority
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_fulfillment", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_fulfillment.On-Time Delivery Rate", "dimension:mv_tpch_supply_chain_orders.High Priority", "dimension:mv_tpch_supply_chain_revenue.Order Priority", "dimension:mv_tpch_supply_chain_fulfillment.High Priority"]
+  - id: x099
+    question: "By order year, compare the total order price on headers with market volume."
+    expected_sql: |-
+      WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Total Price`) AS order_total_price FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      m AS (SELECT `Order Year` AS order_year, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL)
+      SELECT o.order_year, o.order_total_price, m.market_volume FROM o JOIN m USING (order_year) ORDER BY o.order_year
+    tags: ["type:cross_view", "type:time", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_market_share", "measure:mv_tpch_supply_chain_orders.Order Total Price", "measure:mv_tpch_supply_chain_market_share.Market Volume", "dimension:mv_tpch_supply_chain_orders.Order Year", "dimension:mv_tpch_supply_chain_market_share.Order Year"]
+  - id: x100
+    question: "By order year, do the revenue view and the profit view report the same revenue? Show both revenue figures and the profit margin."
+    expected_sql: |-
+      WITH r AS (SELECT `Order Year` AS order_year, MEASURE(`Revenue`) AS revenue_view_revenue FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      p AS (SELECT `Order Year` AS order_year, MEASURE(`Revenue`) AS profit_view_revenue, MEASURE(`Profit Margin`) AS profit_margin FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)
+      SELECT r.order_year, r.revenue_view_revenue, p.profit_view_revenue, ROUND(p.profit_margin, 4) AS profit_margin FROM r JOIN p USING (order_year) ORDER BY r.order_year
+    tags: ["type:cross_view", "type:edge", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_revenue.Revenue", "measure:mv_tpch_supply_chain_profit.Revenue", "measure:mv_tpch_supply_chain_profit.Profit Margin", "dimension:mv_tpch_supply_chain_revenue.Order Year", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x101
+    question: "By order year, show the number of ordering customers and the quantity sold in the profit view."
+    expected_sql: |-
+      WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Ordering Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      p AS (SELECT `Order Year` AS order_year, MEASURE(`Quantity`) AS quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit GROUP BY ALL)
+      SELECT o.order_year, o.customers, p.quantity, ROUND(p.quantity / o.customers, 2) AS quantity_per_customer FROM o JOIN p USING (order_year) ORDER BY o.order_year
+    tags: ["type:cross_view", "type:ratio", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_orders.Ordering Customer Count", "measure:mv_tpch_supply_chain_profit.Quantity", "dimension:mv_tpch_supply_chain_orders.Order Year", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x102
+    question: "By customer nation, show market volume and the shipped quantity from the returns view; which 5 nations ship the most units?"
+    expected_sql: |-
+      WITH m AS (SELECT `Customer Nation` AS nation, MEASURE(`Market Volume`) AS market_volume FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_market_share GROUP BY ALL),
+      t AS (SELECT `Customer Nation` AS nation, MEASURE(`Shipped Quantity`) AS shipped_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)
+      SELECT t.nation, t.shipped_quantity, m.market_volume FROM m JOIN t USING (nation) ORDER BY t.shipped_quantity DESC LIMIT 5
+    tags: ["type:cross_view", "type:breakdown", "view:mv_tpch_supply_chain_market_share", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_market_share.Market Volume", "measure:mv_tpch_supply_chain_returns.Shipped Quantity", "dimension:mv_tpch_supply_chain_market_share.Customer Nation", "dimension:mv_tpch_supply_chain_returns.Customer Nation"]
+  - id: x103
+    question: "For 1993, show returned quantity for each order quarter alongside the full-year 1993 profit."
+    expected_sql: |-
+      WITH t AS (SELECT `Order Quarter` AS order_quarter, MEASURE(`Returned Quantity`) AS returned_quantity FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns WHERE YEAR(`Order Quarter`) = 1993 GROUP BY ALL),
+      p AS (SELECT MEASURE(`Profit`) AS profit_1993 FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_profit WHERE `Order Year` = 1993)
+      SELECT t.order_quarter, t.returned_quantity, p.profit_1993 FROM t CROSS JOIN p ORDER BY t.order_quarter
+    tags: ["type:cross_view", "type:time", "type:filter", "view:mv_tpch_supply_chain_returns", "view:mv_tpch_supply_chain_profit", "measure:mv_tpch_supply_chain_returns.Returned Quantity", "measure:mv_tpch_supply_chain_profit.Profit", "dimension:mv_tpch_supply_chain_returns.Order Quarter", "dimension:mv_tpch_supply_chain_profit.Order Year"]
+  - id: x104
+    question: "By order year, do the orders view and the revenue view agree on the number of orders?"
+    expected_sql: |-
+      WITH o AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS orders_view_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_orders GROUP BY ALL),
+      r AS (SELECT `Order Year` AS order_year, MEASURE(`Order Count`) AS revenue_view_count FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL)
+      SELECT o.order_year, o.orders_view_count, r.revenue_view_count, o.orders_view_count - r.revenue_view_count AS difference FROM o JOIN r USING (order_year) ORDER BY o.order_year
+    tags: ["type:cross_view", "type:edge", "view:mv_tpch_supply_chain_orders", "view:mv_tpch_supply_chain_revenue", "measure:mv_tpch_supply_chain_orders.Order Count", "measure:mv_tpch_supply_chain_revenue.Order Count", "dimension:mv_tpch_supply_chain_orders.Order Year", "dimension:mv_tpch_supply_chain_revenue.Order Year"]
+  - id: x105
+    question: "By ship mode, compare the line item counts reported by the revenue view and the returns view, with the return line rate."
+    expected_sql: |-
+      WITH r AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Line Item Count`) AS revenue_lines FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_revenue GROUP BY ALL),
+      t AS (SELECT `Ship Mode` AS ship_mode, MEASURE(`Line Item Count`) AS returns_lines, MEASURE(`Return Line Rate`) AS return_line_rate FROM ${target_catalog}.${target_schema}.mv_tpch_supply_chain_returns GROUP BY ALL)
+      SELECT r.ship_mode, r.revenue_lines, t.returns_lines, ROUND(t.return_line_rate, 4) AS return_line_rate FROM r JOIN t USING (ship_mode) ORDER BY r.ship_mode
+    tags: ["type:cross_view", "type:edge", "view:mv_tpch_supply_chain_revenue", "view:mv_tpch_supply_chain_returns", "measure:mv_tpch_supply_chain_revenue.Line Item Count", "measure:mv_tpch_supply_chain_returns.Line Item Count", "measure:mv_tpch_supply_chain_returns.Return Line Rate", "dimension:mv_tpch_supply_chain_revenue.Ship Mode", "dimension:mv_tpch_supply_chain_returns.Ship Mode"]
