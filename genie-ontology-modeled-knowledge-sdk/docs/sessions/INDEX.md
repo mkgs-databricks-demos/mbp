@@ -6,6 +6,10 @@ Sessions are listed in reverse chronological order.
 
 | Date | Session | Summary |
 |---|---|---|
+| 2026-11-26 | [W1-6 / 34 Benchmark Questions: Cross-View](2026-11-26_w1-6-34-benchmark-cross-view.md) | Wave 1-6, session 34, mode edit, status pass: already completed, re-validated; 105/105 expected_sql SUCCEEDED, full-set coverage 233 questions, 45.1% cross-view (run 629243800379582) |
+| 2026-11-26 | [W1-6 / 33 Benchmark Questions: Fulfillment & Procurement Views](2026-11-26_w1-6-33-benchmark-fulfillment-procurement.md) | Wave 1-6, session 33, mode edit, status pass: already completed, re-validated; 69/69 expected_sql SUCCEEDED (run 629243800379582) |
+| 2026-11-26 | [W1-6 / 32 Benchmark Questions: Sales Views](2026-11-26_w1-6-32-benchmark-sales.md) | Wave 1-6, session 32, mode edit, status pass: already completed, re-validated; 59/59 expected_sql SUCCEEDED (run 629243800379582) |
+| 2026-11-26 | [W1-6 / 31 TPC-H Glossary as Draft UC Pages (Development Domain)](2026-11-26_w1-6-31-tpch-draft-pages.md) | Wave 1-6, session 31, mode edit, status pass: rerun after synonyms fix (ea5d5eb); 23 DRAFT pages unchanged, second upsert 0 changes (run 629243800379582) |
 | 2026-11-26 | [W1-6 / 34 Benchmark Questions: Cross-View](2026-11-26_w1-6-34-benchmark-cross-view.md) | Wave 1-6, session 34, mode edit, status pass: cross_view.yml 105 questions, 105/105 expected_sql SUCCEEDED (run 1020175336236697) |
 | 2026-11-26 | [W1-6 / 33 Benchmark Questions: Fulfillment & Procurement Views](2026-11-26_w1-6-33-benchmark-fulfillment-procurement.md) | Wave 1-6, session 33, mode edit, status pass: fulfillment_procurement.yml 69 questions, 69/69 expected_sql SUCCEEDED (run 1020175336236697) |
 | 2026-11-26 | [W1-6 / 32 Benchmark Questions: Sales Views](2026-11-26_w1-6-32-benchmark-sales.md) | Wave 1-6, session 32, mode edit, status pass: sales.yml 59 questions, 59/59 expected_sql SUCCEEDED (run 1020175336236697) |

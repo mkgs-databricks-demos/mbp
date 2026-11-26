@@ -42,3 +42,15 @@ Split preview (`assign_splits`): 60 tuning, 9 holdout.
 ## Requests
 
 None.
+
+## Re-validation: job run 629243800379582 (continuation 0)
+
+This session had already passed in run `1020175336236697`, so this run re-validated the work and changed nothing. The Git folder was on `mg-genie-ontology-build-1-plan` (checked read-only, head `ea5d5eb`). No files were edited.
+
+| Check | Result | Detail |
+|---|---|---|
+| expected_sql runs | pass | 69 of 69 `SUCCEEDED` (read-only SELECTs on warehouse `24087b85239cacac`, rendered from `resolved_target.json`) |
+| expected_answer recheck | pass | 30 scalar answers match within relative 1e-4 |
+| notes lists every id | pass | All 69 ids appear with `SUCCEEDED` in `fulfillment_procurement_notes.md` |
+| benchmark coverage (this file) | pass | Per view 18/17/17/17. Every measure and dimension of the four views is covered. The problems left apply only to the whole set (fewer than 100 questions, 0% cross-view, other views), which sessions 32 and 34 own |
+| no resolved names in YAML | pass | Every expected_sql is tokenized |

@@ -1,10 +1,18 @@
 # 2026-11-26 - Wave 1-6, session 31: TPC-H glossary as DRAFT UC Pages (development domain)
 
-Run `1020175336236697`, branch `mg-genie-ontology-build-1-plan` (checked read-only), mode `edit` with `allow_execute`. Authorization used: `workspace.write` for DRAFT pages of the 23 TPC-H terms in the development domain. The domain id was read from `.local/build-1.json` at runtime and is not written in any file this session produced.
+Runs `1020175336236697` (first) and `629243800379582` (rerun after the SDK fix), branch `mg-genie-ontology-build-1-plan` (checked read-only), mode `edit` with `allow_execute`. Authorization used: `workspace.write` for DRAFT pages of the 23 TPC-H terms in the development domain. The domain id was read from `.local/build-1.json` at runtime and is not written in any file this session produced.
 
-## Outcome: blocked (idempotency check needs an SDK fix outside this session's paths)
+## Outcome: pass (after rerun in run `629243800379582`)
 
-23 DRAFT pages exist and are recorded. The second upsert reported 12 changes, not 0, because of an SDK comparison defect in `pages.py` (owned by session 20, wave 1-1).
+23 DRAFT pages exist and are recorded. Run `1020175336236697` stopped blocked: the second upsert reported 12 changes because of an SDK comparison defect in `pages.py`. The owner fixed it in commit `ea5d5eb` (synonyms compared order-insensitively); the rerun reports 0 changes.
+
+## Rerun (run `629243800379582`)
+
+* Branch checked read-only: `mg-genie-ontology-build-1-plan` at `ea5d5eb`, `_normalize` now returns `sorted(value or [])` for `synonyms`.
+* Dry run with `only_ids` = the 23 recorded ids: 23 `unchanged` (7 advisory `collision_other_domain`, never written).
+* Live upsert (task 2) and second live upsert (task 4), both `only_ids` = the 23 ids: 23 `unchanged` each, **0 changes**, no pages created.
+* `GET` per page: 23 `DRAFT`, all in the development domain. Domain page count 41 before and after; all 41 pages byte-identical (sha256 of full `GET`).
+* `pages_registration.md`: outcome section updated with pass 4; the created-pages table and cleanup section are unchanged (23 rows, ids equal to the recorded ids). No domain id in the file.
 
 ## What was done
 
@@ -30,7 +38,7 @@ Run this session again (it is idempotent: with `only_ids` = the recorded 23 ids 
 | dry run with domain_id | pass: 23 creates, 0 not-owned, 7 collisions (other domains, untouched) |
 | live upsert | pass: 23 created, all DRAFT in the development domain, 18 existing pages unchanged |
 | pages_drafts: registration has one row per term with page id and DRAFT, domain shown as "development domain" | pass: 23 rows, ids equal to the created ids |
-| pages_drafts: second upsert 0 changes | fail: 12 `updated` (`synonyms` order, SDK defect) |
+| pages_drafts: second upsert 0 changes | first run fail (12 `updated`, SDK defect); rerun pass: 23 `unchanged` |
 | grep of owned files for the domain id | pass: not found (no `domains/` string either) |
 
 ## Files and assets
@@ -40,5 +48,5 @@ Run this session again (it is idempotent: with `only_ids` = the recorded 23 ids 
 
 ## Requests
 
-* Owner (or a new build-1 session that owns `pages.py` / `tests/test_pages.py`): make the synonyms comparison order-insensitive as above, then rerun session 31 so task 4 reports 0 changes. Priority high: it is why this session is blocked.
+* Resolved: the synonyms fix (owner commit `ea5d5eb`) closed the earlier high-priority request.
 * Tuning sessions that reuse these pages (36-41): pass the 23 ids from `pages_registration.md` as `only_ids`, with the same `domain_id`.

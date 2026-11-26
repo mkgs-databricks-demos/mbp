@@ -60,3 +60,13 @@ These dimensions are not covered by `cross_view.yml`, so the single-view files h
 
 * `examples/tpch/docs/tuning/benchmark/cross_view.yml`
 * `examples/tpch/docs/tuning/benchmark/cross_view_notes.md`
+
+## Repair run `629243800379582` (re-validation, already completed)
+
+* Why it ran again: the wave 1-6 gate in run `1020175336236697` failed only because of session 31 (pages idempotency, `pages._normalize`). Session 34 passed and its files were committed at `e680f01`.
+* Branch: the Git folder `mbp` is on `mg-genie-ontology-build-1-plan` at `ea5d5eb`, checked read-only through the Repos API. No Git commands were run.
+* Changes: none. `cross_view.yml` and `cross_view_notes.md` were left as they are.
+* Checks, run again in a /tmp copy of build_root:
+  * `expected_sql_runs`: pass. All 105 questions (`x001`-`x105`) were rendered with `resolved_target.json` and run read-only on warehouse `24087b85239cacac`. 105/105 SUCCEEDED. Every statement is a `WITH`/`SELECT`, and none contains a resolved catalog, schema or `samples.tpch`.
+  * The notes file lists every question id with SUCCEEDED: pass.
+  * `benchmark_coverage` over all three files and the 7 metric view YAMLs: pass, with no problems. 233 questions: sales 59, fulfillment_procurement 69, cross_view 105. Every view has at least 37 questions. Every measure and dimension is covered. The cross-view share is 45.1%.

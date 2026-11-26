@@ -36,3 +36,12 @@ None. Session 34: the sales file adds no cross-view questions, so the 25% cross-
 
 * `examples/tpch/docs/tuning/benchmark/sales.yml` (new)
 * `examples/tpch/docs/tuning/benchmark/sales_notes.md` (new)
+
+## Re-validation (job run 629243800379582, already completed)
+
+Session 32 passed in run 1020175336236697 and its files were committed in `e680f01` (`wave(1-6): 32, 33, 34`). This run re-validated it without changing any owned file. Branch `mg-genie-ontology-build-1-plan`, head `ea5d5eb`, checked read-only.
+
+* No commit since the earlier pass touched the metric view YAMLs, `resolved_target.json` or `sales.yml`, and `git status` shows `sales.yml` and `sales_notes.md` clean.
+* `benchmark coverage --json` on `sales.yml` alone plus the 3 view YAMLs: 59 questions (orders 19, revenue 23, market_share 17), all 16 measures and 26 dimensions covered. The only problems are the 3 set-level ones that sessions 33 and 34 cover.
+* All 59 `expected_sql` rendered from `resolved_target.json` and re-run read-only on its warehouse: 59/59 SUCCEEDED. No resolved catalog, schema or warehouse id appears in `sales.yml`.
+* `sales_notes.md` was not rewritten. It keeps the statement ids from the original run.
