@@ -131,5 +131,28 @@
       "correct": 180,
       "n": 191
     }
+  },
+  {
+    "changes": [
+      {
+        "step": 1,
+        "view": "mv_tpch_supply_chain_fulfillment",
+        "what": "Q12 Late Receipt Count comment: Q12 reports per ship mode and priority group; keep Ship Mode with High Priority when modes are named"
+      }
+    ],
+    "eval_run_id": "01f1e9ae68ee11e59b439813000f7b87",
+    "holdout": {
+      "accuracy": 0.8809523809523809,
+      "correct": 37,
+      "n": 42
+    },
+    "iteration": 3,
+    "label": "tuning_plan_03",
+    "started_at": "2026-11-26T15:31:11+00:00",
+    "tuning": {
+      "accuracy": 0.93717277486911,
+      "correct": 179,
+      "n": 191
+    }
   }
 ]

@@ -86,7 +86,7 @@ measures:
       type: percentage
   - name: Q12 Late Receipt Count
     expr: COUNT(1) FILTER (WHERE source.l_receiptdate > source.l_commitdate AND source.l_shipdate < source.l_commitdate)
-    comment: "Lines shipped before the commit date but still received after it (TPC-H Q12 basis); group by Ship Mode and High Priority"
+    comment: "Lines shipped before the commit date but still received after it (TPC-H Q12 basis). TPC-H Q12 reports late receipts per ship mode and order priority group: when a question names ship modes, keep Ship Mode in the grouping together with High Priority (one row per mode and High Priority value), not only the priority split"
   - name: Average Fulfillment Cycle Days
     expr: AVG(DATEDIFF(source.l_receiptdate, orders.o_orderdate))
     comment: "Mean days from order date to line receipt (proxy for SCOR order fulfillment cycle time, line basis)"

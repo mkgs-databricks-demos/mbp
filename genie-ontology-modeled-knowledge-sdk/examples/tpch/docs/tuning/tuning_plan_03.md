@@ -1,7 +1,7 @@
 # Tuning Plan 03 — tpch_supply_chain_agent
 
 Written by: iteration 2 (session 37, build run 829522414538457, 2026-11-26), from fresh triage of the tuning-split failures in iterations/02.md (eval run 01f1e9a5cbae1ec8817029d8fb8334e6).
-Applied by: iteration 3.
+Applied by: iteration 3 (session 38, build run 829522414538457, 2026-11-26). **Status: applied** (1 applied, 0 reverted). Result: eval run 01f1e9ae68ee11e59b439813000f7b87, see iterations/03.md.
 Rule: MV-first (ladder steps 1-8 before 9-10). Holdout: numbers only (97.6%, 41/42); no holdout question is cited here.
 
 Iteration-2 tuning accuracy 94.2% (180/191). 11 tuning-split failures, each with one category: Benchmark defect 10 (7 carried, 3 new grading-strictness: x032, x062, x070), Ambiguity 1 (f008, a regression not caused by a plan-02 action). Triage is from the generated SQL versus the expected SQL (no result rows in the eval details).
@@ -12,7 +12,7 @@ Iteration-2 tuning accuracy 94.2% (180/191). 11 tuning-split failures, each with
 
 | # | Question ids | Category | Ladder step | Change | Expected effect | Status | Outcome |
 |---|---|---|---|---|---|---|---|
-| 1 | f008 | Ambiguity | 1 comment | `Q12 Late Receipt Count` comment: TPC-H Q12 reports late receipts per ship mode and order priority group; when a question names ship modes, keep `Ship Mode` in the grouping (one row per mode and High Priority value), not only the priority split | rows per ship mode and priority; fixes the f008 regression | planned | |
+| 1 | f008 | Ambiguity | 1 comment | `Q12 Late Receipt Count` comment: TPC-H Q12 reports late receipts per ship mode and order priority group; when a question names ship modes, keep `Ship Mode` in the grouping (one row per mode and High Priority value), not only the priority split | rows per ship mode and priority; fixes the f008 regression | applied | f008 fixed: agent groups by Ship Mode and High Priority (register run 390630077686402 SUCCESS) |
 
 ### Agent (steps 9-10, exhaustion record required)
 
