@@ -1,7 +1,20 @@
 # Session 30 (wave 1-5): TPC-H Metric Views on the Wheel, Ratio Units, Re-registration
 
-* Build run: `288268071022101` (task `w1-5_session`), branch `mg-genie-ontology-build-1-plan`, continuation 0.
-* Mode: edit (allow_execute, allow_deploy). Status: **blocked** at task 3 (deploy).
+* Build runs: `288268071022101` (first run, **blocked** at task 3 deploy), then `1020175336236697` (this run, continuation 0, resumed from task 3). Task `w1-5_session`, branch `mg-genie-ontology-build-1-plan`.
+* Mode: edit (allow_execute, allow_deploy). Final status: **pass**.
+
+## Run 1020175336236697 (resume)
+
+* Owner fix after run 288268071022101: `consumer_group` replaced by the complex variable `schema_grants` in `databricks.yml` and `resources/ontology_schema.yml` (owner edits in the working tree, kept; the integrator commits them). The dev overrides now have only `catalog`, `sdk_volume_path`, `warehouse_id` (values not printed). Dev grant = the deploying developer (`USE_SCHEMA`, `SELECT`).
+* Git: on `mg-genie-ontology-build-1-plan` (read only, no Git commands run). The plan says to commit the owner's edits; the session runner makes Git read-only for sessions, so that is left to the integrator.
+* **Task 3:** `bundle validate --strict -t dev` OK; `bundle deploy -t dev` OK (`Updated schemas.ontology_schema.grants`). Registration run `952753866246519` (job `1000154254892119`) **SUCCESS**: generate_manifest 7 views / 0 warnings, register_each_mv 7/7, smoke 7/7, cardinality 7/7 checked / 0 failed. Every iteration reported `sdk_source = wheel`, `sdk_version = 0.1.0`, `sdk_file` under `site-packages` (no `vendored` in the path).
+* **Task 4:** `ddl_after_wheel.sql` rendered with `mv_yaml.render_ddl` from the YAML the job registered (source-linked deploy, so the working-tree YAML), the same way as `ddl_before_wheel.sql` (sentinel target, then `${target_catalog}.${target_schema}`; views joined with `;\n\n`, trailing `;\n`). The file was written with the file tools and read back: **byte-equal** to `ddl_before_wheel.sql` (31,864 bytes each, same sha256 prefix `ecf9d1476d385c22`). Cross-check by a different method: the `DESCRIBE TABLE EXTENDED ... AS JSON` view text of all 7 registered views parses to the same `version`, `source`, `comment`, `dimensions`, `measures`, `joins` as the YAML. The `joins` match only after mapping PyYAML's YAML 1.1 `True` key back to `on`: the platform quotes `on`, and the local YAML is unquoted.
+* **Task 5 (obs 30):** `mv_tpch_supply_chain_returns.yml`: the `Return Rate` and `Return Line Rate` comments now state "a fraction 0-1 (0.25 = 25%; the percentage format is display only)". Both already had `format: percentage` (pattern C5 verified by session 25), so the format is unchanged. `mv_yaml validate`: 7 files, 0 errors, 0 warnings. Re-registration attempt 1 (of max 4): deploy OK (0 changed, source-linked), run `618563053116947` **SUCCESS** with the same counts as above, all 7 from wheel 0.1.0. The registered returns view text contains `fraction 0-1` twice; `MEASURE(Return Rate)` = 0.2470 and `MEASURE(Return Line Rate)` = 0.2469 over the whole view (still 0-1).
+* **Task 6:** `gos-resolve-target` cannot call the Databricks CLI from serverless notebook shells ("only supported for interactive use from the web terminal"). So `bundle summary -o json -t dev` ran through the CLI tool, and its `ontology_schema` and `warehouse_id` were passed to `targets.target_from_summary`. The result was written in `write_resolved_target`'s format to `examples/tpch/docs/registration/resolved_target.json`. Check: the schema is in `information_schema.schemata` (1 row), and `information_schema.tables` lists all 7 views as `METRIC_VIEW`. **Note for session 45:** the wave 1-17 identifier grep must exclude this one file (it holds the resolved dev schema name and warehouse id).
+* **Task 7:** `registration_results.md` rewritten: build-1 section (wheel, DDL identity, obs 30, per-view status) on top, build-0 results kept below. No run ids in that file.
+* Final `bundle validate --strict -t dev`: OK. No `genie_ontology_modeled_knowledge_sdk_vendored` folder under `examples/tpch/` (`find`: 0).
+
+## Run 288268071022101 (first run, blocked)
 
 ## Prerequisite checks
 
@@ -28,22 +41,21 @@ The `consumer_group` value in the gitignored `examples/tpch/ontology-metric-view
 
 **Owner action:** set `consumer_group` to an account-level group that UC resolves (e.g. `account users`, or a named account group) in that overrides file, then re-run this session.
 
-## Not done (resume from here)
-
-* Task 3: deploy, `bundle run register_metric_views -t dev`, and confirm `sdk_source` = wheel with `__version__` 0.1.0 in the run output.
-* Task 4: `ddl_after_wheel.sql` (the YAML is unchanged so far, so a render of the current YAML equals `ddl_before_wheel.sql`).
-* Task 5: obs 30 `Return Rate` / `Return Line Rate` comments ("fraction 0-1") and percentage format, `mv_yaml validate`, re-register.
-* Task 6: `gos-resolve-target` into `examples/tpch/docs/registration/resolved_target.json`. Note for session 45: the wave 1-17 identifier grep must exclude this one file.
-* Task 7: `registration_results.md`.
+Resolved by the owner (`schema_grants`) and completed in run `1020175336236697` above.
 
 ## Resolved targets (dev)
 
-* Job `register_metric_views`: `1000154254892119`.
-* Ontology schema: the dev-prefixed `ontology` schema in the overrides catalog (see `bundle summary -t dev`).
+* Job `register_metric_views`: `1000154254892119` (bundle deployment `975815647682859`).
+* Ontology schema: `hls_fde_dev.dev_matthew_giglia_ontology` (also in `resolved_target.json`).
 
-## Files modified
+## Files modified (both runs)
 
-* `examples/tpch/docs/registration/ddl_before_wheel.sql` (new)
-* `examples/tpch/ontology-metric-views/databricks.yml`
-* `examples/tpch/ontology-metric-views/resources/register_metric_views.job.yml`
-* `examples/tpch/ontology-metric-views/notebooks/register_single_mv.ipynb`
+* `examples/tpch/docs/registration/ddl_before_wheel.sql` (new, run 1)
+* `examples/tpch/docs/registration/ddl_after_wheel.sql` (new, this run)
+* `examples/tpch/docs/registration/resolved_target.json` (new, this run)
+* `examples/tpch/docs/registration/registration_results.md` (this run)
+* `examples/tpch/ontology-metric-views/metric_views/tpch_supply_chain/mv_tpch_supply_chain_returns.yml` (this run, obs 30)
+* `examples/tpch/ontology-metric-views/databricks.yml` (run 1, plus the owner's `schema_grants` edit)
+* `examples/tpch/ontology-metric-views/resources/ontology_schema.yml` (owner's `schema_grants` edit, inside owned paths)
+* `examples/tpch/ontology-metric-views/resources/register_metric_views.job.yml` (run 1)
+* `examples/tpch/ontology-metric-views/notebooks/register_single_mv.ipynb` (run 1)

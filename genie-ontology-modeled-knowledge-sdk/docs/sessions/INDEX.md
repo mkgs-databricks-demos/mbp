@@ -6,6 +6,7 @@ Sessions are listed in reverse chronological order.
 
 | Date | Session | Summary |
 |---|---|---|
+| 2026-11-26 | [W1-5 / 30 TPC-H Metric Views on the Wheel, Ratio Units, Re-registration](2026-11-26_w1-5-30-tpch-mv-refresh.md) | Wave 1-5, session 30, mode edit, status pass: deployed on the 0.1.0 wheel, registration runs 952753866246519 and 618563053116947 SUCCESS, 7/7 smoke + cardinality, DDL before/after identical, Return Rate units fixed (obs 30), resolved_target.json (run 1020175336236697) |
 | 2026-11-26 | [W1-5 / 30 TPC-H Metric Views on the Wheel, Ratio Units, Re-registration](2026-11-26_w1-5-30-tpch-mv-refresh.md) | Wave 1-5, session 30, mode edit, status blocked: ddl_before_wheel.sql captured, wheel template applied, validate pass; dev deploy fails on schema grants (consumer_group not a UC principal), registration not run (run 288268071022101) |
 | 2026-11-26 | [W1-4 / 29 Guided Setup Notebook (R6)](2026-11-26_w1-4-29-guided-setup.md) | Wave 1-4, session 29, mode edit, status pass: setup_project.py, setup_sdk and init_ontology_project notebooks, docs/usage.md; guided_setup check pass (run 288268071022101) |
 | 2026-11-26 | [W1-4 / 28 Run Kit Fixes & Exhaustive Tuning Waves (R3)](2026-11-26_w1-4-28-run-kit.md) | Wave 1-4, session 28, mode edit, status pass: run kit branch/authorization/wheel/tuning-wave fixes, tests/test_run_kit.py; pytest 488 pass (run 288268071022101) |

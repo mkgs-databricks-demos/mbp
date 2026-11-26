@@ -8,8 +8,5 @@ resources:
       catalog_name: ${var.catalog}
       name: ${var.schema_name}
       comment: Genie Ontology metric views (registered by the register_metric_views job)
-      grants:
-        - principal: ${var.consumer_group}
-          privileges:
-            - USE_SCHEMA
-            - SELECT
+      # var.schema_grants: the deploying developer in dev, `account users` elsewhere.
+      grants: ${var.schema_grants}
