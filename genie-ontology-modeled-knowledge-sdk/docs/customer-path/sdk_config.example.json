@@ -1,0 +1,18 @@
+{
+  "target_catalog": "<target_catalog>",
+  "target_schema": "<target_schema>",
+  "domain_name": "bakehouse_retail_sales",
+  "domain_context": "Bakehouse retail franchise sales: customers buy baked goods at franchise stores; each franchise sources ingredients from one supplier. Model sales revenue, quantity, basket and payment mix by product, franchise, city, country and time, plus customer and supplier coverage.",
+  "source_tables": [
+    "samples.bakehouse.sales_transactions",
+    "samples.bakehouse.sales_customers",
+    "samples.bakehouse.sales_franchises",
+    "samples.bakehouse.sales_suppliers"
+  ],
+  "warehouse_id": "<warehouse_id>",
+  "max_metric_views_per_agent": 30,
+  "skills": {
+    "catalog": "<sdk_catalog>",
+    "schema": "<sdk_schema>"
+  }
+}
