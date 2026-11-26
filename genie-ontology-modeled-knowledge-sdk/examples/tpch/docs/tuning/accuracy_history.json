@@ -154,5 +154,33 @@
       "correct": 179,
       "n": 191
     }
+  },
+  {
+    "changes": [
+      {
+        "step": 1,
+        "view": "mv_tpch_supply_chain_profit",
+        "what": "view comment: YoY difference only when YoY/annual change or growth is asked; a change over a range of years is a trend (Profit per Order Year)"
+      },
+      {
+        "step": 1,
+        "view": "mv_tpch_supply_chain_revenue",
+        "what": "Revenue comment: net revenue = this measure, do not subtract Returned Revenue; inner join on Ship Mode across views"
+      }
+    ],
+    "eval_run_id": "01f1e9b700941e0babec9fa9438fbc86",
+    "holdout": {
+      "accuracy": 0.9285714285714286,
+      "correct": 39,
+      "n": 42
+    },
+    "iteration": 4,
+    "label": "tuning_plan_04",
+    "started_at": "2026-11-26T16:32:42+00:00",
+    "tuning": {
+      "accuracy": 0.9424083769633508,
+      "correct": 180,
+      "n": 191
+    }
   }
 ]

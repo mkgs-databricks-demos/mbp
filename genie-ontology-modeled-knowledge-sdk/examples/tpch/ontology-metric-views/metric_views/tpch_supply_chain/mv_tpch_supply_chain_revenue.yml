@@ -94,7 +94,7 @@ dimensions:
 measures:
   - name: Revenue
     expr: SUM(source.l_extendedprice * (1 - source.l_discount))
-    comment: "Net revenue in USD: extended price after discount, before tax (TPC-H sum_disc_price). To compare it with the order-header Order Total Price (mv_tpch_supply_chain_orders), show both and their ratio Revenue / Order Total Price. A selection with no lines returns NULL; report the NULL, do not COALESCE it to 0"
+    comment: "Net revenue in USD: extended price after discount, before tax (TPC-H sum_disc_price). To compare it with the order-header Order Total Price (mv_tpch_supply_chain_orders), show both and their ratio Revenue / Order Total Price. A selection with no lines returns NULL; report the NULL, do not COALESCE it to 0. Net revenue means this measure (net of discount); do not subtract Returned Revenue or refunds unless the question asks for revenue after returns. Combined with other views by Ship Mode, join the per-mode results with an inner join on Ship Mode"
     synonyms:
       - net revenue
       - discounted revenue

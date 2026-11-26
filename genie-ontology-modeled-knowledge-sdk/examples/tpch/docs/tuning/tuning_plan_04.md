@@ -1,7 +1,7 @@
 # Tuning Plan 04 — tpch_supply_chain_agent
 
 Written by: iteration 3 (session 38, build run 829522414538457, 2026-11-26), from fresh triage of the tuning-split failures in iterations/03.md (eval run 01f1e9ae68ee11e59b439813000f7b87).
-Applied by: iteration 4.
+Applied by: iteration 4 (session 39, build run 829522414538457, 2026-11-26). **Status: applied** (2 applied, 0 reverted). Eval run 01f1e9b700941e0babec9fa9438fbc86: tuning 94.2% (180/191), holdout 92.9% (39/42).
 Rule: MV-first (ladder steps 1-8 before 9-10). Holdout: numbers only (88.1%, 37/42); no holdout question is cited here.
 
 Iteration-3 tuning accuracy 93.7% (179/191), -0.5 pp. 12 tuning-split failures, each with one category: Benchmark defect 10 (unchanged from plan 03), Ambiguity 2 (f042, x094, both regressions). Triage is from the generated SQL versus the expected SQL (no result rows in the eval details).
@@ -12,13 +12,13 @@ Iteration-3 tuning accuracy 93.7% (179/191), -0.5 pp. 12 tuning-split failures, 
 
 | # | Question ids | Category | Ladder step | Change | Expected effect | Status | Outcome |
 |---|---|---|---|---|---|---|---|
-| 1 | f042 | Ambiguity | 1 comment | View `comment`: replace "return only the changes asked for, not the underlying yearly values" with: "Return a year-over-year difference only when the question asks for the year-over-year (or annual) change or growth; a question about how yearly profit changed over a range of years is a trend: return Profit per Order Year." Keep the rest of the sentence (absolute difference, keep the first year with a NULL change) | f042 returns `Profit` by `Order Year`; x063 (fixed by plan-02 action 3) keeps passing | planned | |
+| 1 | f042 | Ambiguity | 1 comment | View `comment`: replace "return only the changes asked for, not the underlying yearly values" with: "Return a year-over-year difference only when the question asks for the year-over-year (or annual) change or growth; a question about how yearly profit changed over a range of years is a trend: return Profit per Order Year." Keep the rest of the sentence (absolute difference, keep the first year with a NULL change) | f042 returns `Profit` by `Order Year`; x063 (fixed by plan-02 action 3) keeps passing | applied | f042 fixed; x063 still passes |
 
 ### mv_tpch_supply_chain_revenue
 
 | # | Question ids | Category | Ladder step | Change | Expected effect | Status | Outcome |
 |---|---|---|---|---|---|---|---|
-| 2 | x094 | Ambiguity | 1 comment | `Revenue` measure comment: add "Net revenue means this measure (net of discount); do not subtract Returned Revenue or refunds unless the question asks for revenue after returns. Combined with other views by Ship Mode, join the per-mode results with an inner join on Ship Mode" | x094 returns `Revenue` with inner joins; no change to other revenue questions | planned | |
+| 2 | x094 | Ambiguity | 1 comment | `Revenue` measure comment: add "Net revenue means this measure (net of discount); do not subtract Returned Revenue or refunds unless the question asks for revenue after returns. Combined with other views by Ship Mode, join the per-mode results with an inner join on Ship Mode" | x094 returns `Revenue` with inner joins; no change to other revenue questions | applied | x094 fixed; no revenue-view regression |
 
 ### Agent (steps 9-10, exhaustion record required)
 
