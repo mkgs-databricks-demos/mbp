@@ -1,0 +1,277 @@
+# subdomain: sales
+# POS transaction-grain sales metrics for the bakehouse franchise chain.
+# One row of source = one sales transaction (single product line; transactionID unique, 3333 rows).
+# Excluded on purpose: cardNumber (sensitive payment card number) and customer personal data.
+version: 1.1
+comment: "Point-of-sale sales of the bakehouse franchise chain at transaction grain (one row per transaction, one product line each). Revenue, units, ticket, basket, payment mix, store sales and supplier share of sales by product, franchise, city, country, customer geography and time. Data covers 2024-05-01 to 2024-05-17 only (2024-05-17 partial). Prices are integers and the currency is not stated in the source."
+
+source: ${source_catalog}.${source_schema}.sales_transactions
+
+joins:
+  # verified: sales_transactions -> sales_customers on customerID = customerID, orphan_rate 0.0
+  - name: customer
+    source: ${source_catalog}.${source_schema}.sales_customers
+    on: source.customerID = customer.customerID
+    cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+  # verified: sales_transactions -> sales_franchises on franchiseID = franchiseID, orphan_rate 0.0
+  - name: franchise
+    source: ${source_catalog}.${source_schema}.sales_franchises
+    on: source.franchiseID = franchise.franchiseID
+    cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+    joins:
+      # verified: sales_franchises -> sales_suppliers on supplierID = supplierID, orphan_rate 0.4375 (one_to_one; left join keeps franchises without a supplier row)
+      - name: supplier
+        source: ${source_catalog}.${source_schema}.sales_suppliers
+        on: franchise.supplierID = supplier.supplierID
+        cardinality: many_to_one
+        rely:
+          at_most_one_match: true
+
+dimensions:
+  - name: Transaction Date
+    expr: CAST(source.dateTime AS DATE)
+    comment: "Calendar date of the sale (from the transaction timestamp)"
+    synonyms:
+      - sale date
+      - date
+      - day
+    format:
+      type: date
+      date_format: year_month_day
+  - name: Transaction Week
+    expr: CAST(DATE_TRUNC('WEEK', source.dateTime) AS DATE)
+    comment: "Monday of the ISO week of the sale"
+    synonyms:
+      - week
+      - sales week
+  - name: Transaction Hour
+    expr: HOUR(source.dateTime)
+    comment: "Hour of day of the sale, 0-23"
+    synonyms:
+      - hour of day
+      - daypart
+  - name: Day of Week
+    expr: DATE_FORMAT(source.dateTime, 'EEEE')
+    comment: "Weekday name of the sale (Monday ... Sunday)"
+    synonyms:
+      - weekday
+  - name: Product
+    expr: source.product
+    comment: "Baked good sold (6 products)"
+    synonyms:
+      - SKU
+      - item
+      - baked good
+  - name: Payment Method
+    expr: source.paymentMethod
+    comment: "Card brand used to pay: mastercard, amex or visa"
+    synonyms:
+      - tender type
+      - payment type
+      - card brand
+  - name: Franchise ID
+    expr: source.franchiseID
+    comment: "Franchise store identifier. Use it to group stores: franchise names are not unique"
+    synonyms:
+      - store id
+  - name: Franchise Name
+    expr: franchise.name
+    comment: "Franchise store name (display label; two names are used by two stores each, so group by Franchise ID)"
+    synonyms:
+      - store
+      - store name
+      - franchise
+      - outlet
+  - name: Franchise City
+    expr: franchise.city
+    comment: "City of the franchise store"
+    synonyms:
+      - store city
+      - city
+  - name: Franchise District
+    expr: franchise.district
+    comment: "Neighbourhood of the franchise store"
+  - name: Franchise Country
+    expr: franchise.country
+    comment: "Country of the franchise store. Uses 'US' for the United States (customer country uses 'USA')"
+    synonyms:
+      - store country
+      - country
+  - name: Franchise Size
+    expr: franchise.size
+    comment: "Store size class code: S, M, L, XL, XXL (meaning not confirmed in the source)"
+    synonyms:
+      - store size
+  - name: Customer Country
+    expr: customer.country
+    comment: "Home country of the buying customer. Uses 'USA' for the United States (franchise country uses 'US')"
+  - name: Customer Continent
+    expr: customer.continent
+    comment: "Home continent of the buying customer"
+  - name: Customer Gender
+    expr: customer.gender
+    comment: "Gender of the buying customer: female or male"
+  - name: Supplier Name
+    expr: COALESCE(franchise.supplier.name, 'Unknown supplier')
+    comment: "Ingredient supplier of the franchise that made the sale. 'Unknown supplier' for the 21 of 48 franchises whose supplierID has no row in the supplier table (44.4% of transactions)"
+    synonyms:
+      - vendor
+      - ingredient supplier
+  - name: Supplier Ingredient
+    expr: COALESCE(franchise.supplier.ingredient, 'Unknown')
+    comment: "Ingredient the franchise's supplier provides; 'Unknown' when the supplier row is missing"
+    synonyms:
+      - ingredient
+  - name: Supplier Continent
+    expr: COALESCE(franchise.supplier.continent, 'Unknown')
+    comment: "Continent of the franchise's supplier; 'Unknown' when the supplier row is missing"
+  - name: Has Supplier Record
+    expr: franchise.supplier.supplierID IS NOT NULL
+    comment: "True when the franchise's supplierID exists in the supplier table"
+
+measures:
+  - name: Gross Sales Revenue
+    expr: SUM(source.totalPrice)
+    comment: "Sum of transaction totalPrice (quantity x unit price), before discounts and returns (none recorded). Currency not stated in the source"
+    synonyms:
+      - revenue
+      - sales
+      - total sales
+    format:
+      type: number
+      decimal_places:
+        type: exact
+        places: 0
+  - name: Transaction Count
+    expr: COUNT(1)
+    comment: "Number of POS transactions. transactionID is unique per row, so this equals COUNT(DISTINCT transactionID)"
+    synonyms:
+      - number of transactions
+      - ticket count
+      - order count
+  - name: Units Sold
+    expr: SUM(source.quantity)
+    comment: "Total units of baked goods sold"
+    synonyms:
+      - quantity sold
+      - items sold
+  - name: Average Transaction Value
+    expr: MEASURE(`Gross Sales Revenue`) / MEASURE(`Transaction Count`)
+    comment: "Gross sales revenue per transaction (ratio of sums), source currency"
+    synonyms:
+      - ATV
+      - average ticket
+      - average check
+      - AOV
+  - name: Units per Transaction
+    expr: MEASURE(`Units Sold`) / MEASURE(`Transaction Count`)
+    comment: "Units sold per transaction (basket size, ratio of sums)"
+    synonyms:
+      - basket size
+      - UPT
+      - items per transaction
+  - name: Average Unit Price
+    expr: MEASURE(`Gross Sales Revenue`) / MEASURE(`Units Sold`)
+    comment: "Gross sales revenue per unit sold, source currency. Constant 3 in the current data (unitPrice never varies)"
+    synonyms:
+      - average selling price
+      - ASP
+  - name: Buying Customer Count
+    expr: COUNT(DISTINCT source.customerID)
+    comment: "Distinct customers with at least one transaction in the query group"
+    synonyms:
+      - unique customers
+  - name: Selling Franchise Count
+    expr: COUNT(DISTINCT source.franchiseID)
+    comment: "Distinct franchise stores with at least one transaction in the query group"
+    synonyms:
+      - number of stores
+      - store count
+  - name: Sales per Franchise
+    expr: MEASURE(`Gross Sales Revenue`) / MEASURE(`Selling Franchise Count`)
+    comment: "Gross sales revenue per selling franchise store in the query group, source currency"
+    synonyms:
+      - sales per store
+      - store sales
+  - name: Observed Days
+    expr: (UNIX_TIMESTAMP(MAX(source.dateTime)) - UNIX_TIMESTAMP(MIN(source.dateTime))) / 86400.0
+    comment: "Length in days of the observed sales window in the query group (last minus first transaction timestamp)"
+  - name: Average Unit Volume (Annualised)
+    expr: MEASURE(`Sales per Franchise`) * 365.0 / NULLIF(MEASURE(`Observed Days`), 0)
+    comment: "Proxy: sales per franchise store extrapolated to 365 days from the observed window (data covers about 16.5 days), source currency. Not an actual annual figure"
+    synonyms:
+      - AUV
+      - average sales per unit
+  - name: Revenue All Payment Methods
+    expr: SUM(source.totalPrice)
+    comment: "Gross sales revenue across every payment method in the same query group (denominator of Payment Mix Share)"
+    window:
+      - order: Payment Method
+        range: all
+  - name: Payment Mix Share
+    expr: MEASURE(`Gross Sales Revenue`) / MEASURE(`Revenue All Payment Methods`)
+    comment: "Fraction 0-1 of gross sales revenue paid with the payment method, within the other grouped dimensions"
+    synonyms:
+      - tender mix
+      - payment share
+    format:
+      type: percentage
+  - name: Revenue All Suppliers
+    expr: SUM(source.totalPrice)
+    comment: "Gross sales revenue across every supplier (including 'Unknown supplier') in the same query group (denominator of Supplier Sales Share)"
+    window:
+      - order: Supplier Name
+        range: all
+  - name: Supplier Sales Share
+    expr: MEASURE(`Gross Sales Revenue`) / MEASURE(`Revenue All Suppliers`)
+    comment: "Proxy for Supplier Concentration: fraction 0-1 of franchise gross sales revenue made by franchises served by the supplier (no purchase or spend data exists). Rank suppliers by it and sum the top N for top-N concentration"
+    synonyms:
+      - supplier concentration
+      - supplier dependency
+    format:
+      type: percentage
+  - name: Weekly Revenue
+    expr: SUM(source.totalPrice)
+    comment: "Gross sales revenue in the current Transaction Week (current-period side of week-over-week growth)"
+    window:
+      - order: Transaction Week
+        range: current
+  - name: Prior Week Revenue
+    expr: SUM(source.totalPrice)
+    comment: "Gross sales revenue of the same stores in the previous Transaction Week"
+    window:
+      - order: Transaction Week
+        range: current
+        offset: -7 day
+  - name: Same-Store Sales Growth (Week over Week)
+    expr: (MEASURE(`Weekly Revenue`) - MEASURE(`Prior Week Revenue`)) / NULLIF(MEASURE(`Prior Week Revenue`), 0)
+    comment: "Fraction 0-1 (can be negative) change in weekly revenue versus the prior week. Group by Franchise ID for per-store comps. Week over week because the data spans only 17 days (no year-over-year); the first and the partial last week are not comparable"
+    synonyms:
+      - comparable sales growth
+      - like-for-like sales
+      - comps
+    format:
+      type: percentage
+
+materialization:
+  mode: relaxed
+  schedule: every 6 hours
+  materialized_views:
+    - name: sales_by_week_product_payment_country
+      type: aggregated
+      dimensions:
+        - Transaction Week
+        - Product
+        - Payment Method
+        - Franchise Country
+      measures:
+        - Gross Sales Revenue
+        - Transaction Count
+        - Units Sold
+      refresh_policy: auto
+      cluster_by:
+        auto: true

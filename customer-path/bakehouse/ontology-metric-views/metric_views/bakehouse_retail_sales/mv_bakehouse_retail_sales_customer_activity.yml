@@ -1,0 +1,138 @@
+# subdomain: customer
+# Customer-grain activity metrics. One row of source = one registered customer (300 rows),
+# with that customer's purchase activity over the whole observed sales window aggregated from
+# sales_transactions (customerID verified many_to_one, orphan_rate 0.0, every key unique).
+# Customers with no purchase are kept (LEFT JOIN) so Active Customer Rate has the full customer base.
+# Excluded on purpose: names, email, phone, address, city and postal code (personal data).
+version: 1.1
+comment: "Customer coverage and behaviour at customer grain (one row per registered customer): active, repeat and retained customers, revenue per customer, purchase frequency and observed customer value. Activity covers the whole observed sales window (2024-05-01 to 2024-05-17). Retention compares the last 7 days of data with the 7 days before them. Revenue is in the source currency (not stated)."
+
+source: |-
+  SELECT
+    c.customerID AS customer_id,
+    c.country AS country,
+    c.continent AS continent,
+    c.gender AS gender,
+    c.state AS state,
+    COUNT(t.transactionID) AS transaction_count,
+    COALESCE(SUM(t.totalPrice), 0) AS revenue,
+    COALESCE(SUM(t.quantity), 0) AS units,
+    COUNT(DISTINCT t.franchiseID) AS franchises_visited,
+    MIN(t.dateTime) AS first_purchase_at,
+    MAX(t.dateTime) AS last_purchase_at,
+    MAX(CASE WHEN t.dateTime > w.max_ts - INTERVAL 7 DAYS THEN 1 ELSE 0 END) AS active_current_period,
+    MAX(CASE WHEN t.dateTime > w.max_ts - INTERVAL 14 DAYS AND t.dateTime <= w.max_ts - INTERVAL 7 DAYS THEN 1 ELSE 0 END) AS active_prior_period
+  FROM ${source_catalog}.${source_schema}.sales_customers AS c
+  LEFT JOIN ${source_catalog}.${source_schema}.sales_transactions AS t
+    ON t.customerID = c.customerID
+  CROSS JOIN (SELECT MAX(dateTime) AS max_ts FROM ${source_catalog}.${source_schema}.sales_transactions) AS w
+  GROUP BY c.customerID, c.country, c.continent, c.gender, c.state
+
+dimensions:
+  - name: Customer Country
+    expr: source.country
+    comment: "Home country of the customer: Australia, USA or Japan. Uses 'USA' (franchise country uses 'US')"
+    synonyms:
+      - country
+  - name: Customer Continent
+    expr: source.continent
+    comment: "Home continent of the customer (1:1 with country)"
+    synonyms:
+      - continent
+      - region
+  - name: Customer Gender
+    expr: source.gender
+    comment: "Gender of the customer: female or male"
+    synonyms:
+      - gender
+  - name: Customer State
+    expr: source.state
+    comment: "State, prefecture or region of the customer as recorded. Mixes full names and abbreviations (for example 'MS' and 'Mississippi'), so totals by state can be split"
+  - name: Purchase Segment
+    expr: |-
+      CASE
+        WHEN source.transaction_count = 0 THEN 'No purchase'
+        WHEN source.transaction_count = 1 THEN 'One-time'
+        ELSE 'Repeat'
+      END
+    comment: "Customer segment by number of transactions in the observed window"
+    synonyms:
+      - customer segment
+      - loyalty segment
+  - name: Franchises Visited
+    expr: source.franchises_visited
+    comment: "Number of distinct franchise stores the customer bought from in the observed window"
+
+measures:
+  - name: Customer Count
+    expr: COUNT(1)
+    comment: "Registered customers in the customer table (with or without purchases)"
+    synonyms:
+      - registered customers
+      - number of customers
+  - name: Active Customer Count
+    expr: COUNT(1) FILTER (WHERE source.transaction_count > 0)
+    comment: "Customers with at least one transaction in the observed window"
+    synonyms:
+      - active customers
+      - buying customers
+  - name: Active Customer Rate
+    expr: MEASURE(`Active Customer Count`) / MEASURE(`Customer Count`)
+    comment: "Fraction 0-1 of registered customers with at least one transaction in the observed window"
+    synonyms:
+      - customer coverage
+    format:
+      type: percentage
+  - name: Repeat Customer Count
+    expr: COUNT(1) FILTER (WHERE source.transaction_count > 1)
+    comment: "Customers with more than one transaction in the observed window"
+    synonyms:
+      - repeat customers
+  - name: Repeat Purchase Rate
+    expr: MEASURE(`Repeat Customer Count`) / MEASURE(`Active Customer Count`)
+    comment: "Fraction 0-1 of purchasing customers who bought more than once in the observed window"
+    synonyms:
+      - repeat customer rate
+    format:
+      type: percentage
+  - name: Customer Revenue
+    expr: SUM(source.revenue)
+    comment: "Gross sales revenue from the customers in the group over the observed window, source currency"
+    synonyms:
+      - customer sales
+  - name: Customer Transactions
+    expr: SUM(source.transaction_count)
+    comment: "Transactions made by the customers in the group over the observed window"
+  - name: Revenue per Customer
+    expr: MEASURE(`Customer Revenue`) / MEASURE(`Active Customer Count`)
+    comment: "Gross sales revenue per purchasing customer over the observed window, source currency"
+    synonyms:
+      - average revenue per customer
+      - average ticket size per customer
+  - name: Purchase Frequency
+    expr: MEASURE(`Customer Transactions`) / MEASURE(`Active Customer Count`)
+    comment: "Transactions per purchasing customer over the observed window"
+    synonyms:
+      - visit frequency
+      - purchases per customer
+  - name: Observed Customer Value (CLV Proxy)
+    expr: MEASURE(`Customer Revenue`) / MEASURE(`Active Customer Count`)
+    comment: "Proxy for Customer Lifetime Value: observed revenue per purchasing customer over the whole data window (about 17 days), source currency. Equals Revenue per Customer over the full window; no customer lifespan data exists"
+    synonyms:
+      - CLV
+      - LTV
+      - customer lifetime value
+  - name: Prior Period Active Customers
+    expr: COUNT(1) FILTER (WHERE source.active_prior_period = 1)
+    comment: "Customers who bought in the prior period: the 7 days before the last 7 days of data"
+  - name: Retained Customers
+    expr: COUNT(1) FILTER (WHERE source.active_prior_period = 1 AND source.active_current_period = 1)
+    comment: "Customers who bought in both the prior period and the current period (the last 7 days of data)"
+  - name: Customer Retention Rate
+    expr: MEASURE(`Retained Customers`) / MEASURE(`Prior Period Active Customers`)
+    comment: "Proxy, fraction 0-1: customers buying in both the prior 7-day period and the last 7 days of data, divided by customers buying in the prior period. 'Active' means made a purchase (no customer start dates exist)"
+    synonyms:
+      - CRR
+      - retention rate
+    format:
+      type: percentage
