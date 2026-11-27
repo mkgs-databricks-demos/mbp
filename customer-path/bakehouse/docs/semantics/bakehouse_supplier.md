@@ -1,5 +1,5 @@
 ---
-term: Supplier
+term: Bakehouse Supplier
 synonyms: [vendor, ingredient supplier, key supplier]
 domain: bakehouse_retail_sales
 subdomain: franchise_supply

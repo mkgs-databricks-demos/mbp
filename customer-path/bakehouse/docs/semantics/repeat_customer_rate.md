@@ -3,7 +3,7 @@ term: Repeat Customer Rate
 synonyms: [returning customer rate, repeat purchase rate]
 domain: bakehouse_retail_sales
 subdomain: customers
-related_terms: [Purchase Frequency, Customer]
+related_terms: [Purchase Frequency, Bakehouse Customer]
 sources: ['https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/analytics-fields']
 ---
 ## Definition

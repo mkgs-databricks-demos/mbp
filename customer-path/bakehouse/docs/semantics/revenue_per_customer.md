@@ -3,7 +3,7 @@ term: Revenue per Customer
 synonyms: [average revenue per customer, ARPC, spend per customer]
 domain: bakehouse_retail_sales
 subdomain: customers
-related_terms: [Customer, Gross Sales, Purchase Frequency]
+related_terms: [Bakehouse Customer, Gross Sales, Purchase Frequency]
 sources: ['https://x-series-support.lightspeedhq.com/hc/en-us/articles/41595804486171-Understanding-built-in-reports-in-Lightspeed-eCom']
 ---
 ## Definition

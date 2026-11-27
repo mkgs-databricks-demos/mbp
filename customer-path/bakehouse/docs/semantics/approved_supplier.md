@@ -3,7 +3,7 @@ term: Approved Supplier
 synonyms: [approved vendor, certified supplier]
 domain: bakehouse_retail_sales
 subdomain: franchise_supply
-related_terms: [Supplier, Franchise]
+related_terms: [Bakehouse Supplier, Franchise]
 sources: ['https://www.franchise.org/franchising-overview/common-franchising-terms-and-definitions/', 'https://www.ftc.gov/business-guidance/resources/franchise-rule-compliance-guide']
 ---
 ## Definition

@@ -8,8 +8,8 @@
 | subdomain | description | source tables | candidate metric views | glossary terms |
 |---|---|---|---|---|
 | sales | Transactions, products, revenue, basket, payment mix and franchise sales performance | samples.bakehouse.sales_transactions, samples.bakehouse.sales_franchises (shared) | mv_bakehouse_sales (gross sales, units, transactions, ATV, UPT, average selling price, product mix, payment method mix), mv_bakehouse_franchise_sales (sales per franchise, comparable franchise sales growth proxy) | Sales Transaction, Product, Units Sold, Unit Price, Gross Sales, Net Sales, Average Transaction Value, Units per Transaction, Payment Method, Payment Method Mix, Product Mix, Sales per Franchise, Comparable Franchise Sales, Cardholder Data |
-| customers | Customer base, geography and purchase behaviour | samples.bakehouse.sales_customers | mv_bakehouse_customer_activity (revenue per customer, purchase frequency, repeat customer rate, customer coverage) | Customer, Revenue per Customer, Purchase Frequency, Repeat Customer Rate, Customer Coverage |
-| franchise_supply | Franchise network and ingredient suppliers | samples.bakehouse.sales_suppliers, samples.bakehouse.sales_franchises (shared) | mv_bakehouse_supplier_coverage (franchises per supplier, approved supplier share) | Franchise, Supplier, Approved Supplier, Supplier Coverage |
+| customers | Customer base, geography and purchase behaviour | samples.bakehouse.sales_customers | mv_bakehouse_customer_activity (revenue per customer, purchase frequency, repeat customer rate, customer coverage) | Bakehouse Customer, Revenue per Customer, Purchase Frequency, Repeat Customer Rate, Customer Coverage |
+| franchise_supply | Franchise network and ingredient suppliers | samples.bakehouse.sales_suppliers, samples.bakehouse.sales_franchises (shared) | mv_bakehouse_supplier_coverage (franchises per supplier, approved supplier share) | Franchise, Bakehouse Supplier, Approved Supplier, Supplier Coverage |
 
 ## Shared dimensions
 | table | used by subdomains | home subdomain (tie-break) |

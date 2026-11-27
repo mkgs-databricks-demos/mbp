@@ -3,7 +3,7 @@ term: Customer Coverage
 synonyms: [active customer rate, customer reach]
 domain: bakehouse_retail_sales
 subdomain: customers
-related_terms: [Customer, Repeat Customer Rate]
+related_terms: [Bakehouse Customer, Repeat Customer Rate]
 sources: ['https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/analytics-fields']
 ---
 ## Definition

@@ -3,7 +3,7 @@ term: Supplier Coverage
 synonyms: [franchises per supplier, supplier reach]
 domain: bakehouse_retail_sales
 subdomain: franchise_supply
-related_terms: [Supplier, Franchise, Approved Supplier]
+related_terms: [Bakehouse Supplier, Franchise, Approved Supplier]
 sources: ['https://www.franchise.org/franchising-overview/common-franchising-terms-and-definitions/']
 ---
 ## Definition

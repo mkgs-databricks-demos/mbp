@@ -3,7 +3,7 @@ term: Purchase Frequency
 synonyms: [orders per customer, visit frequency, transactions per customer]
 domain: bakehouse_retail_sales
 subdomain: customers
-related_terms: [Customer, Repeat Customer Rate, Revenue per Customer]
+related_terms: [Bakehouse Customer, Repeat Customer Rate, Revenue per Customer]
 sources: ['https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/analytics-fields']
 ---
 ## Definition

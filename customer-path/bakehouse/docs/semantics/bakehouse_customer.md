@@ -1,5 +1,5 @@
 ---
-term: Customer
+term: Bakehouse Customer
 synonyms: [buyer, shopper, guest]
 domain: bakehouse_retail_sales
 subdomain: customers

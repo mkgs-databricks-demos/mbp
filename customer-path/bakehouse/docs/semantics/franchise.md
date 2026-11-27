@@ -3,7 +3,7 @@ term: Franchise
 synonyms: [franchise location, store, franchise unit, outlet, franchisee]
 domain: bakehouse_retail_sales
 subdomain: franchise_supply
-related_terms: [Sales per Franchise, Supplier, Gross Sales]
+related_terms: [Sales per Franchise, Bakehouse Supplier, Gross Sales]
 sources: ['https://www.franchise.org/franchising-overview/common-franchising-terms-and-definitions/', 'https://www.ftc.gov/business-guidance/resources/consumers-guide-buying-franchise']
 ---
 ## Definition

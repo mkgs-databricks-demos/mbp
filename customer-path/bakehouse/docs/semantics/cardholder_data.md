@@ -3,7 +3,7 @@ term: Cardholder Data
 synonyms: [card number, PAN, primary account number, payment card data]
 domain: bakehouse_retail_sales
 subdomain: sales
-related_terms: [Payment Method, Customer]
+related_terms: [Payment Method, Bakehouse Customer]
 sources: ['https://www.pcisecuritystandards.org/document_library/', 'https://docs.databricks.com/aws/en/getting-started/starter-journey/build-first-pipeline/genie-code']
 ---
 ## Definition
