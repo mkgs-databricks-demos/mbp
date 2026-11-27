@@ -36,3 +36,13 @@
 ## Requests for other sessions
 
 * None. Session 05 (metric view synthesis) should rely on `docs/research/`, `docs/semantics/` and `docs/data_profiles/`; there are no supplemental business rules.
+
+## Re-run: build run 244030216249267 (2026-11-27, continuation 0)
+
+* Session already completed in build run 38498872047824 (status `pass`). Re-validated, no files changed.
+* UC skill `hls_fde_dev.dev_matthew_giglia_ontology_sdk.genie_build_session_runner` still could not be loaded; used the workspace fallback `genie-build-waves/src/skills/genie-build-session-runner/SKILL.md`.
+* Re-validation checks:
+  * Branch: Git folder `mbp-bakehouse` is on `genie-build-bakehouse` at `da8098ce738f` (Repos API GET) - pass.
+  * `sdk_config.json` still has no `supplemental_volume_dirs` or `dashboard_inputs`; `docs/inputs_report.md` `## Supplemental inputs` still says none provided - pass.
+  * `docs/context/00_source_inventory.md` exists with `## Status: no supplemental inputs provided` - pass.
+  * `docs/context/` holds only `00_source_inventory.md` and `.gitkeep` (no-inputs path) - pass.

@@ -4,6 +4,7 @@ Genie build session summaries, newest first.
 
 | Date | Wave | Session | Title | Mode | Status | Summary |
 |---|---|---|---|---|---|---|
+| 2026-11-27 | 1 | 02 | Domain Research & Glossary (Bakehouse Customer/Supplier rename) | edit | blocked | [2026-11-27_w1-02-glossary-rename.md](2026-11-27_w1-02-glossary-rename.md) |
 | 2026-11-27 | 4 | 08 | Genie Agent Curation | edit | pass | [2026-11-27_w4-08-agent-curation.md](2026-11-27_w4-08-agent-curation.md) |
 | 2026-11-27 | 4 | 07 | UC Pages Registration | edit | blocked | [2026-11-27_w4-07-uc-pages.md](2026-11-27_w4-07-uc-pages.md) |
 | 2026-11-27 | 3 | 06 | Metric View Registration & Smoke Tests | edit | pass | [2026-11-27_w3-06-metric-view-registration.md](2026-11-27_w3-06-metric-view-registration.md) |
