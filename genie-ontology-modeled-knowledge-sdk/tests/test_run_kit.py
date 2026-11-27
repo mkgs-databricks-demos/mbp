@@ -240,9 +240,27 @@ def test_required_checks_and_bundle_validation(manifest):
     by_id = {w["wave_id"]: w for w in manifest["waves"]}
     checks = {c for w in manifest["waves"] for c in w.get("required_checks", [])}
     assert {"registration_job", "mv_smoke", "resolved_target", "agent_probe", "baseline_results"} <= checks
-    for wid in ["2", "3", "4", "5", "7", "8", "9", "10", "11", "12", "13"]:
+    # The agents bundle has no agents/*.geniespace.json until wave 4 (session 08), so it
+    # cannot render or validate in waves 2-3 (bakehouse child build, run 531733719859424).
+    for wid in ["2", "3"]:
+        roots = {vb["root"] for vb in by_id[wid].get("validate_bundles", [])}
+        assert roots == {"ontology-metric-views"}, wid
+    for wid in ["4", "5", "7", "8", "9", "10", "11", "12", "13"]:
         roots = {vb["root"] for vb in by_id[wid].get("validate_bundles", [])}
         assert roots == {"ontology-metric-views", "ontology-genie-agents"}, wid
+
+
+def test_agents_bundle_validated_only_after_agent_files_exist(manifest):
+    """No wave before the one whose sessions write agents/*.geniespace.json may validate the agents bundle."""
+    first_writer = None
+    for i, w in enumerate(manifest["waves"]):
+        if any("ontology-genie-agents/agents/" in p for s in w.get("sessions", []) for p in s.get("owned_paths", [])):
+            first_writer = i
+            break
+    assert first_writer is not None
+    for w in manifest["waves"][:first_writer]:
+        roots = {vb["root"] for vb in w.get("validate_bundles", [])}
+        assert "ontology-genie-agents" not in roots, w["wave_id"]
 
 
 def test_context_files(manifest):
