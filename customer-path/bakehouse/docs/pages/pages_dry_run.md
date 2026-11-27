@@ -1,5 +1,28 @@
 # UC Pages Dry Run — bakehouse_retail_sales
 
+## Build run 244030216249267 (current)
+
+`upsert_pages(terms, RestPagesClient(ws), domain_id=<sdk_config.json pages_domain_id>, dry_run=True, only_ids=<21 ids from build run 38498872047824>)`, installed SDK wheel 0.1.1. Inputs: `docs/semantics/` 23 terms, all parsed (now `Bakehouse Customer` and `Bakehouse Supplier`, no bare `Customer` / `Supplier`); `docs/context/glossary_candidates/` absent. Domain held 62 pages before the run.
+
+Planned: **2 creates, 8 updates, 13 unchanged, 0 skipped, 0 errors.**
+
+| term | planned action | page id | changed fields | collisions (other domains, advisory) |
+|---|---|---|---|---|
+| Bakehouse Customer | created | - | display_name, description, synonyms, body | 0 |
+| Bakehouse Supplier | created | - | display_name, description, synonyms, body | 0 |
+| Approved Supplier | updated | bf8d3c5f-b0f0-4882-917e-e44200ac2cf9 | body | 0 |
+| Cardholder Data | updated | 424ae16f-ef38-4182-a221-e9222373fc24 | body | 0 |
+| Customer Coverage | updated | 150849da-986f-4173-b94b-a7d26b60c448 | body | 0 |
+| Franchise | updated | 4e7d62d3-253e-4a91-b570-c3af247a0165 | body | 1 |
+| Purchase Frequency | updated | d8737722-c9bf-43cf-899f-2670d2f29284 | body | 0 |
+| Repeat Customer Rate | updated | 787d44b4-939b-474a-9efe-b58452db0e57 | body | 0 |
+| Revenue per Customer | updated | 35e0a5c1-ee4a-4b0e-be87-a2ba08f34167 | body | 1 |
+| Supplier Coverage | updated | 475619f2-92a3-4a2f-8ff2-ecee6f3682d8 | body | 0 |
+
+The other 13 terms are `unchanged`. The updates are the `related_terms` rename (Customer -> Bakehouse Customer, Supplier -> Bakehouse Supplier) in the page body.
+
+## Build run 38498872047824 (earlier)
+
 Wave 4, session 07, build run 38498872047824. `genie_ontology_modeled_knowledge_sdk.pages.upsert_pages(terms, RestPagesClient(ws), domain_id=<sdk_config.json pages_domain_id>, dry_run=True)` with the installed SDK wheel 0.1.1.
 
 ## Inputs
