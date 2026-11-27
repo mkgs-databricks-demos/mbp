@@ -1,0 +1,252 @@
+# subdomain: sales
+# Transaction-grain sales metrics for the bakehouse franchise network. One row of source = one
+# point-of-sale transaction (single product line); transactionID is unique (EDA pattern C).
+# Data spans 2024-05-01 to 2024-05-17; 2024-05-17 is a partial day (ends 11:48).
+version: 1.1
+comment: "Bakehouse retail sales at transaction grain: gross sales, units, basket, product and payment mix, and franchise productivity, sliceable by product, payment method, franchise (store) geography, customer geography and time. Card numbers and customer contact fields are excluded (PCI DSS / personal data). Net sales is not modeled: the data has no returns, allowances or discounts."
+
+source: ${source_catalog}.${source_schema}.sales_transactions
+
+joins:
+  # verified: sales_transactions -> sales_franchises on franchiseID = franchiseID, orphan_rate 0.0
+  - name: franchise
+    source: ${source_catalog}.${source_schema}.sales_franchises
+    on: source.franchiseID = franchise.franchiseID
+    cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+  # verified: sales_transactions -> sales_customers on customerID = customerID, orphan_rate 0.0
+  - name: customer
+    source: ${source_catalog}.${source_schema}.sales_customers
+    on: source.customerID = customer.customerID
+    cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+
+dimensions:
+  - name: Transaction Date
+    expr: CAST(source.dateTime AS DATE)
+    comment: "Calendar date of the sale. 2024-05-17 is a partial day (sales until 11:48)."
+    synonyms:
+      - sale date
+      - day
+    format:
+      type: date
+      date_format: year_month_day
+  - name: Transaction Week
+    expr: DATE_TRUNC('WEEK', `Transaction Date`)
+    comment: "Monday-starting week of the sale. The first (from 2024-05-01) and last (to 2024-05-17) weeks are partial."
+    synonyms:
+      - week
+    format:
+      type: date
+      date_format: year_week
+  - name: Transaction Hour
+    expr: HOUR(source.dateTime)
+    comment: "Hour of day (0-23) of the sale, store-recorded timestamp."
+  - name: Product
+    expr: source.product
+    comment: "Baked-good product name (6 products)."
+    synonyms:
+      - item
+      - SKU
+      - baked good
+      - menu item
+  - name: Payment Method
+    expr: source.paymentMethod
+    comment: "Card network used to pay: mastercard, amex or visa."
+    synonyms:
+      - tender type
+      - payment type
+      - tender
+  - name: Franchise ID
+    expr: source.franchiseID
+    comment: "Franchise store identifier. Use it (not Franchise Name) for per-store figures: two store names are reused."
+    synonyms:
+      - store id
+  - name: Franchise Name
+    expr: franchise.name
+    comment: "Franchise store name. Not unique: Sugar Rush and Sweet Temptations each name two stores."
+    synonyms:
+      - store
+      - store name
+      - franchise location
+      - outlet
+  - name: Franchise City
+    expr: franchise.city
+    comment: "City of the franchise store where the sale happened."
+    synonyms:
+      - store city
+  - name: Franchise Country
+    expr: franchise.country
+    comment: "Country of the franchise store where the sale happened (sales geography). Uses 'US' for the United States, unlike Customer Country ('USA')."
+    synonyms:
+      - store country
+      - sales country
+  - name: Franchise Size
+    expr: franchise.size
+    comment: "Store size band, ordinal S < M < L < XL < XXL (exact definition not confirmed)."
+    synonyms:
+      - store size
+  - name: Customer Country
+    expr: customer.country
+    comment: "Home country of the customer (Australia, USA, Japan). Not the store country: customers buy at stores in many countries. Uses 'USA', unlike Franchise Country ('US')."
+  - name: Customer Continent
+    expr: customer.continent
+    comment: "Home continent of the customer (1:1 with Customer Country)."
+  - name: Customer State
+    expr: customer.state
+    comment: "Home state or region of the customer."
+  - name: Customer Gender
+    expr: customer.gender
+    comment: "Customer gender; aggregated reporting only (owner decision pending on exposure)."
+
+measures:
+  - name: Gross Sales
+    expr: SUM(source.totalPrice)
+    comment: "Sum of transaction totalPrice (quantity x unit price) before returns, allowances or discounts. Currency is not stated in the data."
+    synonyms:
+      - revenue
+      - sales revenue
+      - total sales
+      - sales
+  - name: Units Sold
+    expr: SUM(source.quantity)
+    comment: "Total units (items) sold."
+    synonyms:
+      - quantity
+      - units
+      - items sold
+  - name: Transaction Count
+    expr: COUNT(1)
+    comment: "Number of sales transactions (equals COUNT(DISTINCT transactionID): transactionID is unique per row)."
+    synonyms:
+      - transactions
+      - sales count
+      - tickets
+      - receipts
+  - name: Average Transaction Value
+    expr: MEASURE(`Gross Sales`) / MEASURE(`Transaction Count`)
+    comment: "Gross sales divided by transaction count, in source currency units per transaction."
+    synonyms:
+      - ATV
+      - average ticket
+      - average order value
+      - AOV
+      - average check
+    format:
+      type: number
+      decimal_places:
+        type: exact
+        places: 2
+  - name: Units per Transaction
+    expr: MEASURE(`Units Sold`) / MEASURE(`Transaction Count`)
+    comment: "Units sold divided by transaction count (each transaction is a single product line, so this is the average quantity)."
+    synonyms:
+      - UPT
+      - basket size
+      - items per transaction
+      - average basket size
+    format:
+      type: number
+      decimal_places:
+        type: exact
+        places: 2
+  - name: Average Selling Price
+    expr: MEASURE(`Gross Sales`) / MEASURE(`Units Sold`)
+    comment: "Gross sales divided by units sold. Unit price is constant (3) in the current data, so this is 3 everywhere."
+    synonyms:
+      - ASP
+      - average unit price
+      - price per unit
+    format:
+      type: number
+      decimal_places:
+        type: exact
+        places: 2
+  - name: Gross Sales All Products
+    expr: SUM(source.totalPrice)
+    comment: "Gross sales across all products within the other grouped dimensions and filters (denominator of Product Mix)."
+    window:
+      - order: Product
+        range: all
+  - name: Product Mix
+    expr: MEASURE(`Gross Sales`) / MEASURE(`Gross Sales All Products`)
+    comment: "Fraction 0-1 of gross sales from the product, within the other grouped dimensions (for example within a franchise or country)."
+    synonyms:
+      - sales mix
+      - product share
+      - menu mix
+    format:
+      type: percentage
+      decimal_places:
+        type: exact
+        places: 2
+  - name: Transaction Count All Payment Methods
+    expr: COUNT(1)
+    comment: "Transactions across all payment methods within the other grouped dimensions and filters (denominator of Payment Method Mix)."
+    window:
+      - order: Payment Method
+        range: all
+  - name: Payment Method Mix
+    expr: MEASURE(`Transaction Count`) / MEASURE(`Transaction Count All Payment Methods`)
+    comment: "Fraction 0-1 of transactions paid with the payment method, within the other grouped dimensions."
+    synonyms:
+      - tender mix
+      - payment mix
+      - payment share
+    format:
+      type: percentage
+      decimal_places:
+        type: exact
+        places: 2
+  - name: Franchises with Sales
+    expr: COUNT(DISTINCT source.franchiseID)
+    comment: "Number of distinct franchise stores with at least one transaction in scope."
+    synonyms:
+      - active stores
+      - selling franchises
+  - name: Sales per Franchise
+    expr: MEASURE(`Gross Sales`) / MEASURE(`Franchises with Sales`)
+    comment: "Gross sales divided by franchises with sales, in source currency units per store for the selected period (not annualized AUV)."
+    synonyms:
+      - sales per store
+      - average unit volume
+      - AUV
+      - store productivity
+    format:
+      type: number
+      decimal_places:
+        type: exact
+        places: 2
+  - name: Customers with Purchases
+    expr: COUNT(DISTINCT source.customerID)
+    comment: "Number of distinct customers with at least one transaction in scope."
+    synonyms:
+      - buying customers
+      - unique customers
+  - name: Daily Gross Sales
+    expr: SUM(source.totalPrice)
+    comment: "Gross sales of the Transaction Date (current-period value for Comparable Franchise Sales Growth). When not grouped by Transaction Date, shows the last date in scope."
+    window:
+      - order: Transaction Date
+        range: current
+  - name: Prior Day Gross Sales
+    expr: SUM(source.totalPrice)
+    comment: "Gross sales of the day before the Transaction Date (prior-period value for Comparable Franchise Sales Growth)."
+    window:
+      - order: Transaction Date
+        range: current
+        offset: -1 day
+  - name: Comparable Franchise Sales Growth (proxy)
+    expr: (MEASURE(`Daily Gross Sales`) - MEASURE(`Prior Day Gross Sales`)) / MEASURE(`Prior Day Gross Sales`)
+    comment: "Proxy, fraction (-1 and up; 0.05 = +5%): day-over-day change in gross sales. Comparable only when grouped by Franchise ID (same store in both days); not the standard 12-month same-store definition (no store opening dates), and gross, not net, sales. Data covers 17 days; 2024-05-17 is partial."
+    synonyms:
+      - same-store sales growth
+      - comp sales growth
+      - like-for-like sales growth
+    format:
+      type: percentage
+      decimal_places:
+        type: exact
+        places: 2

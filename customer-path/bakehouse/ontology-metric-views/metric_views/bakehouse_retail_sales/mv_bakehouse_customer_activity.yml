@@ -1,0 +1,145 @@
+# subdomain: customers
+# Customer-grain activity metrics. One row of source = one customer from sales_customers (300),
+# with that customer's transaction totals over the full data span (2024-05-01 to 2024-05-17).
+# The SQL source LEFT JOINs a per-customer aggregate of sales_transactions on customerID
+# (data_model_summary.md: sales_transactions -> sales_customers many_to_one, orphan_rate 0.0),
+# so every customer appears once, including customers with no purchases.
+version: 1.1
+comment: "Bakehouse customer activity at customer grain: known customers, buying and repeat customers, revenue per customer, purchase frequency, repeat customer rate and customer coverage, by customer geography and gender. Purchase totals cover the full data span (not time-sliceable). Contact fields (names, email, phone, address, city, postal code) are excluded."
+
+source: |-
+  SELECT
+    c.customerID,
+    c.state,
+    c.country,
+    c.continent,
+    c.gender,
+    COALESCE(t.transaction_count, 0) AS transaction_count,
+    COALESCE(t.gross_sales, 0) AS gross_sales,
+    COALESCE(t.units_sold, 0) AS units_sold,
+    t.first_purchase_at,
+    t.last_purchase_at
+  FROM ${source_catalog}.${source_schema}.sales_customers AS c
+  LEFT JOIN (
+    SELECT
+      customerID,
+      COUNT(1) AS transaction_count,
+      SUM(totalPrice) AS gross_sales,
+      SUM(quantity) AS units_sold,
+      MIN(dateTime) AS first_purchase_at,
+      MAX(dateTime) AS last_purchase_at
+    FROM ${source_catalog}.${source_schema}.sales_transactions
+    GROUP BY customerID
+  ) AS t
+    ON c.customerID = t.customerID
+
+dimensions:
+  - name: Customer ID
+    expr: source.customerID
+    comment: "Customer identifier."
+  - name: Customer Country
+    expr: source.country
+    comment: "Home country of the customer (Australia, USA, Japan). Uses 'USA', while franchise stores use 'US'."
+  - name: Customer Continent
+    expr: source.continent
+    comment: "Home continent of the customer (1:1 with Customer Country)."
+  - name: Customer State
+    expr: source.state
+    comment: "Home state or region of the customer."
+  - name: Customer Gender
+    expr: source.gender
+    comment: "Customer gender; aggregated reporting only (owner decision pending on exposure)."
+  - name: First Purchase Date
+    expr: CAST(source.first_purchase_at AS DATE)
+    comment: "Date of the customer's first transaction in the data; null for customers with no purchases."
+    format:
+      type: date
+      date_format: year_month_day
+  - name: Last Purchase Date
+    expr: CAST(source.last_purchase_at AS DATE)
+    comment: "Date of the customer's most recent transaction in the data; null for customers with no purchases."
+    format:
+      type: date
+      date_format: year_month_day
+  - name: Customer Purchase Band
+    expr: |-
+      CASE
+        WHEN source.transaction_count = 0 THEN '0 purchases'
+        WHEN source.transaction_count = 1 THEN '1 purchase'
+        WHEN source.transaction_count <= 5 THEN '2-5 purchases'
+        WHEN source.transaction_count <= 10 THEN '6-10 purchases'
+        ELSE '11+ purchases'
+      END
+    comment: "Band of the customer's transaction count over the data span; customers with 2 or more purchases are repeat customers."
+
+measures:
+  - name: Customer Count
+    expr: COUNT(1)
+    comment: "Number of known customers in the customer table, with or without purchases."
+    synonyms:
+      - known customers
+      - customer base
+  - name: Buying Customers
+    expr: COUNT(1) FILTER (WHERE source.transaction_count > 0)
+    comment: "Customers with at least one transaction in the data span."
+    synonyms:
+      - active customers
+      - purchasing customers
+      - shoppers
+  - name: Repeat Customers
+    expr: COUNT(1) FILTER (WHERE source.transaction_count > 1)
+    comment: "Customers with more than one transaction in the data span."
+    synonyms:
+      - returning customers
+  - name: Customer Gross Sales
+    expr: SUM(source.gross_sales)
+    comment: "Gross sales (sum of totalPrice) from the customers in scope, over the data span. Currency is not stated in the data."
+  - name: Customer Transactions
+    expr: SUM(source.transaction_count)
+    comment: "Number of transactions made by the customers in scope, over the data span."
+  - name: Revenue per Customer
+    expr: MEASURE(`Customer Gross Sales`) / MEASURE(`Buying Customers`)
+    comment: "Gross sales divided by buying customers, in source currency units per customer."
+    synonyms:
+      - average revenue per customer
+      - ARPC
+      - spend per customer
+    format:
+      type: number
+      decimal_places:
+        type: exact
+        places: 2
+  - name: Purchase Frequency
+    expr: MEASURE(`Customer Transactions`) / MEASURE(`Buying Customers`)
+    comment: "Transactions per buying customer over the data span."
+    synonyms:
+      - orders per customer
+      - visit frequency
+      - transactions per customer
+    format:
+      type: number
+      decimal_places:
+        type: exact
+        places: 2
+  - name: Repeat Customer Rate
+    expr: MEASURE(`Repeat Customers`) / MEASURE(`Buying Customers`)
+    comment: "Fraction 0-1 of buying customers with more than one transaction in the data span."
+    synonyms:
+      - returning customer rate
+      - repeat purchase rate
+    format:
+      type: percentage
+      decimal_places:
+        type: exact
+        places: 2
+  - name: Customer Coverage (proxy)
+    expr: MEASURE(`Buying Customers`) / MEASURE(`Customer Count`)
+    comment: "Proxy, fraction 0-1: share of customer-table customers with at least one transaction in the data span (not a CRM activity definition)."
+    synonyms:
+      - active customer rate
+      - customer reach
+    format:
+      type: percentage
+      decimal_places:
+        type: exact
+        places: 2

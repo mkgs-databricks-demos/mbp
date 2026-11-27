@@ -1,0 +1,136 @@
+# subdomain: franchise_supply
+# Franchise-grain supply metrics. One row of source = one franchise store (48); each franchise
+# sources ingredients from at most one supplier. 21 of 48 franchises have no supplier row, so
+# supplier attributes are null for them (metric view joins are left outer joins).
+version: 1.1
+comment: "Bakehouse franchise network and ingredient suppliers at franchise grain: franchise counts, supplier coverage of franchises, franchises per supplier and approved-supplier shares, by store geography and supplier attributes. A snapshot: no time dimension. 21 of 48 franchises (43.75%) have no supplier on file."
+
+source: ${source_catalog}.${source_schema}.sales_franchises
+
+joins:
+  # verified: sales_franchises -> sales_suppliers on supplierID = supplierID, orphan_rate 0.4375
+  - name: supplier
+    source: ${source_catalog}.${source_schema}.sales_suppliers
+    on: source.supplierID = supplier.supplierID
+    cardinality: many_to_one
+    rely:
+      at_most_one_match: true
+
+dimensions:
+  - name: Franchise ID
+    expr: source.franchiseID
+    comment: "Franchise store identifier."
+    synonyms:
+      - store id
+  - name: Franchise Name
+    expr: source.name
+    comment: "Franchise store name. Not unique: Sugar Rush and Sweet Temptations each name two stores."
+    synonyms:
+      - store
+      - store name
+      - franchise location
+      - outlet
+  - name: Franchise City
+    expr: source.city
+    comment: "City of the franchise store."
+    synonyms:
+      - store city
+  - name: Franchise Country
+    expr: source.country
+    comment: "Country of the franchise store. Uses 'US' for the United States."
+    synonyms:
+      - store country
+  - name: Franchise Size
+    expr: source.size
+    comment: "Store size band, ordinal S < M < L < XL < XXL (exact definition not confirmed)."
+    synonyms:
+      - store size
+  - name: Supplier Status
+    expr: CASE WHEN supplier.supplierID IS NULL THEN 'No supplier on file' ELSE 'Supplier on file' END
+    comment: "Whether the franchise's supplierID matches a row in the supplier table."
+  - name: Supplier Name
+    expr: COALESCE(supplier.name, 'Unknown supplier')
+    comment: "Name of the franchise's ingredient supplier; 'Unknown supplier' when no supplier is on file."
+    synonyms:
+      - vendor
+      - ingredient supplier
+      - key supplier
+  - name: Supplier Ingredient
+    expr: COALESCE(supplier.ingredient, 'Unknown')
+    comment: "The single ingredient the supplier provides; 'Unknown' when no supplier is on file. Not linked to the products sold."
+    synonyms:
+      - ingredient
+  - name: Supplier Continent
+    expr: COALESCE(supplier.continent, 'Unknown')
+    comment: "Continent of the supplier; 'Unknown' when no supplier is on file."
+  - name: Supplier Size
+    expr: COALESCE(supplier.size, 'Unknown')
+    comment: "Supplier size band (definition not confirmed); 'Unknown' when no supplier is on file."
+  - name: Supplier Approved
+    expr: COALESCE(supplier.approved, 'Unknown')
+    comment: "Supplier approval flag: 'Y' = approved supplier (every supplier on file is 'Y' in the current data); 'Unknown' when no supplier is on file."
+    synonyms:
+      - approved vendor
+      - certified supplier
+
+measures:
+  - name: Franchise Count
+    expr: COUNT(1)
+    comment: "Number of franchise stores."
+    synonyms:
+      - store count
+      - number of franchises
+  - name: Franchises with Supplier
+    expr: COUNT(1) FILTER (WHERE supplier.supplierID IS NOT NULL)
+    comment: "Franchise stores whose supplierID matches a supplier on file."
+    synonyms:
+      - franchises served
+  - name: Supplier Count
+    expr: COUNT(DISTINCT supplier.supplierID)
+    comment: "Distinct suppliers serving the franchises in scope (every supplier on file serves exactly one franchise)."
+    synonyms:
+      - number of suppliers
+  - name: Supplier Coverage (proxy)
+    expr: MEASURE(`Franchises with Supplier`) / MEASURE(`Franchise Count`)
+    comment: "Proxy, fraction 0-1, franchise basis: share of franchise stores mapped to a supplier on file (count of mappings, not purchase volume)."
+    synonyms:
+      - supplier reach
+    format:
+      type: percentage
+      decimal_places:
+        type: exact
+        places: 2
+  - name: Franchises per Supplier
+    expr: MEASURE(`Franchises with Supplier`) / MEASURE(`Supplier Count`)
+    comment: "Supplier basis: franchise stores served per supplier on file (1.0 in the current data: one franchise per supplier)."
+    synonyms:
+      - franchises per supplier
+    format:
+      type: number
+      decimal_places:
+        type: exact
+        places: 2
+  - name: Approved Suppliers
+    expr: COUNT(DISTINCT supplier.supplierID) FILTER (WHERE supplier.approved = 'Y')
+    comment: "Distinct suppliers in scope with approval flag 'Y'."
+  - name: Approved Supplier Share (Supplier Basis)
+    expr: MEASURE(`Approved Suppliers`) / MEASURE(`Supplier Count`)
+    comment: "Fraction 0-1 of suppliers on file that are approved ('Y')."
+    synonyms:
+      - approved vendor share
+    format:
+      type: percentage
+      decimal_places:
+        type: exact
+        places: 2
+  - name: Franchises on Approved Supplier
+    expr: COUNT(1) FILTER (WHERE supplier.approved = 'Y')
+    comment: "Franchise stores whose supplier on file is approved ('Y')."
+  - name: Approved Supplier Share (Franchise Basis)
+    expr: MEASURE(`Franchises on Approved Supplier`) / MEASURE(`Franchise Count`)
+    comment: "Fraction 0-1 of all franchise stores (including those with no supplier on file) sourcing from an approved supplier."
+    format:
+      type: percentage
+      decimal_places:
+        type: exact
+        places: 2
