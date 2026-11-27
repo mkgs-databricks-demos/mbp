@@ -11,5 +11,10 @@
   ],
   "warehouse_id": "24087b85239cacac",
   "max_metric_views_per_agent": 30,
-  "sdk_distribution": "wheel"
+  "sdk_distribution": "wheel",
+  "pages_domain_id": "domains/d3e01d7d-3bd8-4049-80f2-a4f9a1ffc8c3",
+  "skills": {
+    "catalog": "hls_fde_dev",
+    "schema": "dev_matthew_giglia_ontology_sdk"
+  }
 }
