@@ -107,11 +107,10 @@
         "python -m genie_ontology_modeled_knowledge_sdk.mv_yaml validate ontology-metric-views/metric_views exits 0 (installed SDK wheel 0.1.1)",
         "ontology-metric-views/metric_views/manifest.json exists, is a JSON array sorted by name, and lists every *.yml under metric_views/",
         "No YAML under ontology-metric-views/metric_views/ contains a literal catalog in source: or joins[].source (rule MV004)",
-        "ontology-genie-agents passes bundle validate --strict after the render step its README documents, if any"
+        "ontology-genie-agents is not validated in this wave: its agents/*.geniespace.json files are written in wave 4 (session 08), so it cannot render or validate yet"
       ],
       "validate_bundles": [
-        {"root": "ontology-metric-views", "target": "dev"},
-        {"root": "ontology-genie-agents", "target": "dev"}
+        {"root": "ontology-metric-views", "target": "dev"}
       ],
       "sessions": [
         {
@@ -139,11 +138,10 @@
         "docs/registration/registration_results.md exists and records a register_metric_views job run that finished SUCCESS after this build run started; report as check 'registration_job'",
         "docs/registration/registration_results.md shows every manifest.json entry registered and the smoke_test and cardinality_test tasks SUCCESS, and the job imported the installed SDK wheel 0.1.1 (not a vendored copy); report as check 'mv_smoke'",
         "docs/registration/resolved_target.json exists with the resolved catalog, schema and warehouse_id of the dev target (from bundle summary); report as check 'resolved_target'",
-        "ontology-genie-agents passes bundle validate --strict after the render step its README documents, if any"
+        "ontology-genie-agents is not validated in this wave: its agents/*.geniespace.json files are written in wave 4 (session 08), so it cannot render or validate yet"
       ],
       "validate_bundles": [
-        {"root": "ontology-metric-views", "target": "dev"},
-        {"root": "ontology-genie-agents", "target": "dev"}
+        {"root": "ontology-metric-views", "target": "dev"}
       ],
       "required_checks": ["registration_job", "mv_smoke", "resolved_target"],
       "sessions": [
