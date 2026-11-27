@@ -1,0 +1,21 @@
+domains:
+- name: bakehouse_retail_sales
+  description: 'Retail franchise sales of baked goods: revenue, units, basket and
+    payment mix by product, franchise and geography, plus customer and supplier coverage.'
+  subdomains:
+  - name: customers
+    description: Customer base, geography and purchase behaviour
+    metric_views:
+    - mv_bakehouse_customer_activity
+    agent: bakehouse_retail_sales_agent
+  - name: franchise_supply
+    description: Franchise network and ingredient suppliers
+    metric_views:
+    - mv_bakehouse_supplier_coverage
+    agent: bakehouse_retail_sales_agent
+  - name: sales
+    description: Transactions, products, revenue, basket, payment mix and franchise
+      sales performance
+    metric_views:
+    - mv_bakehouse_sales
+    agent: bakehouse_retail_sales_agent

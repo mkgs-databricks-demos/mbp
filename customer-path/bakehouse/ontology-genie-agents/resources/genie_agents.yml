@@ -5,11 +5,15 @@
 # file_path takes precedence over serialized_space and is relative to THIS file (resources/).
 resources:
   genie_spaces:
-    ontology_agent:
-      title: Ontology Agent
-      description: Genie Agent over the domain metric views registered by the ontology-metric-views bundle.
+    bakehouse_retail_sales_agent:
+      title: Bakehouse Retail Sales Agent
+      description: >-
+        Genie Agent for bakehouse retail franchise sales: gross sales, units, basket,
+        product and payment mix and franchise productivity, customer activity, and
+        franchise supplier coverage. Built on the mv_bakehouse_sales,
+        mv_bakehouse_customer_activity and mv_bakehouse_supplier_coverage metric views.
       warehouse_id: ${var.warehouse_id}
       parent_path: ${var.genie_parent_path}
-      file_path: ../.rendered/ontology_agent.geniespace.json
+      file_path: ../.rendered/bakehouse_retail_sales_agent.geniespace.json
       # var.agent_permissions: none beyond the deploying developer in dev, CAN_RUN for `account users` elsewhere.
       permissions: ${var.agent_permissions}

@@ -1,0 +1,113 @@
+{
+  "config": {
+    "sample_questions": [
+      {
+        "id": "3c0fdf5c50a95a06bceb11159dd45b67",
+        "question": [
+          "Which 5 franchises had the highest gross sales?"
+        ]
+      },
+      {
+        "id": "46333f5f636455ab94264666edb97f06",
+        "question": [
+          "What is the average transaction value and units per transaction by franchise country?"
+        ]
+      },
+      {
+        "id": "4f8d0bdf43b85a6ca715a989fbb1836a",
+        "question": [
+          "What were gross sales and units sold by product?"
+        ]
+      },
+      {
+        "id": "5758256a10a2564e9f70041b0bce8089",
+        "question": [
+          "How did gross sales in the latest week compare with the prior week?"
+        ]
+      },
+      {
+        "id": "5958fbcd2d4f54a3b091df5dacc19ce8",
+        "question": [
+          "What are revenue per customer, purchase frequency and repeat customer rate by customer country?"
+        ]
+      },
+      {
+        "id": "7144f1165f3e5f7a8d4b7ebb7f852664",
+        "question": [
+          "What share of transactions used each payment method?"
+        ]
+      },
+      {
+        "id": "8f05bf701f96549599a01b7e01f51b97",
+        "question": [
+          "What is the average selling price by product?"
+        ]
+      },
+      {
+        "id": "f30af1bdd0a3537687154dd00be98fb7",
+        "question": [
+          "What share of franchises have a supplier on file, and how many franchises use an approved supplier?"
+        ]
+      }
+    ]
+  },
+  "data_sources": {
+    "tables": [
+      {
+        "identifier": "${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+      },
+      {
+        "identifier": "${target_catalog}.${target_schema}.mv_bakehouse_sales"
+      },
+      {
+        "identifier": "${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage"
+      }
+    ]
+  },
+  "instructions": {
+    "example_question_sqls": [
+      {
+        "id": "0562bbaf8cc15732a53daad511399799",
+        "question": [
+          "How did gross sales in the latest week compare with the prior week?"
+        ],
+        "sql": [
+          "WITH weekly AS (",
+          "  SELECT `Transaction Week` AS week, MEASURE(`Gross Sales`) AS gross_sales",
+          "  FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales",
+          "  GROUP BY ALL",
+          ")",
+          "SELECT week, gross_sales,",
+          "  LAG(gross_sales) OVER (ORDER BY week) AS prior_week_gross_sales,",
+          "  (gross_sales - LAG(gross_sales) OVER (ORDER BY week)) / LAG(gross_sales) OVER (ORDER BY week) AS change_vs_prior_week",
+          "FROM weekly",
+          "ORDER BY week DESC",
+          "LIMIT 1"
+        ]
+      },
+      {
+        "id": "c776efdb780f5125bdbee1d7bca39da1",
+        "question": [
+          "Which 5 franchises had the highest gross sales?"
+        ],
+        "sql": [
+          "SELECT `Franchise Name`, MEASURE(`Gross Sales`) AS gross_sales",
+          "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales",
+          "GROUP BY ALL",
+          "ORDER BY gross_sales DESC",
+          "LIMIT 5"
+        ]
+      }
+    ],
+    "text_instructions": [
+      {
+        "content": [
+          "For revenue per customer, purchase frequency, repeat customer rate or customer coverage, use mv_bakehouse_customer_activity; do not derive them from mv_bakehouse_sales.",
+          "When a user asks for supplier coverage or approved supplier share without saying the basis, show both the franchise-basis and the supplier-basis measures and name each basis."
+        ],
+        "id": "e389eb9e31c95a50b0ace6804236ea08"
+      }
+    ]
+  },
+  "version": 2
+}
