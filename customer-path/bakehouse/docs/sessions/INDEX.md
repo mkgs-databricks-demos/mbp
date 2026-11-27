@@ -4,6 +4,7 @@ Genie build session summaries, newest first.
 
 | Date | Wave | Session | Title | Mode | Status | Summary |
 |---|---|---|---|---|---|---|
+| 2026-11-27 | 2 | 05 | Metric View YAML Synthesis (re-validation after glossary rename, no changes) | edit | pass | [2026-11-27_w2-05-mv-revalidation.md](2026-11-27_w2-05-mv-revalidation.md) |
 | 2026-11-27 | 1 | 02 | Domain Research & Glossary (Bakehouse Customer/Supplier rename, repair: owner removed customer.md) | edit | pass | [2026-11-27_w1-02-glossary-rename.md](2026-11-27_w1-02-glossary-rename.md) |
 | 2026-11-27 | 1 | 02 | Domain Research & Glossary (Bakehouse Customer/Supplier rename) | edit | blocked | [2026-11-27_w1-02-glossary-rename.md](2026-11-27_w1-02-glossary-rename.md) |
 | 2026-11-27 | 4 | 08 | Genie Agent Curation | edit | pass | [2026-11-27_w4-08-agent-curation.md](2026-11-27_w4-08-agent-curation.md) |
