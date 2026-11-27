@@ -4,6 +4,7 @@ Genie build session summaries, newest first.
 
 | Date | Wave | Session | Title | Mode | Status | Summary |
 |---|---|---|---|---|---|---|
+| 2026-11-27 | 3 | 06 | Metric View Registration & Smoke Tests (re-registration, run 377694921681813) | edit | pass | [2026-11-27_w3-06-mv-reregistration.md](2026-11-27_w3-06-mv-reregistration.md) |
 | 2026-11-27 | 2 | 05 | Metric View YAML Synthesis (re-validation after glossary rename, no changes) | edit | pass | [2026-11-27_w2-05-mv-revalidation.md](2026-11-27_w2-05-mv-revalidation.md) |
 | 2026-11-27 | 1 | 02 | Domain Research & Glossary (Bakehouse Customer/Supplier rename, repair: owner removed customer.md) | edit | pass | [2026-11-27_w1-02-glossary-rename.md](2026-11-27_w1-02-glossary-rename.md) |
 | 2026-11-27 | 1 | 02 | Domain Research & Glossary (Bakehouse Customer/Supplier rename) | edit | blocked | [2026-11-27_w1-02-glossary-rename.md](2026-11-27_w1-02-glossary-rename.md) |
