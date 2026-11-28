@@ -1,5 +1,7 @@
 # Tuning Plan 03 — Bakehouse Retail Sales Agent
 
+**Status: applied** in iteration 3 (build run 409860738864401, session 14). Eval run `01f1eb0b1b1913d6b9212913ea668510`, started 2026-11-28T09:07:15Z: tuning 133/146 (91.1%, -0.7 pp), holdout 37/41 (90.2%). All four actions applied; all three targeted questions fixed; G1 also caused one regression (x-047), carried into `tuning_plan_04.md`. See `docs/tuning/iterations/03.md`.
+
 * Source: iteration 2, Genie eval run `01f1eb035de91aad886e10d893b5fefc`, started 2026-11-28T08:11:51Z (build run 409860738864401, session 13). See `docs/tuning/iterations/02.md`.
 * Current: tuning 134/146 (91.8%), holdout 35/41 (85.4%, numbers only). `benchmark.asymptote`: not reached (2 of 3 required plans applied; last deltas 9.59, 2.05 pp).
 * Scope of triage: the **12 tuning-split failures only**. No holdout question is listed or cited.
@@ -19,25 +21,25 @@
 
 | # | Ladder step | Category | Question ids | Change | Expected effect | Status | Outcome |
 |---|---|---|---|---|---|---|---|
-| S12 | 6 (new dimension) | Filter / edge | x-008 | Add `Supplier Size` = `COALESCE(franchise.supplier.size, 'Unknown')` (same pattern as C4's Supplier Name / Approved), comment: exact values S, M, L, XL, XXL, Unknown; 'Unknown' = stores with no supplier on file, keep it in breakdowns unless the question excludes those stores | Single-view breakdown with the Unknown row; 6 rows | planned | |
+| S12 | 6 (new dimension) | Filter / edge | x-008 | Add `Supplier Size` = `COALESCE(franchise.supplier.size, 'Unknown')` (same pattern as C4's Supplier Name / Approved), comment: exact values S, M, L, XL, XXL, Unknown; 'Unknown' = stores with no supplier on file, keep it in breakdowns unless the question excludes those stores | Single-view breakdown with the Unknown row; 6 rows | applied | x-008 fixed: Genie groups mv_bakehouse_sales by `Supplier Size`, 6 rows incl. Unknown = 33537. Synonyms `supplier size band`, `vendor size` added |
 
 ### mv_bakehouse_supplier_coverage
 
 | # | Ladder step | Category | Question ids | Change | Expected effect | Status | Outcome |
 |---|---|---|---|---|---|---|---|
-| C9 | 1 (comment) | Filter / edge | x-008 | `Supplier Size` comment: exact values S, M, L, XL, XXL, Unknown; 'Unknown' = the 21 stores with no supplier on file; keep it in breakdowns by supplier attributes unless the question excludes stores without a supplier | Unknown row kept | planned | |
+| C9 | 1 (comment) | Filter / edge | x-008 | `Supplier Size` comment: exact values S, M, L, XL, XXL, Unknown; 'Unknown' = the 21 stores with no supplier on file; keep it in breakdowns by supplier attributes unless the question excludes stores without a supplier | Unknown row kept | applied | Comment applied (also points to the new sales dimension); x-008 fixed |
 
 ### mv_bakehouse_customer_activity
 
 | # | Ladder step | Category | Question ids | Change | Expected effect | Status | Outcome |
 |---|---|---|---|---|---|---|---|
-| A3 | 1 (comment) | Filter / edge | x-042 | `Customer Purchase Band` comment: exact values '2-5 purchases', '6-10 purchases', '11+ purchases'; '11 or more times' means = '11+ purchases'; filter with = on the exact value | Heavy-buyer counts non-zero | planned | |
+| A3 | 1 (comment) | Filter / edge | x-042 | `Customer Purchase Band` comment: exact values '2-5 purchases', '6-10 purchases', '11+ purchases'; '11 or more times' means = '11+ purchases'; filter with = on the exact value | Heavy-buyer counts non-zero | applied | x-042 fixed: Genie filters `= '11+ purchases'`. Comment lists all five CASE values (current data has the last three) |
 
 ### Agent (bakehouse_retail_sales_agent)
 
 | # | Ladder step | Category | Question ids | Change | Expected effect | Status | Outcome |
 |---|---|---|---|---|---|---|---|
-| G1 | 9 (one text instruction) | Ambiguity | x-004 | One instruction: "For 'top N' / 'which N' questions, return exactly N rows: ORDER BY the measure DESC, then the name, and LIMIT N (not RANK() <= N, which returns extra rows on ties)." Render with `--check`, redeploy ontology-genie-agents. Exhaustion record below is complete | x-004 returns 10 rows | planned | |
+| G1 | 9 (one text instruction) | Ambiguity | x-004 | One instruction: "For 'top N' / 'which N' questions, return exactly N rows: ORDER BY the measure DESC, then the name, and LIMIT N (not RANK() <= N, which returns extra rows on ties)." Render with `--check`, redeploy ontology-genie-agents. Exhaustion record below is complete | x-004 returns 10 rows | applied | x-004 fixed (ORDER BY ... LIMIT 10). Regressed x-047: the "then the name" tie-break made Genie order tied stores by Franchise Name instead of Franchise ID; net 0. Partial revert of the tie-break clause planned in tuning_plan_04 (G1r) |
 
 ## benchmark_defect (for the owner; not tuned)
 

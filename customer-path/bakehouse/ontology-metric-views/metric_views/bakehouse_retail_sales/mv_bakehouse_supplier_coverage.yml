@@ -68,7 +68,7 @@ dimensions:
     comment: "Continent of the supplier; 'Unknown' when no supplier is on file. Exact values: Africa, Asia, Central America, Europe, North America, South America, Unknown. Filter with = on the exact value, never ILIKE or LIKE: 'European' means = 'Europe'."
   - name: Supplier Size
     expr: COALESCE(supplier.size, 'Unknown')
-    comment: "Supplier size band (definition not confirmed); 'Unknown' when no supplier is on file."
+    comment: "Supplier size band (definition not confirmed). Exact values: S, M, L, XL, XXL, Unknown. 'Unknown' = the 21 stores with no supplier on file: keep it in breakdowns by supplier attributes unless the question excludes stores without a supplier. For sales by supplier size, use Supplier Size in mv_bakehouse_sales (no join needed)."
   - name: Supplier Approved
     expr: COALESCE(supplier.approved, 'Unknown')
     comment: "Supplier approval flag. Exact values: 'Y' = approved supplier (every supplier on file is 'Y' in the current data), 'Unknown' = no supplier on file. Group by it directly to compare stores on an approved supplier with the other stores; do not relabel values."

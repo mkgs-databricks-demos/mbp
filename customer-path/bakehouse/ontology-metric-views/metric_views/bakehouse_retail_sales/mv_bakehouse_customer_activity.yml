@@ -70,7 +70,7 @@ dimensions:
         WHEN source.transaction_count <= 10 THEN '6-10 purchases'
         ELSE '11+ purchases'
       END
-    comment: "Band of the customer's transaction count over the data span; customers with 2 or more purchases are repeat customers."
+    comment: "Band of the customer's transaction count over the data span; customers with 2 or more purchases are repeat customers. Exact values: '0 purchases', '1 purchase', '2-5 purchases', '6-10 purchases', '11+ purchases' (the current data has only the last three). Filter with = on the exact value, never a shortened label or LIKE: '11 or more times' means = '11+ purchases', not = '11+'."
 
 measures:
   - name: Customer Count

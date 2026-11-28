@@ -129,6 +129,12 @@ dimensions:
       - approved vendor
       - approved supplier
       - certified vendor
+  - name: Supplier Size
+    expr: COALESCE(franchise.supplier.size, 'Unknown')
+    comment: "Size band of the store's ingredient supplier (definition not confirmed). Exact values: S, M, L, XL, XXL, Unknown. 'Unknown' = stores with no supplier on file: keep it in breakdowns by supplier size unless the question excludes stores without a supplier. Group sales by it directly in this view, no join to mv_bakehouse_supplier_coverage needed."
+    synonyms:
+      - supplier size band
+      - vendor size
 
 measures:
   - name: Gross Sales

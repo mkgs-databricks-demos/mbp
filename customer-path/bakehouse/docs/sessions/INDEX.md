@@ -4,6 +4,7 @@ Genie build session summaries, newest first.
 
 | Date | Wave | Session | Title | Mode | Status | Summary |
 |---|---|---|---|---|---|---|
+| 2026-11-28 | 10 | 14 | Tuning Iteration 3 (MV-First) (tuning 133/146 91.1%, holdout 37/41 90.2%; 3 metric views + 1 agent instruction changed, plan 04 written) | edit | pass | [2026-11-28_w10-14-tuning-iteration-3.md](2026-11-28_w10-14-tuning-iteration-3.md) |
 | 2026-11-28 | 9 | 13 | Tuning Iteration 2 (MV-First) (tuning 134/146 91.8%, holdout 35/41 85.4%; 2 metric views changed, plan 03 written) | edit | pass | [2026-11-28_w9-13-tuning-iteration-2.md](2026-11-28_w9-13-tuning-iteration-2.md) |
 | 2026-11-28 | 8 | 12 | Tuning Iteration 1 (MV-First) (tuning 131/146 89.7%, holdout 35/41 85.4%; 3 metric views changed, plan 02 written) | edit | pass | [2026-11-28_w8-12-tuning-iteration-1.md](2026-11-28_w8-12-tuning-iteration-1.md) |
 | 2026-11-28 | 7 | 11 | Benchmark Baseline & Tuning Plan 01 (tuning 117/146 80.1%, holdout 33/41 80.5%; 29 failures classified) | edit | pass | [2026-11-28_w7-11-benchmark-baseline.md](2026-11-28_w7-11-benchmark-baseline.md) |
