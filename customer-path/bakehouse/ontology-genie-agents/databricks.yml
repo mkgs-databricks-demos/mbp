@@ -3,7 +3,9 @@
 # Space files are tokenized; render them into .rendered/ before validate/deploy (see README.md).
 # No workspace hosts here: use your CLI profile (DATABRICKS_CONFIG_PROFILE or --profile).
 bundle:
-  name: ontology-genie-agents
+  # Project-specific: the bundle name sets the deployment root (~/.bundle/<name>/<target>) and its state,
+  # so two projects in one workspace must never share it (P1-6 incident, 2026-11-27).
+  name: "bakehouse-ontology-genie-agents"
   engine: direct  # genie_spaces is supported by the direct deployment engine only (CLI >= 1.3.0)
 
 include:
