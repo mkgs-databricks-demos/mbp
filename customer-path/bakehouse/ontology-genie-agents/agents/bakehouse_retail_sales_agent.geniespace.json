@@ -3057,7 +3057,7 @@
         "content": [
           "For revenue per customer, purchase frequency, repeat customer rate or customer coverage, use mv_bakehouse_customer_activity; do not derive them from mv_bakehouse_sales.",
           "When a user asks for supplier coverage or approved supplier share without saying the basis, show both the franchise-basis and the supplier-basis measures and name each basis.",
-          "For 'top N' / 'which N' questions, return exactly N rows: ORDER BY the measure DESC and LIMIT N (not RANK() <= N, which returns extra rows on ties)."
+          "For 'top N' / 'which N' questions, return exactly N rows: ORDER BY the measure DESC, then the name, and LIMIT N (not RANK() <= N, which returns extra rows on ties)."
         ],
         "id": "e389eb9e31c95a50b0ace6804236ea08"
       }

@@ -65,7 +65,7 @@ dimensions:
       - ingredient
   - name: Supplier Continent
     expr: COALESCE(supplier.continent, 'Unknown')
-    comment: "Continent of the supplier; 'Unknown' when no supplier is on file. Exact values: Africa, Asia, Central America, Europe, North America, South America, Unknown. Filter with = on the exact value, never ILIKE or LIKE: 'European' means = 'Europe'."
+    comment: "Continent of the supplier; 'Unknown' when no supplier is on file. Exact values: Africa, Asia, Central America, Europe, North America, South America, Unknown. Filter with = on the exact value, never ILIKE or LIKE: 'European' means = 'Europe'. 'Unknown' is not a supplier: for per-supplier figures (stores per supplier, Franchises per Supplier, supplier counts) filter Supplier Status = 'Supplier on file' so no Unknown row is returned; keep Unknown only for store breakdowns that include stores without a supplier."
   - name: Supplier Size
     expr: COALESCE(supplier.size, 'Unknown')
     comment: "Supplier size band (definition not confirmed). Exact values: S, M, L, XL, XXL, Unknown. 'Unknown' = the 21 stores with no supplier on file: keep it in breakdowns by supplier attributes unless the question excludes stores without a supplier. For sales by supplier size, use Supplier Size in mv_bakehouse_sales (no join needed)."
@@ -107,7 +107,7 @@ measures:
         places: 2
   - name: Franchises per Supplier
     expr: MEASURE(`Franchises with Supplier`) / MEASURE(`Supplier Count`)
-    comment: "Supplier basis: franchise stores served per supplier on file (1.0 in the current data: one franchise per supplier)."
+    comment: "Supplier basis: franchise stores served per supplier on file (1.0 in the current data: one franchise per supplier). 'Unknown' is not a supplier: for per-supplier figures filter Supplier Status = 'Supplier on file' so no Unknown row is returned."
     synonyms:
       - franchises per supplier
     format:

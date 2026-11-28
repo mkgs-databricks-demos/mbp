@@ -283,5 +283,37 @@
       "correct": 135,
       "n": 146
     }
+  },
+  {
+    "changes": [
+      {
+        "id": "C10",
+        "plan": "tuning_plan_05",
+        "status": "applied",
+        "step": 1,
+        "view": "mv_bakehouse_supplier_coverage"
+      },
+      {
+        "id": "R1",
+        "plan": "tuning_plan_05",
+        "status": "applied (revert of G1r)",
+        "step": 9,
+        "view": "agent:bakehouse_retail_sales_agent"
+      }
+    ],
+    "eval_run_id": "01f1eb1ac8b81eafb4ed2a621d77348a",
+    "holdout": {
+      "accuracy": 0.8780487804878049,
+      "correct": 36,
+      "n": 41
+    },
+    "iteration": 5,
+    "label": "tuning_plan_05",
+    "started_at": "2026-11-28T10:59:29Z",
+    "tuning": {
+      "accuracy": 0.910958904109589,
+      "correct": 133,
+      "n": 146
+    }
   }
 ]
