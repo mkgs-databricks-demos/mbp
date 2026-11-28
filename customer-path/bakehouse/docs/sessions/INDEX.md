@@ -4,6 +4,7 @@ Genie build session summaries, newest first.
 
 | Date | Wave | Session | Title | Mode | Status | Summary |
 |---|---|---|---|---|---|---|
+| 2026-11-28 | 5 | 09 | Genie Agent Deployment & Probe (space 01f1eaeeac87195fa93d5b083cc91e84, probe SUCCEEDED) | edit | pass | [2026-11-28_w5-09-agent-deployment.md](2026-11-28_w5-09-agent-deployment.md) |
 | 2026-11-28 | 4 | 08 | Genie Agent Curation (re-validation, no changes) | edit | pass | [2026-11-28_w4-08-agent-revalidation.md](2026-11-28_w4-08-agent-revalidation.md) |
 | 2026-11-28 | 4 | 07 | UC Pages Registration (revalidation: 23 unchanged) | edit | pass | [2026-11-28_w4-07-uc-pages-revalidation.md](2026-11-28_w4-07-uc-pages-revalidation.md) |
 | 2026-11-28 | 3 | 06 | Metric View Registration & Smoke Tests (new bundle name, fresh deploy: job 859595802942054, run 352877825862386) | edit | pass | [2026-11-28_w3-06-mv-registration.md](2026-11-28_w3-06-mv-registration.md) |
