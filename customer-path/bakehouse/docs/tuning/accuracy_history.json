@@ -230,5 +230,58 @@
       "correct": 133,
       "n": 146
     }
+  },
+  {
+    "changes": [
+      {
+        "id": "S13",
+        "plan": "tuning_plan_04",
+        "status": "applied",
+        "step": 1,
+        "view": "mv_bakehouse_sales"
+      },
+      {
+        "id": "S14",
+        "plan": "tuning_plan_04",
+        "status": "applied",
+        "step": 1,
+        "view": "mv_bakehouse_sales"
+      },
+      {
+        "id": "S15",
+        "plan": "tuning_plan_04",
+        "status": "applied",
+        "step": 1,
+        "view": "mv_bakehouse_sales"
+      },
+      {
+        "id": "A4",
+        "plan": "tuning_plan_04",
+        "status": "applied",
+        "step": 1,
+        "view": "mv_bakehouse_customer_activity"
+      },
+      {
+        "id": "G1r",
+        "plan": "tuning_plan_04",
+        "status": "applied (partial revert of G1)",
+        "step": 9,
+        "view": "agent:bakehouse_retail_sales_agent"
+      }
+    ],
+    "eval_run_id": "01f1eb12ed5416b4899a1792a7e7a3c6",
+    "holdout": {
+      "accuracy": 0.8292682926829268,
+      "correct": 34,
+      "n": 41
+    },
+    "iteration": 4,
+    "label": "tuning_plan_04",
+    "started_at": "2026-11-28T10:03:14Z",
+    "tuning": {
+      "accuracy": 0.9246575342465754,
+      "correct": 135,
+      "n": 146
+    }
   }
 ]

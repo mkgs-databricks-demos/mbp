@@ -19,21 +19,21 @@
 
 | # | Ladder step | Category | Question ids | Change | Expected effect | Status | Outcome |
 |---|---|---|---|---|---|---|---|
-| S13 | 1 (comment) | Ambiguity | x-047 | `Franchise ID` comment: add "When ranking stores (top N), break ties on the measure by Franchise ID, not Franchise Name." | Tied stores ordered by id; x-047 returns 3000007, 3000020 | planned | |
-| S14 | 1 (comment) | Ambiguity | x-054 | `Franchise Size` comment: add "Several sizes named together ('XL and XXL stores') mean one combined group: filter IN ('XL', 'XXL') and return one value; group by Franchise Size only when the question asks by size or for each size." | One combined ATV (19.75) | planned | |
-| S15 | 1 (comment) | Unit / format | a-055 | `Customer Gender` comment: exact values 'male', 'female' (lowercase); return them as stored, do not change case (no INITCAP / UPPER) | Values match the stored labels | planned | |
+| S13 | 1 (comment) | Ambiguity | x-047 | `Franchise ID` comment: add "When ranking stores (top N), break ties on the measure by Franchise ID, not Franchise Name." | Tied stores ordered by id; x-047 returns 3000007, 3000020 | applied | x-047 fixed (with G1r); registered run 441938839010062 |
+| S14 | 1 (comment) | Ambiguity | x-054 | `Franchise Size` comment: add "Several sizes named together ('XL and XXL stores') mean one combined group: filter IN ('XL', 'XXL') and return one value; group by Franchise Size only when the question asks by size or for each size." | One combined ATV (19.75) | applied | x-054 fixed |
+| S15 | 1 (comment) | Unit / format | a-055 | `Customer Gender` comment: exact values 'male', 'female' (lowercase); return them as stored, do not change case (no INITCAP / UPPER) | Values match the stored labels | applied | a-055 fixed (stored values confirmed male, female) |
 
 ### mv_bakehouse_customer_activity
 
 | # | Ladder step | Category | Question ids | Change | Expected effect | Status | Outcome |
 |---|---|---|---|---|---|---|---|
-| A4 | 1 (comment) | Unit / format | a-055 | Same `Customer Gender` exact-value / keep-case comment as S15 (consistency across views) | Same as S15 | planned | |
+| A4 | 1 (comment) | Unit / format | a-055 | Same `Customer Gender` exact-value / keep-case comment as S15 (consistency across views) | Same as S15 | applied | registered; no customer-activity regression |
 
 ### Agent (bakehouse_retail_sales_agent)
 
 | # | Ladder step | Category | Question ids | Change | Expected effect | Status | Outcome |
 |---|---|---|---|---|---|---|---|
-| G1r | revert (part of G1) | Ambiguity | x-047 (regressed by G1), x-004 (keep fixed) | Remove the tie-break clause ", then the name," from the G1 instruction; keep "return exactly N rows ... LIMIT N (not RANK() <= N ...)". Tie-break comes from S13 (metric view). No new instruction. Render with `--check`, redeploy ontology-genie-agents | x-047 fixed, x-004 stays fixed | planned | |
+| G1r | revert (part of G1) | Ambiguity | x-047 (regressed by G1), x-004 (keep fixed) | Remove the tie-break clause ", then the name," from the G1 instruction; keep "return exactly N rows ... LIMIT N (not RANK() <= N ...)". Tie-break comes from S13 (metric view). No new instruction. Render with `--check`, redeploy ontology-genie-agents | x-047 fixed, x-004 stays fixed | applied | x-047 fixed, x-004 still passes; deployed (space update_time 10:02:38Z). Holdout fell 3 questions: first revert candidate under the overfitting rule, see plan 05 R1 |
 
 ## benchmark_defect (for the owner; not tuned)
 

@@ -71,7 +71,7 @@ dimensions:
       - tender
   - name: Franchise ID
     expr: source.franchiseID
-    comment: "Franchise store identifier. Use it (not Franchise Name) for per-store figures: two store names are reused."
+    comment: "Franchise store identifier. Use it (not Franchise Name) for per-store figures: two store names are reused. When ranking stores (top N), break ties on the measure by Franchise ID, not Franchise Name."
     synonyms:
       - store id
   - name: Franchise Name
@@ -95,7 +95,7 @@ dimensions:
       - sales country
   - name: Franchise Size
     expr: franchise.size
-    comment: "Store size band, ordinal S < M < L < XL < XXL (exact definition not confirmed). Exact values S, M, L, XL, XXL: filter with = (for example = 'XL'), never ILIKE or LIKE: '%XL%' also matches XXL."
+    comment: "Store size band, ordinal S < M < L < XL < XXL (exact definition not confirmed). Exact values S, M, L, XL, XXL: filter with = (for example = 'XL'), never ILIKE or LIKE: '%XL%' also matches XXL. Several sizes named together ('XL and XXL stores') mean one combined group: filter IN ('XL', 'XXL') and return one value; group by Franchise Size only when the question asks by size or for each size."
     synonyms:
       - store size
   - name: Customer Country
@@ -109,7 +109,7 @@ dimensions:
     comment: "Home state or region of the customer, stored as in the source: 2-letter codes for USA customers (for example 'CA'), full names for customers in other countries (for example 'California' for a customer whose country is Australia or Japan). 'state CA' means = 'CA'. Filter with = on the exact value, never ILIKE or LIKE: '%CA%' also matches 'California' and 'South Carolina'."
   - name: Customer Gender
     expr: customer.gender
-    comment: "Customer gender; aggregated reporting only (owner decision pending on exposure)."
+    comment: "Customer gender; aggregated reporting only (owner decision pending on exposure). Exact values 'male', 'female' (lowercase): return them as stored, do not change case (no INITCAP or UPPER)."
   - name: Supplier Status
     expr: CASE WHEN franchise.supplier.supplierID IS NULL THEN 'No supplier on file' ELSE 'Supplier on file' END
     comment: "Whether the store's ingredient supplier is on file. Exact values: 'Supplier on file', 'No supplier on file'. Use it (not Supplier Name) to split sales of stores with and without a supplier; compute any ratio measure here grouped by this dimension, no join to another view needed."
