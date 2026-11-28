@@ -1,0 +1,19 @@
+[
+  {
+    "changes": [],
+    "eval_run_id": "01f1eaf3c4a8155bbf2f167f93d93a39",
+    "holdout": {
+      "accuracy": 0.8048780487804879,
+      "correct": 33,
+      "n": 41
+    },
+    "iteration": 0,
+    "label": "baseline",
+    "started_at": "2026-11-28T06:20:12+00:00",
+    "tuning": {
+      "accuracy": 0.8013698630136986,
+      "correct": 117,
+      "n": 146
+    }
+  }
+]

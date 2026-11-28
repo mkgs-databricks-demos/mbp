@@ -1,4 +1,2957 @@
 {
+  "benchmarks": {
+    "questions": [
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Product`, MEASURE(`Average Selling Price`) AS average_selling_price FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "013d0e9d78915890853172f3f581031b",
+        "question": [
+          "What is the ASP for each product?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Product`, MEASURE(`Product Mix`) AS product_mix, MEASURE(`Gross Sales All Products`) AS gross_sales_all_products FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY product_mix DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "044388c7ac045e19824589164067bda4",
+        "question": [
+          "What share of revenue does each product contribute?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Last Purchase Date` < DATE'2024-05-10'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "04985d6e137d5c7d88d2d1989252e887",
+        "question": [
+          "How many customers have not purchased since May 10, 2024?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer Purchase Band` = '0 purchases'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "051f531340205f248b056d5c97a39910",
+        "question": [
+          "How many customers have never made a purchase?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, `Franchise Name`, `Franchise City`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Name` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT s.`Franchise ID`, s.`Franchise Name`, s.`Franchise City`, f.`Supplier Name`, s.gross_sales\n",
+              "FROM s JOIN f ON s.`Franchise ID` = f.`Franchise ID`\n",
+              "ORDER BY s.gross_sales DESC, s.`Franchise ID` LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "05812256db285cd598b1c5e31c0922c9",
+        "question": [
+          "Which 10 stores had the highest gross sales, and who is each store's supplier?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer Gender`, MEASURE(`Customer Coverage (proxy)`) AS customer_coverage FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL),\n",
+              "s AS (SELECT `Customer Gender`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT c.`Customer Gender`, ROUND(s.gross_sales / SUM(s.gross_sales) OVER (), 4) AS sales_share, c.customer_coverage\n",
+              "FROM c JOIN s ON s.`Customer Gender` <=> c.`Customer Gender`\n",
+              "ORDER BY c.`Customer Gender`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "05aa6355fbe65c039fb31fc40364382a",
+        "question": [
+          "By customer gender, what share of gross sales does each gender account for, and what is its customer coverage?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Approved` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT f.`Supplier Approved`, SUM(s.gross_sales) AS gross_sales\n",
+              "FROM f JOIN s ON s.`Franchise ID` = f.`Franchise ID`\n",
+              "GROUP BY f.`Supplier Approved` ORDER BY f.`Supplier Approved`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "06796d1b328d5f8e999a01a30b533cb3",
+        "question": [
+          "What revenue did outlets with a certified vendor bring in, compared with outlets whose vendor status is unknown?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Customer Country`, `Franchise ID`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage WHERE `Supplier Status` = 'Supplier on file' GROUP BY ALL),\n",
+              "c AS (SELECT `Customer Country`, MEASURE(`Repeat Customer Rate`) AS repeat_customer_rate FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL),\n",
+              "j AS (SELECT s.`Customer Country`, SUM(s.gross_sales) AS gross_sales FROM s JOIN f ON f.`Franchise ID` = s.`Franchise ID` GROUP BY s.`Customer Country`)\n",
+              "SELECT c.`Customer Country`, j.gross_sales, c.repeat_customer_rate\n",
+              "FROM c LEFT JOIN j ON j.`Customer Country` = c.`Customer Country`\n",
+              "ORDER BY c.`Customer Country`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "0738deb9520b51f09abda150f4d89a86",
+        "question": [
+          "For each customer home country, how much did those customers spend at stores with a supplier on file, and what is that country's repeat customer rate?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Customers with Purchases`) AS customers_with_purchases FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise City` = 'Berlin'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "07cf3b854bb95e059f8cd796936911ed",
+        "question": [
+          "How many unique shoppers bought at stores in Berlin?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer State`, MEASURE(`Customer Count`) AS customer_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY customer_count DESC LIMIT 5"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "08da2c53da4754919efc527c5102126d",
+        "question": [
+          "Which 5 customer home states have the most customers?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Payment Method`, MEASURE(`Payment Method Mix`) AS payment_method_mix, MEASURE(`Transaction Count All Payment Methods`) AS transaction_count_all_payment_methods\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "GROUP BY ALL ORDER BY payment_method_mix DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "09a19fbec9885ca79e8ada361d195b8f",
+        "question": [
+          "What is the tender mix by number of transactions?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise Country` = 'Japan'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "0dec9441bd345aee86e68eaf9ac03d06",
+        "question": [
+          "How much revenue did stores in Japan make?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH f AS (SELECT `Franchise Country`, MEASURE(`Approved Supplier Share (Franchise Basis)`) AS approved_share FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL),\n",
+              "s AS (SELECT `Franchise Country`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT f.`Franchise Country`, f.approved_share, s.gross_sales\n",
+              "FROM f LEFT JOIN s ON s.`Franchise Country` = f.`Franchise Country`\n",
+              "ORDER BY f.`Franchise Country`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "0f7aa86fe6765d88b6848c0af622842b",
+        "question": [
+          "By store country, what share of stores source from an approved supplier, and what were gross sales?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Units Sold`) AS units_sold\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "WHERE `Product` = 'Tokyo Tidbits' AND `Payment Method` = 'visa'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "0fda5653bbaf5dfbb84cf50da39a20f7",
+        "question": [
+          "How many Tokyo Tidbits did we sell with visa?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Supplier Approved`, MEASURE(`Franchise Count`) AS franchise_count\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage\n",
+              "GROUP BY ALL ORDER BY `Supplier Approved`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "108759d417d9586eab73b1fa4cfd5d4e",
+        "question": [
+          "How many stores are on each supplier approval flag value?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Buying Customers`) AS buying_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "133a2c20238a562c9aef01994d4003a5",
+        "question": [
+          "How many customers have bought something from us?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, MEASURE(`Transaction Count`) AS transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Continent` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT f.`Supplier Continent`, SUM(s.transactions) AS transactions\n",
+              "FROM f JOIN s ON s.`Franchise ID` = f.`Franchise ID`\n",
+              "GROUP BY f.`Supplier Continent` ORDER BY transactions DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "13e9af687ff5567f98f471506aaa3f52",
+        "question": [
+          "How many sales transactions happened at stores, grouped by the continent their supplier is based on?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Transaction Count`) AS transaction_count\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "18d8a0aedfd552a5a01632c33b47e965",
+        "question": [
+          "How many sales transactions were rung up overall?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, MEASURE(`Gross Sales`) AS gross_sales, MEASURE(`Franchises with Sales`) AS stores FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Status` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT f.`Supplier Status`, ROUND(SUM(s.gross_sales) / SUM(s.stores), 2) AS sales_per_franchise\n",
+              "FROM f JOIN s ON s.`Franchise ID` = f.`Franchise ID`\n",
+              "GROUP BY f.`Supplier Status` ORDER BY f.`Supplier Status`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "19c03cef03a75c6f80018e7a092525f7",
+        "question": [
+          "What are sales per store for stores with and without a supplier on file?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Customer Count`) AS customer_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "1b359cee843a5f17a37e9c00fd045b90",
+        "question": [
+          "How many customers do we have on file?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, `Payment Method`, MEASURE(`Payment Method Mix`) AS payment_method_mix FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Approved` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT s.`Franchise ID`, f.`Supplier Approved`, s.`Payment Method`, s.payment_method_mix\n",
+              "FROM s JOIN f ON f.`Franchise ID` = s.`Franchise ID`\n",
+              "ORDER BY s.`Franchise ID`, s.`Payment Method`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "1c9070a1d0cb5536b90e94bb35c8df32",
+        "question": [
+          "Show the payment method mix at each store along with whether its supplier is approved."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Average Transaction Value`) AS average_transaction_value FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "1d128a4ce9b05c518c23f7823a616842",
+        "question": [
+          "What is the average ticket size?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH f AS (SELECT `Franchise Country`, MEASURE(`Supplier Coverage (proxy)`) AS supplier_coverage FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL),\n",
+              "s AS (SELECT `Franchise Country`, MEASURE(`Sales per Franchise`) AS sales_per_franchise FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT f.`Franchise Country`, f.supplier_coverage, s.sales_per_franchise\n",
+              "FROM f LEFT JOIN s ON s.`Franchise Country` = f.`Franchise Country`\n",
+              "ORDER BY f.`Franchise Country`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "1dcccbc9aebc5dc89d027fa4657da923",
+        "question": [
+          "By store country, what share of stores have a supplier on file, and what are sales per store?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Supplier Status`, MEASURE(`Franchise Count`) AS franchise_count\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage\n",
+              "GROUP BY ALL ORDER BY `Supplier Status`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "1ef31b70b7bb5d35a618054b1746b4dc",
+        "question": [
+          "How many stores have no supplier on file versus a supplier on file?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, MEASURE(`Customers with Purchases`) AS customers_with_purchases FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Ingredient` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT s.`Franchise ID`, f.`Supplier Ingredient`, s.customers_with_purchases\n",
+              "FROM s JOIN f ON f.`Franchise ID` = s.`Franchise ID`\n",
+              "ORDER BY s.customers_with_purchases DESC, s.`Franchise ID` LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "1ffce204c7225eeb933a02ff59138bd2",
+        "question": [
+          "For each store, how many distinct customers bought there, and what ingredient does its supplier provide? List the top 10 stores by customers."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "2148c4d736f25015b93deb7d3dc6c40d",
+        "question": [
+          "What were our total gross sales?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Gross Sales`) AS gross_sales\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "WHERE `Customer Country` = 'USA'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "22340251c7d15a848cc8be1c314f6f8c",
+        "question": [
+          "How much did customers from the USA spend in total?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Country`, MEASURE(`Customer Coverage (proxy)`) AS customer_coverage FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "22927cbedd2d50e7b27d988ad9673eb7",
+        "question": [
+          "What is our customer reach in each home country?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise Country`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY gross_sales DESC LIMIT 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "25f74e4f243a539d9a143758e8c3a19a",
+        "question": [
+          "Which store country generated the most revenue?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Customer State`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "c AS (SELECT `Customer State`, MEASURE(`Buying Customers`) AS buying_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL)\n",
+              "SELECT s.`Customer State`, s.gross_sales, c.buying_customers\n",
+              "FROM s LEFT JOIN c ON c.`Customer State` <=> s.`Customer State`\n",
+              "ORDER BY s.gross_sales DESC, s.`Customer State` LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "272d1ac5a76d55cf812029a1fba38525",
+        "question": [
+          "Which 10 customer home states generated the most gross sales, and how many buying customers live in each?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Transaction Hour`, MEASURE(`Transaction Count`) AS transaction_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY transaction_count DESC LIMIT 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "2c7ebbe10780585d876585550f9a8dbb",
+        "question": [
+          "At what hour of the day do we make the most transactions?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Transaction Date`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "2cde53de471957179a032713bef28e5a",
+        "question": [
+          "Show daily revenue."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Continent`, MEASURE(`Repeat Customers`) AS repeat_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY repeat_customers DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "2d323edda14b5388b1ed4566b74b22aa",
+        "question": [
+          "How many returning customers do we have per continent?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer ID`, MEASURE(`Customer Gross Sales`) AS customer_gross_sales, MEASURE(`Customer Transactions`) AS customer_transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer ID` = 2000000 GROUP BY ALL"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "2dfe613439ff553c8547d05edc0b0faf",
+        "question": [
+          "How much has customer 2000000 spent with us, and how many purchases have they made?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Franchises with Sales`) AS franchises_with_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "2f50aff15d385e25b287fd8930ba93be",
+        "question": [
+          "How many franchise stores made at least one sale?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Units Sold`) AS units_sold FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "305265d084c95f3ab8f675436f696b7b",
+        "question": [
+          "How many baked goods did we sell in total?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Transaction Week`, MEASURE(`Sales per Franchise`) AS sales_per_franchise FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise Size` = 'M' GROUP BY ALL ORDER BY 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "32328c5aff78552ab78e8240fced5b8b",
+        "question": [
+          "What were weekly sales per store for medium stores?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, MEASURE(`Franchises with Sales`) AS with_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage WHERE `Supplier Status` = 'No supplier on file' GROUP BY ALL)\n",
+              "SELECT COALESCE(SUM(s.with_sales), 0) AS franchises_with_sales_no_supplier\n",
+              "FROM s JOIN f ON f.`Franchise ID` = s.`Franchise ID`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "3275cffc2bc25f7c82bd928d30c86f70",
+        "question": [
+          "How many stores recorded sales even though no supplier is on file for them?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Franchises with Supplier`) AS franchises_with_supplier\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage\n",
+              "WHERE `Supplier Ingredient` = 'almonds'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "32ba8fab2fe95ee79abeeadeaaa59858",
+        "question": [
+          "How many stores get almonds from their supplier?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Transaction Week`, MEASURE(`Units Sold`) AS units_sold FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "32edc7fd41035ee5806063faefe1387a",
+        "question": [
+          "What were weekly units sold?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, `Customer Continent`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Continent` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT s.`Customer Continent`, f.`Supplier Continent`, SUM(s.gross_sales) AS gross_sales\n",
+              "FROM s JOIN f ON f.`Franchise ID` = s.`Franchise ID`\n",
+              "GROUP BY ALL ORDER BY s.`Customer Continent`, f.`Supplier Continent`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "378750a8947554aa958a0dcc71d7e5d0",
+        "question": [
+          "Break down gross sales by customer home continent and the continent of the store's supplier."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Status` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT f.`Supplier Status`, SUM(s.gross_sales) AS gross_sales\n",
+              "FROM f JOIN s ON s.`Franchise ID` = f.`Franchise ID`\n",
+              "GROUP BY f.`Supplier Status` ORDER BY gross_sales DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "3804260eca7559458edf334dbd819aa6",
+        "question": [
+          "How much gross sales came from stores that have an ingredient supplier on file versus stores with no supplier on file?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Purchase Band`, MEASURE(`Customer Count`) AS customer_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "3a8f364801215916bbc606166220ad42",
+        "question": [
+          "How many customers fall into each purchase-count band?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Gross Sales`) AS gross_sales\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "WHERE `Transaction Date` = DATE'2024-05-17'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "3bf5d60a951d5862a1ab1a96655ae2af",
+        "question": [
+          "What were gross sales on 17 May 2024, and note that the day is partial?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Product`, MEASURE(`Average Selling Price`) AS average_selling_price\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "GROUP BY ALL ORDER BY `Product`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "3dc0f0553f0256d2b45e79552b6b01bb",
+        "question": [
+          "What price per unit are we getting on average for each product?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Customer Transactions`) AS customer_transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "3f143b6f1c0152e2b75725834de83ff4",
+        "question": [
+          "How many purchases have our customers made in total?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, `Transaction Hour`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage WHERE `Supplier Status` = 'No supplier on file' GROUP BY ALL)\n",
+              "SELECT s.`Transaction Hour`, SUM(s.gross_sales) AS gross_sales\n",
+              "FROM s JOIN f ON f.`Franchise ID` = s.`Franchise ID`\n",
+              "GROUP BY s.`Transaction Hour` ORDER BY s.`Transaction Hour`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "417d742ee57953b786135afd684073d7",
+        "question": [
+          "By hour of day, what were gross sales at stores with no supplier on file?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Country`, MEASURE(`Customer Count`) AS customer_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY customer_count DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "42012bf5aec55e07bf1ca8a920ca1245",
+        "question": [
+          "How many customers do we have in each home country?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer Country`, MEASURE(`Customer Coverage (proxy)`) AS customer_coverage FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL),\n",
+              "s AS (SELECT `Customer Country`, MEASURE(`Transaction Count`) AS transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT c.`Customer Country`, c.customer_coverage, s.transactions\n",
+              "FROM c LEFT JOIN s ON s.`Customer Country` = c.`Customer Country`\n",
+              "ORDER BY c.`Customer Country`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "4228035b08895f33ad8eda38b43932ae",
+        "question": [
+          "By customer home country, what share of known customers bought something, and how many transactions did they make?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, MEASURE(`Gross Sales`) AS gross_sales, MEASURE(`Transaction Count`) AS transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Status` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT f.`Supplier Status`, ROUND(SUM(s.gross_sales) / SUM(s.transactions), 2) AS average_transaction_value\n",
+              "FROM f JOIN s ON s.`Franchise ID` = f.`Franchise ID`\n",
+              "GROUP BY f.`Supplier Status` ORDER BY f.`Supplier Status`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "431f7ea1c5b15594aaf1c43c1c84985d",
+        "question": [
+          "What is the average transaction value at stores with a supplier on file compared with stores without one?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Product`, MEASURE(`Units per Transaction`) AS units_per_transaction FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY units_per_transaction DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "44197d68909a587da5550477a2114866",
+        "question": [
+          "What is the UPT by product?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer Country`, MEASURE(`Revenue per Customer`) AS revenue_per_customer FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL),\n",
+              "s AS (SELECT `Customer Country`, MEASURE(`Average Transaction Value`) AS average_transaction_value FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT c.`Customer Country`, c.revenue_per_customer, s.average_transaction_value\n",
+              "FROM c LEFT JOIN s ON s.`Customer Country` = c.`Customer Country`\n",
+              "ORDER BY c.`Customer Country`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "466ef82b30355505bc5661b38294a36c",
+        "question": [
+          "By shoppers' home country, what is the spend per customer and the average ticket?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer Gender`, MEASURE(`Purchase Frequency`) AS purchase_frequency FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL),\n",
+              "s AS (SELECT `Customer Gender`, MEASURE(`Average Transaction Value`) AS average_transaction_value FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT c.`Customer Gender`, c.purchase_frequency, s.average_transaction_value\n",
+              "FROM c LEFT JOIN s ON s.`Customer Gender` <=> c.`Customer Gender`\n",
+              "ORDER BY c.`Customer Gender`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "469c2dfb3d8f512eb5c18c4a95d6ad8f",
+        "question": [
+          "By customer gender, compare purchase frequency with the average transaction value."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Customer Gross Sales`) AS customer_gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "46ff67eaa4db5c3d954933a2f1b745ab",
+        "question": [
+          "What is the total spend across all customers?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Transaction Date` = DATE'2024-05-17'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "49e01c0957885e5c80adad1f84c283da",
+        "question": [
+          "What were gross sales on May 17, 2024, which is a partial day?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Franchises with Sales`) AS franchises_with_sales\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "4a51a9cd8ea2529885582e38a5894fcb",
+        "question": [
+          "How many franchise stores recorded at least one sale?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise Country`, MEASURE(`Sales per Franchise`) AS sales_per_franchise\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "GROUP BY ALL ORDER BY sales_per_franchise DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "4c57c22a01565409bb087e4d4d131eca",
+        "question": [
+          "Sales per store by store country"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Gender`, MEASURE(`Purchase Frequency`) AS purchase_frequency FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "4d506484e20c53f38b4643f08d6a8e73",
+        "question": [
+          "How many orders per customer do shoppers place, by gender?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Transaction Count`) AS transaction_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Payment Method` = 'amex' AND `Franchise Size` = 'XL'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "4e77346ea6af5e318225c5b5ec464d68",
+        "question": [
+          "How many transactions were paid with amex at XL stores?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer Continent`, MEASURE(`Buying Customers`) AS heavy_buyers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer Purchase Band` = '11+ purchases' GROUP BY ALL),\n",
+              "s AS (SELECT `Customer Continent`, `Franchise Size`, MEASURE(`Units Sold`) AS units_sold FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT c.`Customer Continent`, s.`Franchise Size`, s.units_sold, c.heavy_buyers\n",
+              "FROM c JOIN s ON s.`Customer Continent` <=> c.`Customer Continent`\n",
+              "ORDER BY c.`Customer Continent`, s.`Franchise Size`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "4e7af3817b2a5e5f8dd0ebba4da8c430",
+        "question": [
+          "By customer home continent, how many units were bought at each store size, and how many customers from that continent bought 11 or more times?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Units per Transaction`) AS units_per_transaction FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "516443b9f084522eaff4b923a9593032",
+        "question": [
+          "What is our average basket size in items?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Franchises with Supplier`) AS franchises_with_supplier\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "52a92cea6cf756b1b5bd04e54ebed7be",
+        "question": [
+          "How many stores are mapped to a supplier on file?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Supplier Count`) AS supplier_count\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "530184b6c47e5bdea507adebf1572dea",
+        "question": [
+          "How many ingredient suppliers do we work with?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Franchises per Supplier`) AS franchises_per_supplier\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "554e93d7fd9359128e1551ec32055623",
+        "question": [
+          "On average how many stores does each supplier serve?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Approved Suppliers`) AS approved_suppliers\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage\n",
+              "WHERE `Supplier Continent` = 'Europe'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "558a434ccef15042a8ab9d83ff8ad199",
+        "question": [
+          "How many vendors serve stores in European supplier continent with an approved flag?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH f AS (SELECT `Franchise ID` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL),\n",
+              "s AS (SELECT `Franchise ID`, MEASURE(`Transaction Count`) AS transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT COUNT(*) AS franchises_without_sales\n",
+              "FROM f LEFT JOIN s ON s.`Franchise ID` = f.`Franchise ID`\n",
+              "WHERE s.`Franchise ID` IS NULL OR s.transactions = 0"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "56949f547e54530ca8d87ccaa921a329",
+        "question": [
+          "How many franchise stores had no sales at all in the data?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Repeat Customers`) AS repeat_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "57764ebf81c257088b6fcc6a5ddef13b",
+        "question": [
+          "How many customers have purchased more than once?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `First Purchase Date`, MEASURE(`Buying Customers`) AS new_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `First Purchase Date` IS NOT NULL GROUP BY ALL),\n",
+              "s AS (SELECT `Transaction Date`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT s.`Transaction Date`, COALESCE(c.new_customers, 0) AS new_customers, s.gross_sales\n",
+              "FROM s LEFT JOIN c ON c.`First Purchase Date` = s.`Transaction Date`\n",
+              "ORDER BY s.`Transaction Date`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "57f98fcc3bf65e649cdc8022c48f21fa",
+        "question": [
+          "For each date, how many customers made their first purchase, and what were gross sales that day?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Approved Supplier Share (Supplier Basis)`) AS approved_supplier_share_supplier_basis\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "59acf21e027351789899cc4b7efbc51c",
+        "question": [
+          "What fraction of our suppliers are approved?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Customer Count`) AS customer_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer Country` = 'USA'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "5b0a5776d7325f6aa3d16ba984b389d3",
+        "question": [
+          "How many customers in the customer table live in the United States?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Franchise Count`) AS franchise_count\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "5cd225742daf5f28a7ec8e44b843027d",
+        "question": [
+          "How many franchise stores do we have?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Customers with Purchases`) AS customers_with_purchases\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "WHERE `Customer State` = 'CA'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "5efc4f0595d454c1b66fe2dac71417d8",
+        "question": [
+          "How many unique buyers come from California (state CA)?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise Country` = 'Canada' AND `Transaction Hour` BETWEEN 12 AND 17"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "6136ae1557015548bfa7797cb3db2577",
+        "question": [
+          "How much revenue came from stores in Canada in the afternoon (12:00 to 17:59)?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Transaction Date`, MEASURE(`Daily Gross Sales`) AS daily_gross_sales, MEASURE(`Prior Day Gross Sales`) AS prior_day_gross_sales\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "GROUP BY ALL ORDER BY `Transaction Date`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "63821eab6f585435a95a5af594fa308b",
+        "question": [
+          "For each day, show gross sales next to the previous day's gross sales"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH f AS (SELECT `Franchise Country`, MEASURE(`Supplier Count`) AS supplier_count, MEASURE(`Approved Suppliers`) AS approved_suppliers FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL),\n",
+              "s AS (SELECT `Franchise Country`, MEASURE(`Transaction Count`) AS transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT f.`Franchise Country`, f.supplier_count, f.approved_suppliers, s.transactions\n",
+              "FROM f LEFT JOIN s ON s.`Franchise Country` = f.`Franchise Country`\n",
+              "ORDER BY f.`Franchise Country`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "63b79665a4ec5eb99aea7252031d99ee",
+        "question": [
+          "For each store country, how many suppliers and approved suppliers serve the stores, and how many transactions did those stores record?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Product`, MEASURE(`Average Transaction Value`) AS average_transaction_value FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY average_transaction_value DESC LIMIT 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "656617eadbb95c6fa4a9a7f884ec38bb",
+        "question": [
+          "Which product has the highest average order value?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Continent`, MEASURE(`Units Sold`) AS units_sold\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "GROUP BY ALL ORDER BY units_sold DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "695a0db0d6815f57aa9f27a7d6ae20b1",
+        "question": [
+          "Units sold by customer home continent"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise Country`, MEASURE(`Franchises with Sales`) AS franchises_with_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY franchises_with_sales DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "69b7d67d43595fdd9dcb2b84624c3070",
+        "question": [
+          "How many active stores are there in each store country?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Gender`, MEASURE(`Average Transaction Value`) AS average_transaction_value FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "6abc4f8feefd5e1bab6148a13e27d032",
+        "question": [
+          "What is the average transaction value for male versus female customers?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Transaction Hour`, MEASURE(`Transaction Count`) AS transaction_count\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "GROUP BY ALL ORDER BY transaction_count DESC LIMIT 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "6dd7518d518354909495c32768ae2982",
+        "question": [
+          "At what hour of the day do we ring up the most transactions?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Customer Gross Sales`) AS customer_gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer Gender` = 'female'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "6e5d7e46254b5a7f8418e6abd9cc8f85",
+        "question": [
+          "How much did female customers spend in total?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `First Purchase Date` >= DATE'2024-05-10'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "7013380547085c7baea4fba1e0f6b5e5",
+        "question": [
+          "How many customers first bought from us on or after May 10, 2024?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT MEASURE(`Customer Count`) AS customer_count, MEASURE(`Buying Customers`) AS buying_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity),\n",
+              "s AS (SELECT MEASURE(`Customers with Purchases`) AS customers_with_purchases FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales)\n",
+              "SELECT c.customer_count - c.buying_customers AS customers_without_purchases, s.customers_with_purchases\n",
+              "FROM c CROSS JOIN s"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "725da647edfa5a19ab16232a5ddcd62c",
+        "question": [
+          "How many known customers never made a purchase, and how many distinct customers appear in the sales data?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer Gender`, MEASURE(`Customer Gross Sales`) AS customer_gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL),\n",
+              "s AS (SELECT `Customer Gender`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT c.`Customer Gender`, c.customer_gross_sales, s.gross_sales\n",
+              "FROM c LEFT JOIN s ON s.`Customer Gender` <=> c.`Customer Gender`\n",
+              "ORDER BY c.`Customer Gender`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "726cbeb5bd7e5361a7dd70c7403aa046",
+        "question": [
+          "By customer gender, compare customer gross sales with gross sales from the transaction data."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise Size`, MEASURE(`Sales per Franchise`) AS sales_per_franchise FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "74cd348e2fd45232b42cf8af2ae9f9ff",
+        "question": [
+          "How do sales per store compare across store size bands?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Units per Transaction`) AS units_per_transaction\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "7802c82c3d8559a6995e7ba1f0c5586c",
+        "question": [
+          "What is our UPT overall?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH f AS (SELECT `Franchise Country`, MEASURE(`Franchise Count`) AS franchise_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL),\n",
+              "s AS (SELECT `Franchise Country`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "c AS (SELECT CASE WHEN `Customer Country` = 'USA' THEN 'US' ELSE `Customer Country` END AS country, MEASURE(`Customer Count`) AS resident_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL)\n",
+              "SELECT f.`Franchise Country`, f.franchise_count, s.gross_sales, COALESCE(c.resident_customers, 0) AS resident_customers\n",
+              "FROM f LEFT JOIN s ON s.`Franchise Country` = f.`Franchise Country` LEFT JOIN c ON c.country = f.`Franchise Country`\n",
+              "ORDER BY f.`Franchise Country`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "794f7975806a5995928b500a7b8fd972",
+        "question": [
+          "For each store country, show the number of franchise stores, gross sales, and the number of known customers who live in that country."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Transaction Count`) AS transaction_count\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "WHERE `Franchise City` = 'Stockholm'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "7bb0f56e85975d7f91b0f9d630a5aa15",
+        "question": [
+          "How many transactions happened at stores in Stockholm?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, `Transaction Week`, MEASURE(`Units Sold`) AS units_sold FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Approved` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT s.`Transaction Week`, f.`Supplier Approved`, SUM(s.units_sold) AS units_sold\n",
+              "FROM f JOIN s ON s.`Franchise ID` = f.`Franchise ID`\n",
+              "GROUP BY s.`Transaction Week`, f.`Supplier Approved` ORDER BY s.`Transaction Week`, f.`Supplier Approved`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "7be5faff84635cb9affe5b6658e1e3e6",
+        "question": [
+          "How many units did stores sourcing from an approved supplier sell each week, compared with the other stores?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer State`, MEASURE(`Units Sold`) AS units_sold FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY units_sold DESC LIMIT 5"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "7c8bad2d3c7758528d3a32f3deb174f5",
+        "question": [
+          "Which 5 customer home states bought the most units?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Average Transaction Value`) AS average_transaction_value\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8108f1d1c3f25675aeabf5008b1830cb",
+        "question": [
+          "What's the average ticket across the network?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Average Selling Price`) AS average_selling_price FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "81387a9d4b715d17996edab5c50a8ccb",
+        "question": [
+          "What is the average price we get per unit sold?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Sales per Franchise`) AS sales_per_franchise FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8142ad66b05951b1940c68f48cbef1d8",
+        "question": [
+          "What is the average sales per store?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH f AS (SELECT `Franchise Country`, MEASURE(`Franchises on Approved Supplier`) AS on_approved, MEASURE(`Franchises with Supplier`) AS with_supplier FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL),\n",
+              "s AS (SELECT `Franchise Country`, MEASURE(`Customers with Purchases`) AS customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT f.`Franchise Country`, f.on_approved, f.with_supplier, s.customers\n",
+              "FROM f LEFT JOIN s ON s.`Franchise Country` = f.`Franchise Country`\n",
+              "ORDER BY f.`Franchise Country`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "81ae15687bf657c8b8ec95cd56243125",
+        "question": [
+          "For each store country, how many stores are on an approved supplier, how many have any supplier, and how many distinct customers bought there?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise Size`, MEASURE(`Average Transaction Value`) AS average_transaction_value\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "GROUP BY ALL ORDER BY `Franchise Size`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "826b477473a85040821bba733bec7e0b",
+        "question": [
+          "What is average transaction value by store size band?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Transaction Week`, MEASURE(`Units Sold`) AS units_sold\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "GROUP BY ALL ORDER BY `Transaction Week`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "84bfd1be5bdc59dc8141de194a3e93b6",
+        "question": [
+          "Weekly units sold trend"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer Country`, MEASURE(`Customer Count`) AS customer_count, MEASURE(`Revenue per Customer`) AS revenue_per_customer FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL),\n",
+              "s AS (SELECT `Customer Country`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT c.`Customer Country`, c.customer_count, s.gross_sales, c.revenue_per_customer\n",
+              "FROM c LEFT JOIN s ON s.`Customer Country` = c.`Customer Country`\n",
+              "ORDER BY c.`Customer Country`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "850d9f64e93c58799ebe66e4ec7b90fa",
+        "question": [
+          "For each customer home country, show the number of known customers, gross sales and revenue per buying customer."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Gross Sales`) AS gross_sales\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "877a351e80f55512908ebea3f6fecd8b",
+        "question": [
+          "What were our total gross sales across all stores?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Continent`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY gross_sales DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "89a1a45cdb775898af6a25a3bc97adae",
+        "question": [
+          "What were gross sales by customer home continent?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Purchase Frequency`) AS purchase_frequency FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8a00e63441ba5734896731391a8feea3",
+        "question": [
+          "On average, how many times does a buying customer shop with us?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer Country`, MEASURE(`Buying Customers`) AS early_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer Country` = 'Australia' AND `First Purchase Date` <= DATE'2024-05-01' GROUP BY ALL),\n",
+              "s AS (SELECT `Customer Country`, `Transaction Date`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Customer Country` = 'Australia' GROUP BY ALL)\n",
+              "SELECT s.`Transaction Date`, s.gross_sales, c.early_customers\n",
+              "FROM c JOIN s ON s.`Customer Country` <=> c.`Customer Country`\n",
+              "ORDER BY s.`Transaction Date`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8afac8d3bbc154ccaa00625245f97df3",
+        "question": [
+          "For customers living in Australia, show daily gross sales next to the number of Australian customers whose first purchase was on or before May 1, 2024."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer Country`, MEASURE(`Customer Transactions`) AS customer_transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL),\n",
+              "s AS (SELECT `Customer Country`, MEASURE(`Transaction Count`) AS transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT c.`Customer Country`, c.customer_transactions, s.transactions\n",
+              "FROM c LEFT JOIN s ON s.`Customer Country` = c.`Customer Country`\n",
+              "ORDER BY c.`Customer Country`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8b4dd7d7274d5cbabc0e968d8a956cd8",
+        "question": [
+          "By customer home country, does the customers' transaction total match the transaction count in the sales data?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise ID`, MEASURE(`Gross Sales`) AS gross_sales\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "GROUP BY ALL ORDER BY gross_sales DESC LIMIT 5"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8c9b733c727c57a0a9a5bd41d00c11f4",
+        "question": [
+          "Which 5 stores (by store id) had the highest gross sales?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, `Payment Method`, MEASURE(`Transaction Count`) AS transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Status` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT f.`Supplier Status`, s.`Payment Method`, SUM(s.transactions) AS transactions\n",
+              "FROM f JOIN s ON s.`Franchise ID` = f.`Franchise ID`\n",
+              "GROUP BY f.`Supplier Status`, s.`Payment Method` ORDER BY f.`Supplier Status`, s.`Payment Method`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8d398662ef3659e9bfa1cf826e515afe",
+        "question": [
+          "How many transactions were paid with each card network at stores with and without a supplier on file?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Transaction Date`, MEASURE(`Gross Sales`) AS gross_sales\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "WHERE `Transaction Date` BETWEEN DATE'2024-05-01' AND DATE'2024-05-07'\n",
+              "GROUP BY ALL ORDER BY `Transaction Date`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8d87e76101295b918b51e7b89490e9c3",
+        "question": [
+          "Gross sales by day for the first week of May 2024"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Franchises on Approved Supplier`) AS franchises_on_approved_supplier, MEASURE(`Approved Supplier Share (Franchise Basis)`) AS approved_supplier_share_franchise_basis\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8eba475166f3517fa59a41d4e1c33de2",
+        "question": [
+          "What share of all stores, including those with no supplier on file, buy from an approved vendor?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Supplier Continent`, MEASURE(`Supplier Count`) AS supplier_count\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage\n",
+              "GROUP BY ALL ORDER BY supplier_count DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "8fbc70b07aab580b88915e410b00021a",
+        "question": [
+          "Number of suppliers by supplier continent"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH f AS (SELECT `Supplier Continent`, MEASURE(`Franchises per Supplier`) AS franchises_per_supplier FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage WHERE `Supplier Status` = 'Supplier on file' GROUP BY ALL),\n",
+              "fs AS (SELECT `Franchise ID`, `Supplier Continent` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage WHERE `Supplier Status` = 'Supplier on file' GROUP BY ALL),\n",
+              "s AS (SELECT `Franchise ID`, MEASURE(`Units Sold`) AS units_sold FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "u AS (SELECT fs.`Supplier Continent`, SUM(s.units_sold) AS units_sold FROM fs JOIN s ON s.`Franchise ID` = fs.`Franchise ID` GROUP BY fs.`Supplier Continent`)\n",
+              "SELECT f.`Supplier Continent`, f.franchises_per_supplier, u.units_sold\n",
+              "FROM f LEFT JOIN u ON u.`Supplier Continent` = f.`Supplier Continent`\n",
+              "ORDER BY f.`Supplier Continent`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "9081ce4fbaea52c3b2084ebedc376564",
+        "question": [
+          "For each supplier continent, how many stores does each supplier serve on average, and how many units did those stores sell?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Size` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT f.`Supplier Size`, SUM(s.gross_sales) AS gross_sales\n",
+              "FROM f JOIN s ON s.`Franchise ID` = f.`Franchise ID`\n",
+              "GROUP BY f.`Supplier Size` ORDER BY gross_sales DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "90a6db470af658d1a8af38242d80647d",
+        "question": [
+          "Break down gross sales by the size band of each store's supplier."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, `Transaction Date`, MEASURE(`Daily Gross Sales`) AS daily_gross_sales, MEASURE(`Prior Day Gross Sales`) AS prior_day_gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Status` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT f.`Supplier Status`, SUM(s.daily_gross_sales) AS daily_gross_sales, SUM(s.prior_day_gross_sales) AS prior_day_gross_sales\n",
+              "FROM s JOIN f ON f.`Franchise ID` = s.`Franchise ID`\n",
+              "WHERE s.`Transaction Date` = DATE'2024-05-16'\n",
+              "GROUP BY f.`Supplier Status` ORDER BY f.`Supplier Status`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "941e4bc768065ca694c894c9b33d5c1a",
+        "question": [
+          "On May 16, 2024, what were gross sales and prior-day gross sales for stores with and without a supplier on file?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Country`, `Franchise Country`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY 1, 2"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "94386eab73e15d479b9f5e7364c61f0b",
+        "question": [
+          "What were gross sales by customer home country and store country?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Transaction Date`, MEASURE(`Daily Gross Sales`) AS daily_gross_sales, MEASURE(`Prior Day Gross Sales`) AS prior_day_gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "94ff4390d0825c0f90e6962e215e46ae",
+        "question": [
+          "What was the overall gross sales on each day compared with the day before?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Product`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY gross_sales DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "976ea76cebb952838d58990d145dabe0",
+        "question": [
+          "What is revenue by product?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer Country`, MEASURE(`Buying Customers`) AS lapsed_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Last Purchase Date` < DATE'2024-05-10' GROUP BY ALL),\n",
+              "s AS (SELECT `Customer Country`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise Country` = 'Japan' GROUP BY ALL)\n",
+              "SELECT c.`Customer Country`, s.gross_sales, c.lapsed_customers\n",
+              "FROM c JOIN s ON s.`Customer Country` <=> c.`Customer Country`\n",
+              "ORDER BY c.`Customer Country`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "997c55e778c15a158fa3571def25bd9b",
+        "question": [
+          "For each customer home country, what were gross sales at stores in Japan, and how many customers from that country last purchased before May 10, 2024?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Customer Country` = 'Japan'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "9c298fb54ff25bc4a1d99aded3524f3f",
+        "question": [
+          "How much revenue came from customers whose home country is Japan?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise ID`, `Franchise Name`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise Name` = 'Sugar Rush' GROUP BY ALL ORDER BY 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "9c4a835693c55da696c4a30e73af4af4",
+        "question": [
+          "How much did the Sugar Rush stores sell? Show each store separately."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Customers with Purchases`) AS customers_with_purchases FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "9c81e12ca6f154e5be42cd3458b70d80",
+        "question": [
+          "How many distinct customers bought at our stores?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer Country`, MEASURE(`Repeat Customers`) AS repeat_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL),\n",
+              "s AS (SELECT `Customer Country`, `Product`, MEASURE(`Units Sold`) AS units_sold FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT c.`Customer Country`, s.`Product`, s.units_sold, c.repeat_customers\n",
+              "FROM c JOIN s ON s.`Customer Country` <=> c.`Customer Country`\n",
+              "ORDER BY c.`Customer Country`, s.units_sold DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "9d19eb5482b95489a993ea63bd25d2e4",
+        "question": [
+          "For each customer home country, which products sell most by units, alongside how many repeat customers live there?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer Gender`, MEASURE(`Repeat Customer Rate`) AS repeat_customer_rate FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL),\n",
+              "s AS (SELECT `Customer Gender`, `Payment Method`, MEASURE(`Payment Method Mix`) AS payment_method_mix FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT c.`Customer Gender`, s.`Payment Method`, s.payment_method_mix, c.repeat_customer_rate\n",
+              "FROM c JOIN s ON s.`Customer Gender` <=> c.`Customer Gender`\n",
+              "ORDER BY c.`Customer Gender`, s.`Payment Method`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "9de6b2f4690956bf8fe1670ae01a69de",
+        "question": [
+          "By customer gender, show the payment method mix and the repeat customer rate."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Customer Continent`, `Franchise ID`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage WHERE `Supplier Approved` = 'Y' GROUP BY ALL),\n",
+              "c AS (SELECT `Customer Continent`, MEASURE(`Customer Coverage (proxy)`) AS customer_coverage FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL),\n",
+              "j AS (SELECT s.`Customer Continent`, SUM(s.gross_sales) AS gross_sales FROM s JOIN f ON f.`Franchise ID` = s.`Franchise ID` GROUP BY s.`Customer Continent`)\n",
+              "SELECT c.`Customer Continent`, j.gross_sales, c.customer_coverage\n",
+              "FROM c LEFT JOIN j ON j.`Customer Continent` = c.`Customer Continent`\n",
+              "ORDER BY c.`Customer Continent`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "9fa60f1eb9e45c46b9dac2ebbc2210df",
+        "question": [
+          "By customer home continent, what were gross sales at stores sourcing from an approved supplier, and what is the customer coverage for that continent?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer State`, MEASURE(`Repeat Customers`) AS repeat_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL),\n",
+              "s AS (SELECT `Customer State`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT c.`Customer State`, c.repeat_customers, s.gross_sales\n",
+              "FROM c JOIN s ON s.`Customer State` <=> c.`Customer State`\n",
+              "ORDER BY s.gross_sales DESC, c.`Customer State` LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "a0ffbbc465cd57ea874eab2e1c576780",
+        "question": [
+          "By customer home state, show repeat customers and the gross sales from that state; top 10 states by gross sales."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `First Purchase Date`, MEASURE(`Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `First Purchase Date` IS NOT NULL GROUP BY ALL ORDER BY 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "a123fb40899a591fb3fb59356e20be10",
+        "question": [
+          "How many customers made their first purchase on each day?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Transaction Date` = DATE'2024-05-10'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "a17bf3e40b82570b989368160f32ddcf",
+        "question": [
+          "What were gross sales on May 10, 2024?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Payment Method`, MEASURE(`Transaction Count`) AS transaction_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY transaction_count DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "a6ed2854c6b857e0b72605cf25f1365c",
+        "question": [
+          "How many transactions were paid with each card network?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Transaction Count`) AS transaction_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "a72be15141d15629a6829244f12348ec",
+        "question": [
+          "How many sales transactions were recorded?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, `Transaction Week`, MEASURE(`Transaction Count`) AS transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Status` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT s.`Transaction Week`, f.`Supplier Status`, SUM(s.transactions) AS transactions\n",
+              "FROM s JOIN f ON f.`Franchise ID` = s.`Franchise ID`\n",
+              "GROUP BY ALL ORDER BY s.`Transaction Week`, f.`Supplier Status`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "a73713302dc55285a66647ef482b009e",
+        "question": [
+          "How many transactions did stores with and without a supplier on file record each week?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer Country`, MEASURE(`Repeat Customers`) AS repeat_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL),\n",
+              "s AS (SELECT `Customer Country`, MEASURE(`Units Sold`) AS units_sold FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise Country` = 'Japan' GROUP BY ALL)\n",
+              "SELECT c.`Customer Country`, s.units_sold, c.repeat_customers\n",
+              "FROM c JOIN s ON s.`Customer Country` <=> c.`Customer Country`\n",
+              "ORDER BY c.`Customer Country`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "a7f1694a675d521cae783474f3ad34fe",
+        "question": [
+          "How many units did customers from each home country buy at stores in Japan, and how many repeat customers does each country have?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Repeat Customer Rate`) AS repeat_customer_rate FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "a9bb8ab943385577bad5e2a7a1e0a018",
+        "question": [
+          "What share of our shoppers came back for another purchase?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise Country`, `Product`, MEASURE(`Product Mix`) AS product_mix\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "GROUP BY ALL ORDER BY `Franchise Country`, product_mix DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "ab3a6a8dbe055aa9848c7cee7ea3a7d7",
+        "question": [
+          "Product share of sales within each store country"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise Name`, MEASURE(`Gross Sales`) AS gross_sales\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "GROUP BY ALL ORDER BY gross_sales DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "ab56d500140a51f099bd24dd2bcd4092",
+        "question": [
+          "Gross sales by store name"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Last Purchase Date`, MEASURE(`Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Last Purchase Date` IS NOT NULL GROUP BY ALL ORDER BY customers DESC LIMIT 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "acf4a0782fe8501bb1aa210c5562b16d",
+        "question": [
+          "On which date did the most customers make their latest purchase?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Country`, MEASURE(`Revenue per Customer`) AS revenue_per_customer FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY revenue_per_customer DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "ada100386c475374bb1ecdc0fc0fc6be",
+        "question": [
+          "What is ARPC by customer country?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer Continent`, MEASURE(`Repeat Customer Rate`) AS repeat_customer_rate FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL),\n",
+              "s AS (SELECT `Customer Continent`, MEASURE(`Units per Transaction`) AS units_per_transaction FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT c.`Customer Continent`, c.repeat_customer_rate, s.units_per_transaction\n",
+              "FROM c LEFT JOIN s ON s.`Customer Continent` = c.`Customer Continent`\n",
+              "ORDER BY c.`Customer Continent`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "af8e94b6125b5655acb22d1712de4d64",
+        "question": [
+          "By customer continent, compare the repeat customer rate with units per transaction."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH f AS (SELECT `Franchise Size`, MEASURE(`Supplier Coverage (proxy)`) AS supplier_coverage FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL),\n",
+              "s AS (SELECT `Franchise Size`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT f.`Franchise Size`, f.supplier_coverage, s.gross_sales\n",
+              "FROM f LEFT JOIN s ON s.`Franchise Size` = f.`Franchise Size`\n",
+              "ORDER BY f.`Franchise Size`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b11d743f233e57a18e482f8764924f0c",
+        "question": [
+          "For each store size band, show supplier coverage and gross sales."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Supplier Coverage (proxy)`) AS supplier_coverage\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b373344ed75151c1916bc358626e1294",
+        "question": [
+          "What is our supplier reach across the store network?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Approved Suppliers`) AS approved_suppliers\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b38e9671501d551e856aaec0da0ec768",
+        "question": [
+          "How many approved suppliers are there?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, `Product`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Status` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL),\n",
+              "j AS (SELECT f.`Supplier Status`, s.`Product`, SUM(s.gross_sales) AS gross_sales FROM f JOIN s ON s.`Franchise ID` = f.`Franchise ID` GROUP BY f.`Supplier Status`, s.`Product`)\n",
+              "SELECT `Supplier Status`, `Product`, gross_sales, ROUND(gross_sales / SUM(gross_sales) OVER (PARTITION BY `Supplier Status`), 4) AS product_share\n",
+              "FROM j ORDER BY `Supplier Status`, gross_sales DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b4b6de13affd5c6c987eb8984242bda8",
+        "question": [
+          "What share of each supplier-status group's gross sales comes from each product?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer ID`, MEASURE(`Customer Gross Sales`) AS customer_gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY customer_gross_sales DESC LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b6bf9eca493d5837b8127fc45e88a22a",
+        "question": [
+          "Which 10 customers spent the most?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Payment Method`, MEASURE(`Payment Method Mix`) AS payment_method_mix, MEASURE(`Transaction Count All Payment Methods`) AS transactions_all_methods FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY payment_method_mix DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b77b7641f2ba5d27a76c39e9e0ac78a0",
+        "question": [
+          "What is the tender mix across our sales?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Name`, `Supplier Status` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT f.`Supplier Name`, SUM(s.gross_sales) AS gross_sales\n",
+              "FROM f JOIN s ON s.`Franchise ID` = f.`Franchise ID`\n",
+              "WHERE f.`Supplier Status` = 'Supplier on file'\n",
+              "GROUP BY f.`Supplier Name` ORDER BY gross_sales DESC LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b8b9ca384d0750208b1f11d335ede7f6",
+        "question": [
+          "Which 10 suppliers' stores generated the most gross sales, excluding stores with no supplier on file?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Product`, MEASURE(`Gross Sales`) AS gross_sales\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "GROUP BY ALL ORDER BY gross_sales DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b8f795d489d357cb80c7c2e57d818933",
+        "question": [
+          "Revenue by product, highest first"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Continent`, MEASURE(`Customer Gross Sales`) AS customer_gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY customer_gross_sales DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b91edf45595f5bee9ba2c8cd61959695",
+        "question": [
+          "Break down customer spend by customer continent."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Revenue per Customer`) AS revenue_per_customer FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "b943ac2431435df5afe76914e46110a9",
+        "question": [
+          "What is the average spend per shopper?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Product`, MEASURE(`Product Mix`) AS product_mix, MEASURE(`Gross Sales All Products`) AS gross_sales_all_products\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "GROUP BY ALL ORDER BY product_mix DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "bbad5945401956e6bf346d2aa41f13fc",
+        "question": [
+          "What share of gross sales does each product contribute?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise Country`, MEASURE(`Supplier Coverage (proxy)`) AS supplier_coverage\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage\n",
+              "GROUP BY ALL ORDER BY supplier_coverage"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "bbb3f060ff2857b0ab1ef465835ae0fe",
+        "question": [
+          "Supplier coverage by store country"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise ID`, `Franchise Name`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY gross_sales ASC LIMIT 5"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "bdc1b347e3155438925a8bce03978ac5",
+        "question": [
+          "List the 5 stores (by store id and name) with the lowest revenue."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise Country`, MEASURE(`Payment Method Mix`) AS payment_method_mix\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "WHERE `Payment Method` = 'amex'\n",
+              "GROUP BY ALL ORDER BY `Franchise Country`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "bf1a642266645f86a16f0ff2e75f0a6e",
+        "question": [
+          "Within each store country, what share of transactions was paid with amex?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise Country`, MEASURE(`Approved Supplier Share (Franchise Basis)`) AS approved_supplier_share_franchise_basis\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage\n",
+              "GROUP BY ALL ORDER BY `Franchise Country`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "c0437284def051f4a4adf36645e2b887",
+        "question": [
+          "Approved supplier share of stores by store country"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH f AS (SELECT `Franchise Country`, MEASURE(`Franchise Count`) AS franchise_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL),\n",
+              "s AS (SELECT `Franchise Country`, MEASURE(`Franchises with Sales`) AS franchises_with_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT f.`Franchise Country`, f.franchise_count, COALESCE(s.franchises_with_sales, 0) AS franchises_with_sales\n",
+              "FROM f LEFT JOIN s ON s.`Franchise Country` = f.`Franchise Country`\n",
+              "ORDER BY f.franchise_count DESC, f.`Franchise Country`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "c0f5e90a64325601814b77f39ce7e597",
+        "question": [
+          "For each store country, how many franchise stores are there and how many of them recorded a sale?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH f AS (SELECT `Franchise Size`, MEASURE(`Franchises with Supplier`) AS with_supplier FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL),\n",
+              "fi AS (SELECT `Franchise ID`, `Franchise Size` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage WHERE `Supplier Status` = 'Supplier on file' GROUP BY ALL),\n",
+              "s AS (SELECT `Franchise ID`, MEASURE(`Franchises with Sales`) AS with_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "j AS (SELECT fi.`Franchise Size`, SUM(s.with_sales) AS with_sales FROM fi JOIN s ON s.`Franchise ID` = fi.`Franchise ID` GROUP BY fi.`Franchise Size`)\n",
+              "SELECT f.`Franchise Size`, f.with_supplier, COALESCE(j.with_sales, 0) AS with_sales, ROUND(COALESCE(j.with_sales, 0) / f.with_supplier, 4) AS share_selling\n",
+              "FROM f LEFT JOIN j ON j.`Franchise Size` = f.`Franchise Size`\n",
+              "WHERE f.with_supplier > 0\n",
+              "ORDER BY f.`Franchise Size`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "c148af66f3755942a6d788c019096691",
+        "question": [
+          "By store size, what share of stores with a supplier on file recorded at least one sale?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, `Product`, MEASURE(`Product Mix`) AS product_mix FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Ingredient` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT s.`Franchise ID`, f.`Supplier Ingredient`, s.`Product`, s.product_mix\n",
+              "FROM s JOIN f ON f.`Franchise ID` = s.`Franchise ID`\n",
+              "ORDER BY s.`Franchise ID`, s.`Product`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "c1508c2fea5c50dda7a63222af903cfb",
+        "question": [
+          "Show the product mix at each store along with the ingredient its supplier provides."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Gender`, MEASURE(`Revenue per Customer`) AS revenue_per_customer FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "c203d733d11e53d990c3b9f0a501cfa4",
+        "question": [
+          "How does revenue per customer compare by gender?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Customers with Purchases`) AS customers_with_purchases\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "c42e6ffe70795588a453396167030a2a",
+        "question": [
+          "How many distinct customers bought something?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer State`, MEASURE(`Revenue per Customer`) AS revenue_per_customer FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY revenue_per_customer DESC LIMIT 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "c485571660555505b30ce2ae8d0f9fd3",
+        "question": [
+          "Which home state has the highest revenue per customer?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Units Sold`) AS units_sold\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "c573876d827354a1bb78a15cb43e02aa",
+        "question": [
+          "How many units did we sell in total?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Customer Transactions`) AS customer_transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer Country` = 'Australia'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "c780d8512c095050961f87d678121f90",
+        "question": [
+          "How many transactions came from customers based in Australia?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise Country`, `Payment Method`, MEASURE(`Payment Method Mix`) AS payment_method_mix FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY 1, 2"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "c7891c4c71bc5710a997eae4c70bda92",
+        "question": [
+          "What is the payment mix in each store country?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, MEASURE(`Units Sold`) AS units_sold, MEASURE(`Transaction Count`) AS transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Name` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage WHERE `Supplier Status` = 'Supplier on file' GROUP BY ALL)\n",
+              "SELECT f.`Supplier Name`, ROUND(SUM(s.units_sold) / SUM(s.transactions), 2) AS units_per_transaction\n",
+              "FROM s JOIN f ON f.`Franchise ID` = s.`Franchise ID`\n",
+              "GROUP BY f.`Supplier Name` ORDER BY units_per_transaction DESC, f.`Supplier Name` LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "d046ae1d73b35b5f873b783d92869f08",
+        "question": [
+          "Which 10 suppliers' stores have the largest basket size (units per transaction)?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH f AS (SELECT `Franchise Size`, MEASURE(`Approved Supplier Share (Supplier Basis)`) AS approved_supplier_share FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL),\n",
+              "s AS (SELECT `Franchise Size`, MEASURE(`Average Selling Price`) AS average_selling_price FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT f.`Franchise Size`, f.approved_supplier_share, s.average_selling_price\n",
+              "FROM f LEFT JOIN s ON s.`Franchise Size` = f.`Franchise Size`\n",
+              "ORDER BY f.`Franchise Size`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "d0612692c9fc599ca63a78bc1b15a583",
+        "question": [
+          "By store size, what share of suppliers on file are approved, and what is the average selling price?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise City`, MEASURE(`Units Sold`) AS units_sold FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY units_sold DESC LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "d17340e3c51256e080db74cba172541c",
+        "question": [
+          "What are units sold by store city? Show the top 10."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Country`, `Customer Gender`, MEASURE(`Buying Customers`) AS buying_customers, MEASURE(`Repeat Customers`) AS repeat_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY 1, 2"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "d20bd7205bb85171ae0140ae4c3fb5e6",
+        "question": [
+          "How many buying and repeat customers are there for each gender in each home country?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, MEASURE(`Gross Sales`) AS gross_sales, MEASURE(`Transaction Count`) AS transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise Size` IN ('XL', 'XXL') GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage WHERE `Supplier Approved` = 'Y' GROUP BY ALL)\n",
+              "SELECT ROUND(SUM(s.gross_sales) / SUM(s.transactions), 2) AS average_transaction_value\n",
+              "FROM s JOIN f ON f.`Franchise ID` = s.`Franchise ID`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "d276816683be555183bef3df94037faa",
+        "question": [
+          "What is the average transaction value at XL and XXL stores that source from an approved supplier?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Transaction Date`, MEASURE(`Comparable Franchise Sales Growth (proxy)`) AS comp_sales_growth\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "WHERE `Franchise ID` = 3000005 AND `Transaction Date` BETWEEN DATE'2024-05-01' AND DATE'2024-05-31'\n",
+              "GROUP BY ALL ORDER BY `Transaction Date`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "d585a6f4dc5054da9213c52773fc2f70",
+        "question": [
+          "What was same-store sales growth day over day for franchise 3000005 in May 2024?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer Gender`, MEASURE(`Purchase Frequency`) AS purchase_frequency FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL),\n",
+              "s AS (SELECT `Customer Gender`, `Transaction Hour`, MEASURE(`Transaction Count`) AS transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT c.`Customer Gender`, s.`Transaction Hour`, s.transactions, c.purchase_frequency\n",
+              "FROM c JOIN s ON s.`Customer Gender` <=> c.`Customer Gender`\n",
+              "ORDER BY c.`Customer Gender`, s.`Transaction Hour`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "dec084dbeed35c0f8f2546994addb14b",
+        "question": [
+          "By customer gender, at what hours of day do transactions happen, alongside the purchase frequency of that gender?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Approved` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT SUM(s.gross_sales) AS gross_sales\n",
+              "FROM f JOIN s ON s.`Franchise ID` = f.`Franchise ID`\n",
+              "WHERE f.`Supplier Approved` = 'Y'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e0c70855f9af5837a7c6c8e112c02af1",
+        "question": [
+          "What were total gross sales at stores whose supplier is approved?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, `Transaction Date`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Status` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT s.`Transaction Date`, f.`Supplier Status`, SUM(s.gross_sales) AS gross_sales\n",
+              "FROM f JOIN s ON s.`Franchise ID` = f.`Franchise ID`\n",
+              "GROUP BY s.`Transaction Date`, f.`Supplier Status` ORDER BY s.`Transaction Date`, f.`Supplier Status`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e11b5f896d745c23b41be47848630791",
+        "question": [
+          "Show daily gross sales for stores with a supplier on file versus stores without one."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Product`, MEASURE(`Product Mix`) AS product_mix FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise Country` = 'US' GROUP BY ALL ORDER BY product_mix DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e1a1be01fbb45e88897894c32a9a0a64",
+        "question": [
+          "What is the product mix within US stores?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e39586e0b461516991334680e02e9a83",
+        "question": [
+          "What were net sales after returns?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Gross Sales`) AS gross_sales\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "WHERE `Franchise Country` = 'US'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e55f70e1c5845efd96d1defee8381ac4",
+        "question": [
+          "Gross sales at US stores"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise Size`, MEASURE(`Franchise Count`) AS franchise_count\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage\n",
+              "GROUP BY ALL ORDER BY `Franchise Size`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e591090907675157ba7603872a33ee93",
+        "question": [
+          "Store count by store size band"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Gender`, MEASURE(`Units per Transaction`) AS units_per_transaction\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales\n",
+              "GROUP BY ALL ORDER BY `Customer Gender`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "e74ddf1b83d35e21a287c1a23a80d7b4",
+        "question": [
+          "Average basket size by customer gender"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise ID`, `Franchise Name`, `Supplier Name`, MEASURE(`Franchise Count`) AS franchise_count\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage\n",
+              "WHERE `Franchise City` = 'Paris'\n",
+              "GROUP BY ALL ORDER BY `Franchise ID`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "ea4b657b39825811880002ecf204ff11",
+        "question": [
+          "Which vendor supplies each store in Paris?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Buying Customers`) AS buying_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer Country` = 'USA'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "ecb1c13e59a958cca03ac739a2f15c2f",
+        "question": [
+          "How many customers from the USA have bought from us?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, `Transaction Date`, MEASURE(`Comparable Franchise Sales Growth (proxy)`) AS comp_growth FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Name` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT s.`Franchise ID`, f.`Supplier Name`, s.comp_growth\n",
+              "FROM s JOIN f ON f.`Franchise ID` = s.`Franchise ID`\n",
+              "WHERE s.`Transaction Date` = DATE'2024-05-16' AND s.comp_growth IS NOT NULL\n",
+              "ORDER BY s.comp_growth DESC, s.`Franchise ID` LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "ece5719e125d59c2845cb4e2eb01ec50",
+        "question": [
+          "Which 10 stores had the highest day-over-day comparable sales growth on May 16, 2024, and who supplies each of them?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Repeat Customer Rate`) AS repeat_customer_rate FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer Country` = 'Japan'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "f055367dde505048bdfaeac49d500d06",
+        "question": [
+          "What is the repeat customer rate for customers living in Japan?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise Country` = 'US'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "f08b9045b67a50e89900c3922c79769f",
+        "question": [
+          "What were sales from US stores, using the store country rather than the customer country?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Units Sold`) AS units_sold FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Product` = 'Golden Gate Ginger'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "f09664e5cb565f88a0d74aa38167880d",
+        "question": [
+          "How many units of Golden Gate Ginger did we sell?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer State`, MEASURE(`Repeat Customers`) AS returning_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL),\n",
+              "s AS (SELECT `Customer State`, MEASURE(`Transaction Count`) AS transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT c.`Customer State`, s.transactions, c.returning_customers\n",
+              "FROM c JOIN s ON s.`Customer State` <=> c.`Customer State`\n",
+              "ORDER BY s.transactions DESC, c.`Customer State` LIMIT 10"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "f1012179e77857a1969b3ef126079ac3",
+        "question": [
+          "By shoppers' home state, how many receipts were rung up and how many returning customers live there? Show the top 10 states by receipts."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Supplier Size`, MEASURE(`Supplier Count`) AS supplier_count\n",
+              "FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage\n",
+              "GROUP BY ALL ORDER BY `Supplier Size`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "f10e5891a8e058bfba34cb3003a7267f",
+        "question": [
+          "Supplier count by supplier size"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise ID`, MEASURE(`Comparable Franchise Sales Growth (proxy)`) AS comp_growth FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Transaction Date` = DATE'2024-05-16' GROUP BY ALL ORDER BY comp_growth DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "f44d93771c8555b68b073df80439741c",
+        "question": [
+          "What was same-store sales growth on May 16, 2024 versus the prior day for each store?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Customer Coverage (proxy)`) AS customer_coverage FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "f6ee9bff49ef535b92c6e0516cc123e5",
+        "question": [
+          "What percentage of customers on file have made at least one purchase?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Purchase Frequency`) AS purchase_frequency FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer Purchase Band` = '11+ purchases'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "f781ca99e587536188e0f02e20ebdb19",
+        "question": [
+          "What is the purchase frequency of customers in the 11+ purchases band?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH s AS (SELECT `Franchise ID`, MEASURE(`Units Sold`) AS units_sold FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL),\n",
+              "f AS (SELECT `Franchise ID`, `Supplier Ingredient` FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage GROUP BY ALL)\n",
+              "SELECT f.`Supplier Ingredient`, SUM(s.units_sold) AS units_sold\n",
+              "FROM f JOIN s ON s.`Franchise ID` = f.`Franchise ID`\n",
+              "GROUP BY f.`Supplier Ingredient` ORDER BY units_sold DESC"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "f97db54595575d82bceb38c3cd4d74b2",
+        "question": [
+          "How many units were sold by stores grouped by the ingredient their supplier provides?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "WITH c AS (SELECT `Customer Continent`, MEASURE(`Revenue per Customer`) AS revenue_per_customer FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL),\n",
+              "s AS (SELECT `Customer Continent`, MEASURE(`Average Transaction Value`) AS average_transaction_value FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL)\n",
+              "SELECT c.`Customer Continent`, c.revenue_per_customer, s.average_transaction_value\n",
+              "FROM c JOIN s ON s.`Customer Continent` <=> c.`Customer Continent`\n",
+              "ORDER BY c.`Customer Continent`"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "fbda742156435aefbfba246b54620aa4",
+        "question": [
+          "By customer home continent, compare revenue per buying customer with the average transaction value."
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Customer Continent`, MEASURE(`Repeat Customer Rate`) AS repeat_customer_rate FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY 1"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "fc68e7be96345ca89aadf7104ae22a40",
+        "question": [
+          "What is the repeat customer rate by customer continent?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT `Franchise ID`, `Transaction Date`, MEASURE(`Daily Gross Sales`) AS daily_gross_sales, MEASURE(`Prior Day Gross Sales`) AS prior_day_gross_sales, MEASURE(`Comparable Franchise Sales Growth (proxy)`) AS comp_growth FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise ID` = 3000000 GROUP BY ALL ORDER BY 2"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "fd7a8c8e05da5728b108e1ac7fec52d9",
+        "question": [
+          "What is the day-over-day sales change for store 3000000?"
+        ]
+      },
+      {
+        "answer": [
+          {
+            "content": [
+              "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Transaction Date` BETWEEN DATE'2024-05-01' AND DATE'2024-05-07'"
+            ],
+            "format": "SQL"
+          }
+        ],
+        "id": "fe7918e3cb975d21b6ee87702d34c567",
+        "question": [
+          "What was revenue in the first week of May 2024 (May 1 to May 7)?"
+        ]
+      }
+    ]
+  },
   "config": {
     "sample_questions": [
       {

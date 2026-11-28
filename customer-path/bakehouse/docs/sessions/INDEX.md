@@ -4,6 +4,7 @@ Genie build session summaries, newest first.
 
 | Date | Wave | Session | Title | Mode | Status | Summary |
 |---|---|---|---|---|---|---|
+| 2026-11-28 | 7 | 11 | Benchmark Baseline & Tuning Plan 01 (tuning 117/146 80.1%, holdout 33/41 80.5%; 29 failures classified) | edit | pass | [2026-11-28_w7-11-benchmark-baseline.md](2026-11-28_w7-11-benchmark-baseline.md) |
 | 2026-11-28 | 6 | 10c | Benchmark Questions: Cross-View (59 questions, 59/59 SUCCEEDED) | edit | pass | [2026-11-28_w6-10c-cross-view-benchmark.md](2026-11-28_w6-10c-cross-view-benchmark.md) |
 | 2026-11-28 | 6 | 10b | Benchmark Questions: View Group B (48 questions, 48/48 SUCCEEDED) | edit | pass | [2026-11-28_w6-10b-benchmark-group-b.md](2026-11-28_w6-10b-benchmark-group-b.md) |
 | 2026-11-28 | 6 | 10a | Benchmark Questions: View Group A (80 questions, 80/80 SUCCEEDED) | edit | pass | [2026-11-28_w6-10a-benchmark-group-a.md](2026-11-28_w6-10a-benchmark-group-a.md) |
