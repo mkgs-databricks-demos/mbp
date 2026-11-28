@@ -15,6 +15,16 @@ joins:
     cardinality: many_to_one
     rely:
       at_most_one_match: true
+    joins:
+      # verified: sales_franchises -> sales_suppliers on supplierID = supplierID, one_to_one,
+      # orphan_rate 0.4375 (21 of 48 franchises have no supplier). LEFT join (metric view default):
+      # supplier attributes are null for those stores and are labelled in the dimensions below.
+      - name: supplier
+        source: ${source_catalog}.${source_schema}.sales_suppliers
+        on: franchise.supplierID = supplier.supplierID
+        cardinality: many_to_one
+        rely:
+          at_most_one_match: true
   # verified: sales_transactions -> sales_customers on customerID = customerID, orphan_rate 0.0
   - name: customer
     source: ${source_catalog}.${source_schema}.sales_customers
@@ -79,13 +89,13 @@ dimensions:
       - store city
   - name: Franchise Country
     expr: franchise.country
-    comment: "Country of the franchise store where the sale happened (sales geography). Uses 'US' for the United States, unlike Customer Country ('USA')."
+    comment: "Country of the franchise store where the sale happened (sales geography). Exact values: US, Australia, Japan, Canada, Netherlands, France, Germany, Italy, Sweden ('US' = United States, unlike Customer Country 'USA'). Filter with = on the exact value, never ILIKE or LIKE: '%US%' also matches Australia."
     synonyms:
       - store country
       - sales country
   - name: Franchise Size
     expr: franchise.size
-    comment: "Store size band, ordinal S < M < L < XL < XXL (exact definition not confirmed)."
+    comment: "Store size band, ordinal S < M < L < XL < XXL (exact definition not confirmed). Exact values S, M, L, XL, XXL: filter with = (for example = 'XL'), never ILIKE or LIKE: '%XL%' also matches XXL."
     synonyms:
       - store size
   - name: Customer Country
@@ -96,10 +106,29 @@ dimensions:
     comment: "Home continent of the customer (1:1 with Customer Country)."
   - name: Customer State
     expr: customer.state
-    comment: "Home state or region of the customer."
+    comment: "Home state or region of the customer, stored as in the source: 2-letter codes for USA customers (for example 'CA'), full names for customers in other countries (for example 'California' for a customer whose country is Australia or Japan). 'state CA' means = 'CA'. Filter with = on the exact value, never ILIKE or LIKE: '%CA%' also matches 'California' and 'South Carolina'."
   - name: Customer Gender
     expr: customer.gender
     comment: "Customer gender; aggregated reporting only (owner decision pending on exposure)."
+  - name: Supplier Status
+    expr: CASE WHEN franchise.supplier.supplierID IS NULL THEN 'No supplier on file' ELSE 'Supplier on file' END
+    comment: "Whether the store's ingredient supplier is on file. Exact values: 'Supplier on file', 'No supplier on file'. Use it (not Supplier Name) to split sales of stores with and without a supplier; compute any ratio measure here grouped by this dimension, no join to another view needed."
+    synonyms:
+      - supplier on file
+      - has supplier
+  - name: Supplier Name
+    expr: COALESCE(franchise.supplier.name, 'Unknown supplier')
+    comment: "Name of the store's ingredient supplier; 'Unknown supplier' when no supplier is on file. Group ratio measures (Average Transaction Value, Units per Transaction, Sales per Franchise) by it directly: they are recomputed per supplier."
+    synonyms:
+      - vendor
+      - ingredient supplier
+  - name: Supplier Approved
+    expr: COALESCE(franchise.supplier.approved, 'Unknown')
+    comment: "Approval flag of the store's supplier. Exact values: 'Y' = approved supplier, 'Unknown' = no supplier on file. Group by it directly to compare stores on an approved supplier with the other stores."
+    synonyms:
+      - approved vendor
+      - approved supplier
+      - certified vendor
 
 measures:
   - name: Gross Sales
@@ -172,7 +201,7 @@ measures:
         range: all
   - name: Product Mix
     expr: MEASURE(`Gross Sales`) / MEASURE(`Gross Sales All Products`)
-    comment: "Fraction 0-1 of gross sales from the product, within the other grouped dimensions (for example within a franchise or country)."
+    comment: "Fraction 0-1 of gross sales from the product, within the other grouped dimensions (for example within a franchise or country). A 0-1 ratio already formatted as a percentage: do not multiply by 100."
     synonyms:
       - sales mix
       - product share
@@ -208,7 +237,7 @@ measures:
       - selling franchises
   - name: Sales per Franchise
     expr: MEASURE(`Gross Sales`) / MEASURE(`Franchises with Sales`)
-    comment: "Gross sales divided by franchises with sales, in source currency units per store for the selected period (not annualized AUV)."
+    comment: "Gross sales divided by franchises with sales, in source currency units per store for the selected period (not annualized AUV). Already an average per store for whatever is grouped (for example one value per week): do not group by Franchise ID unless a per-store list is asked for."
     synonyms:
       - sales per store
       - average unit volume
@@ -227,24 +256,27 @@ measures:
       - unique customers
   - name: Daily Gross Sales
     expr: SUM(source.totalPrice)
-    comment: "Gross sales of the Transaction Date (current-period value for Comparable Franchise Sales Growth). When not grouped by Transaction Date, shows the last date in scope."
+    comment: "Gross sales of the Transaction Date (current-period value for Comparable Franchise Sales Growth). With Prior Day Gross Sales it is the day-over-day pair: group by Transaction Date and use these measures instead of LAG. When not grouped by Transaction Date, shows the last date in scope."
     window:
       - order: Transaction Date
         range: current
   - name: Prior Day Gross Sales
     expr: SUM(source.totalPrice)
-    comment: "Gross sales of the day before the Transaction Date (prior-period value for Comparable Franchise Sales Growth)."
+    comment: "Gross sales of the day before the Transaction Date (prior-period value for Comparable Franchise Sales Growth). With Daily Gross Sales it is the day-over-day pair: group by Transaction Date and use these measures instead of LAG."
     window:
       - order: Transaction Date
         range: current
         offset: -1 day
   - name: Comparable Franchise Sales Growth (proxy)
     expr: (MEASURE(`Daily Gross Sales`) - MEASURE(`Prior Day Gross Sales`)) / MEASURE(`Prior Day Gross Sales`)
-    comment: "Proxy, fraction (-1 and up; 0.05 = +5%): day-over-day change in gross sales. Comparable only when grouped by Franchise ID (same store in both days); not the standard 12-month same-store definition (no store opening dates), and gross, not net, sales. Data covers 17 days; 2024-05-17 is partial."
+    comment: "Proxy, fraction (-1 and up; 0.05 = +5%): day-over-day change in gross sales. Comparable only when grouped by Franchise ID (same store in both days); not the standard 12-month same-store definition (no store opening dates), and gross, not net, sales. Data covers 17 days; 2024-05-17 is partial. A 0-1 ratio already formatted as a percentage: do not multiply by 100. Use it for day-over-day change questions, grouped by Transaction Date."
     synonyms:
       - same-store sales growth
       - comp sales growth
       - like-for-like sales growth
+      - day-over-day change
+      - daily change
+      - vs prior day
     format:
       type: percentage
       decimal_places:

@@ -39,25 +39,25 @@ dimensions:
     comment: "Customer identifier."
   - name: Customer Country
     expr: source.country
-    comment: "Home country of the customer (Australia, USA, Japan). Uses 'USA', while franchise stores use 'US'."
+    comment: "Home country of the customer. Exact values: 'Australia', 'USA', 'Japan'. Uses 'USA', while Franchise Country (store country) uses 'US': when lining up customer countries with store countries, map 'USA' to 'US' (CASE WHEN `Customer Country` = 'USA' THEN 'US' ELSE `Customer Country` END) and keep every store country, showing 0 customers where none live."
   - name: Customer Continent
     expr: source.continent
     comment: "Home continent of the customer (1:1 with Customer Country)."
   - name: Customer State
     expr: source.state
-    comment: "Home state or region of the customer."
+    comment: "Home state or region of the customer, stored as in the source: 2-letter codes for USA customers (for example 'CA'), full names for customers in other countries (for example 'California' for a customer whose country is Australia or Japan). 'state CA' means = 'CA'. Filter with = on the exact value, never ILIKE or LIKE. Same values as Customer State in mv_bakehouse_sales."
   - name: Customer Gender
     expr: source.gender
     comment: "Customer gender; aggregated reporting only (owner decision pending on exposure)."
   - name: First Purchase Date
     expr: CAST(source.first_purchase_at AS DATE)
-    comment: "Date of the customer's first transaction in the data; null for customers with no purchases."
+    comment: "Date of the customer's first transaction in the data; null for customers with no purchases. Customer grain: grouping by it counts customers whose first purchase fell on that date. To line it up with daily sales, join on Transaction Date = First Purchase Date from the sales side (LEFT JOIN) and show 0 where no customer started."
     format:
       type: date
       date_format: year_month_day
   - name: Last Purchase Date
     expr: CAST(source.last_purchase_at AS DATE)
-    comment: "Date of the customer's most recent transaction in the data; null for customers with no purchases."
+    comment: "Date of the customer's most recent transaction in the data; null for customers with no purchases. Customer grain: filter on it (for example < DATE'2024-05-10') to count customers whose last purchase was before a date."
     format:
       type: date
       date_format: year_month_day
@@ -81,7 +81,7 @@ measures:
       - customer base
   - name: Buying Customers
     expr: COUNT(1) FILTER (WHERE source.transaction_count > 0)
-    comment: "Customers with at least one transaction in the data span."
+    comment: "Customers with at least one transaction in the data span (customer grain, one row per customer). Combined with sales by customer geography, join on the shared customer dimension with an inner or left join, not FULL OUTER JOIN, and use 0 instead of null for missing counts."
     synonyms:
       - active customers
       - purchasing customers

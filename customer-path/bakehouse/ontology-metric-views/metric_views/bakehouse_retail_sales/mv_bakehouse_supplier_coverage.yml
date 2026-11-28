@@ -47,7 +47,10 @@ dimensions:
       - store size
   - name: Supplier Status
     expr: CASE WHEN supplier.supplierID IS NULL THEN 'No supplier on file' ELSE 'Supplier on file' END
-    comment: "Whether the franchise's supplierID matches a row in the supplier table."
+    comment: "Whether the franchise's supplierID matches a row in the supplier table. Exact values: 'Supplier on file', 'No supplier on file' (no other values). Use this dimension, not Supplier Name, to split stores with and without a supplier. For sales of these stores, mv_bakehouse_sales has the same Supplier Status dimension."
+    synonyms:
+      - supplier on file
+      - has supplier
   - name: Supplier Name
     expr: COALESCE(supplier.name, 'Unknown supplier')
     comment: "Name of the franchise's ingredient supplier; 'Unknown supplier' when no supplier is on file."
@@ -68,10 +71,12 @@ dimensions:
     comment: "Supplier size band (definition not confirmed); 'Unknown' when no supplier is on file."
   - name: Supplier Approved
     expr: COALESCE(supplier.approved, 'Unknown')
-    comment: "Supplier approval flag: 'Y' = approved supplier (every supplier on file is 'Y' in the current data); 'Unknown' when no supplier is on file."
+    comment: "Supplier approval flag. Exact values: 'Y' = approved supplier (every supplier on file is 'Y' in the current data), 'Unknown' = no supplier on file. Group by it directly to compare stores on an approved supplier with the other stores; do not relabel values."
     synonyms:
       - approved vendor
       - certified supplier
+      - certified vendor
+      - approved supplier
 
 measures:
   - name: Franchise Count
@@ -115,7 +120,7 @@ measures:
     comment: "Distinct suppliers in scope with approval flag 'Y'."
   - name: Approved Supplier Share (Supplier Basis)
     expr: MEASURE(`Approved Suppliers`) / MEASURE(`Supplier Count`)
-    comment: "Fraction 0-1 of suppliers on file that are approved ('Y')."
+    comment: "Supplier basis: fraction 0-1 of suppliers on file that are approved ('Y'). Counts suppliers, not stores; for questions about stores (franchises) use Approved Supplier Share (Franchise Basis)."
     synonyms:
       - approved vendor share
     format:
@@ -128,7 +133,9 @@ measures:
     comment: "Franchise stores whose supplier on file is approved ('Y')."
   - name: Approved Supplier Share (Franchise Basis)
     expr: MEASURE(`Franchises on Approved Supplier`) / MEASURE(`Franchise Count`)
-    comment: "Fraction 0-1 of all franchise stores (including those with no supplier on file) sourcing from an approved supplier."
+    comment: "Franchise basis: fraction 0-1 of all franchise stores (including those with no supplier on file) sourcing from an approved supplier. Use it for questions about the share of stores; Approved Supplier Share (Supplier Basis) counts suppliers instead."
+    synonyms:
+      - share of stores on approved supplier
     format:
       type: percentage
       decimal_places:

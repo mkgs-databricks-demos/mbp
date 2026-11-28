@@ -15,5 +15,114 @@
       "correct": 117,
       "n": 146
     }
+  },
+  {
+    "changes": [
+      {
+        "id": "S1",
+        "plan": "tuning_plan_01",
+        "status": "applied",
+        "step": 1,
+        "view": "mv_bakehouse_sales"
+      },
+      {
+        "id": "S2",
+        "plan": "tuning_plan_01",
+        "status": "applied",
+        "step": 1,
+        "view": "mv_bakehouse_sales"
+      },
+      {
+        "id": "S3",
+        "plan": "tuning_plan_01",
+        "status": "applied as comment (step 5 rejected)",
+        "step": 1,
+        "view": "mv_bakehouse_sales"
+      },
+      {
+        "id": "S4",
+        "plan": "tuning_plan_01",
+        "status": "applied",
+        "step": 2,
+        "view": "mv_bakehouse_sales"
+      },
+      {
+        "id": "S5",
+        "plan": "tuning_plan_01",
+        "status": "applied (format already percentage)",
+        "step": 1,
+        "view": "mv_bakehouse_sales"
+      },
+      {
+        "id": "S6",
+        "plan": "tuning_plan_01",
+        "status": "applied",
+        "step": 1,
+        "view": "mv_bakehouse_sales"
+      },
+      {
+        "id": "C1",
+        "plan": "tuning_plan_01",
+        "status": "applied",
+        "step": 1,
+        "view": "mv_bakehouse_supplier_coverage"
+      },
+      {
+        "id": "C2",
+        "plan": "tuning_plan_01",
+        "status": "applied",
+        "step": 2,
+        "view": "mv_bakehouse_supplier_coverage"
+      },
+      {
+        "id": "C3",
+        "plan": "tuning_plan_01",
+        "status": "applied",
+        "step": 1,
+        "view": "mv_bakehouse_supplier_coverage"
+      },
+      {
+        "id": "C4",
+        "plan": "tuning_plan_01",
+        "status": "applied",
+        "step": 7,
+        "view": "mv_bakehouse_sales"
+      },
+      {
+        "id": "C5",
+        "plan": "tuning_plan_01",
+        "status": "covered by S5",
+        "step": 1,
+        "view": "mv_bakehouse_sales"
+      },
+      {
+        "id": "A1",
+        "plan": "tuning_plan_01",
+        "status": "applied as comment (step 5 rejected)",
+        "step": 1,
+        "view": "mv_bakehouse_customer_activity"
+      },
+      {
+        "id": "A2",
+        "plan": "tuning_plan_01",
+        "status": "applied",
+        "step": 1,
+        "view": "mv_bakehouse_customer_activity"
+      }
+    ],
+    "eval_run_id": "01f1eafb99ba1a47ac5f2814b651116f",
+    "holdout": {
+      "accuracy": 0.8536585365853658,
+      "correct": 35,
+      "n": 41
+    },
+    "iteration": 1,
+    "label": "tuning_plan_01",
+    "started_at": "2026-11-28T07:16:16Z",
+    "tuning": {
+      "accuracy": 0.8972602739726028,
+      "correct": 131,
+      "n": 146
+    }
   }
 ]
