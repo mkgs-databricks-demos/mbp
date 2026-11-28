@@ -113,7 +113,8 @@ def test_vendored_folder_has_only_readme():
 
 
 def test_bundle_includes_resources(bundle):
-    assert bundle["bundle"]["name"] == "ontology-metric-views"
+    # Rendered per project by the scaffold (test_scaffold.test_bundle_names_are_project_specific).
+    assert bundle["bundle"]["name"] == "{{project_name}}-ontology-metric-views"
     assert bundle["include"] == ["resources/*.yml"]
 
 

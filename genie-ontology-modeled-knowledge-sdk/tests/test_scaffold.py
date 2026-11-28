@@ -275,9 +275,32 @@ def test_schema_name_rendered_from_target_schema(project):
     t_lines = (TEMPLATES / "ontology-metric-views" / "databricks.yml").read_text().splitlines()
     p_lines = (target / "ontology-metric-views" / "databricks.yml").read_text().splitlines()
     assert len(t_lines) == len(p_lines)
-    assert [(a, b) for a, b in zip(t_lines, p_lines, strict=True) if a != b] == [
+    diffs = [(a, b) for a, b in zip(t_lines, p_lines, strict=True) if a != b]
+    assert [d for d in diffs if "ontology-metric-views" not in d[0]] == [
         ("    default: ontology", f"    default: {CONFIG['target_schema']}")
     ]
+    assert len(diffs) == 2  # plus the project-specific bundle name
+
+
+@pytest.mark.parametrize("bundle", ["ontology-metric-views", "ontology-genie-agents"])
+def test_bundle_names_are_project_specific(tmp_path, bundle):
+    """Two scaffolded projects never share a bundle name, so never a deployment root or state.
+
+    P1-6 incident (2026-11-27): the child project kept the template name `ontology-metric-views`, shared
+    the TPC-H dogfood's `~/.bundle/ontology-metric-views/dev` state, and its deploy renamed TPC-H's schema.
+    """
+    import yaml
+
+    names = []
+    for project_name in ("alpha", "beta"):
+        target = tmp_path / project_name
+        scaffold_project(CONFIG, target, SDK_ROOT, project_name=project_name)
+        name = yaml.safe_load((target / bundle / "databricks.yml").read_text())["bundle"]["name"]
+        assert name == f"{project_name}-{bundle}"
+        names.append(name)
+    assert len(set(names)) == 2
+    template = (TEMPLATES / bundle / "databricks.yml").read_text()
+    assert f'name: "{{{{project_name}}}}-{bundle}"' in template
 
 
 def test_render_schema_name_quotes_and_errors():

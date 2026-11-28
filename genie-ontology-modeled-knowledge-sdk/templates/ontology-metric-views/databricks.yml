@@ -7,7 +7,9 @@
 # file. Use a CLI profile for the workspace and put real values in the
 # gitignored .databricks/bundle/<target>/variable-overrides.json (see README.md).
 bundle:
-  name: ontology-metric-views
+  # Project-specific: the bundle name sets the deployment root (~/.bundle/<name>/<target>) and its state,
+  # so two projects in one workspace must never share it (P1-6 incident, 2026-11-27).
+  name: "{{project_name}}-ontology-metric-views"
 
 include:
   - resources/*.yml
