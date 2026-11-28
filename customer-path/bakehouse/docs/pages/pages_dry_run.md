@@ -1,6 +1,12 @@
 # UC Pages Dry Run — bakehouse_retail_sales
 
-## Build run 244030216249267 (current)
+## Build run 409860738864401 (current)
+
+`upsert_pages(terms, RestPagesClient(ws), domain_id=<sdk_config.json pages_domain_id>, dry_run=True, status="DRAFT", only_ids=<the 23 ids in pages_results.md>)`, installed SDK wheel 0.1.1. Inputs: `docs/semantics/` 23 terms, all parsed; `docs/context/glossary_candidates/` absent. Domain held 64 pages before the run. Waves 0-2 did not run in this build, so the term files are the same as in build run 244030216249267.
+
+Planned: **0 creates, 0 updates, 23 unchanged, 0 skipped, 0 errors.** Same-title pages in other domains (advisory, never touched): Franchise 1, Gross Sales 1, Net Sales 3, Payment Method 2, Payment Method Mix 1, Product 4, Revenue per Customer 1; all other terms 0.
+
+## Build run 244030216249267
 
 `upsert_pages(terms, RestPagesClient(ws), domain_id=<sdk_config.json pages_domain_id>, dry_run=True, only_ids=<21 ids from build run 38498872047824>)`, installed SDK wheel 0.1.1. Inputs: `docs/semantics/` 23 terms, all parsed (now `Bakehouse Customer` and `Bakehouse Supplier`, no bare `Customer` / `Supplier`); `docs/context/glossary_candidates/` absent. Domain held 62 pages before the run.
 
