@@ -1,0 +1,328 @@
+# View group: B (metric views: mv_bakehouse_sales, mv_bakehouse_supplier_coverage)
+# Session 10b, second half of ontology-metric-views/metric_views/manifest.json by name (names[n//2:] of 3 views).
+# expected_sql checked SUCCEEDED on 2026-11-28 (rendered tokens, read-only, warehouse from docs/registration/resolved_target.json)
+- id: b-001
+  question: What were our total gross sales across all stores?
+  expected_sql: |-
+    SELECT MEASURE(`Gross Sales`) AS gross_sales
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+  tags: ['type:simple', 'view:mv_bakehouse_sales', 'measure:Gross Sales']
+- id: b-002
+  question: How many units did we sell in total?
+  expected_sql: |-
+    SELECT MEASURE(`Units Sold`) AS units_sold
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+  tags: ['type:simple', 'view:mv_bakehouse_sales', 'measure:Units Sold']
+- id: b-003
+  question: How many sales transactions were rung up overall?
+  expected_sql: |-
+    SELECT MEASURE(`Transaction Count`) AS transaction_count
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+  tags: ['type:simple', 'view:mv_bakehouse_sales', 'measure:Transaction Count']
+- id: b-004
+  question: How many distinct customers bought something?
+  expected_sql: |-
+    SELECT MEASURE(`Customers with Purchases`) AS customers_with_purchases
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+  tags: ['type:simple', 'view:mv_bakehouse_sales', 'measure:Customers with Purchases']
+- id: b-005
+  question: How many franchise stores recorded at least one sale?
+  expected_sql: |-
+    SELECT MEASURE(`Franchises with Sales`) AS franchises_with_sales
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+  tags: ['type:simple', 'view:mv_bakehouse_sales', 'measure:Franchises with Sales']
+- id: b-006
+  question: What's the average ticket across the network?
+  expected_sql: |-
+    SELECT MEASURE(`Average Transaction Value`) AS average_transaction_value
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+  tags: ['type:synonym', 'view:mv_bakehouse_sales', 'measure:Average Transaction Value']
+- id: b-007
+  question: What is our UPT overall?
+  expected_sql: |-
+    SELECT MEASURE(`Units per Transaction`) AS units_per_transaction
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+  tags: ['type:synonym', 'view:mv_bakehouse_sales', 'measure:Units per Transaction']
+- id: b-008
+  question: What price per unit are we getting on average for each product?
+  expected_sql: |-
+    SELECT `Product`, MEASURE(`Average Selling Price`) AS average_selling_price
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    GROUP BY ALL ORDER BY `Product`
+  tags: ['type:synonym', 'view:mv_bakehouse_sales', 'measure:Average Selling Price', 'dimension:Product']
+- id: b-009
+  question: Revenue by product, highest first
+  expected_sql: |-
+    SELECT `Product`, MEASURE(`Gross Sales`) AS gross_sales
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    GROUP BY ALL ORDER BY gross_sales DESC
+  tags: ['type:breakdown', 'view:mv_bakehouse_sales', 'measure:Gross Sales', 'dimension:Product']
+- id: b-010
+  question: What share of gross sales does each product contribute?
+  expected_sql: |-
+    SELECT `Product`, MEASURE(`Product Mix`) AS product_mix, MEASURE(`Gross Sales All Products`) AS gross_sales_all_products
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    GROUP BY ALL ORDER BY product_mix DESC
+  tags: ['type:ratio', 'view:mv_bakehouse_sales', 'measure:Product Mix', 'measure:Gross Sales All Products', 'dimension:Product']
+- id: b-011
+  question: What is the tender mix by number of transactions?
+  expected_sql: |-
+    SELECT `Payment Method`, MEASURE(`Payment Method Mix`) AS payment_method_mix, MEASURE(`Transaction Count All Payment Methods`) AS transaction_count_all_payment_methods
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    GROUP BY ALL ORDER BY payment_method_mix DESC
+  tags: ['type:synonym', 'view:mv_bakehouse_sales', 'measure:Payment Method Mix', 'measure:Transaction Count All Payment Methods', 'dimension:Payment Method']
+- id: b-012
+  question: Within each store country, what share of transactions was paid with amex?
+  expected_sql: |-
+    SELECT `Franchise Country`, MEASURE(`Payment Method Mix`) AS payment_method_mix
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    WHERE `Payment Method` = 'amex'
+    GROUP BY ALL ORDER BY `Franchise Country`
+  tags: ['type:ratio', 'view:mv_bakehouse_sales', 'measure:Payment Method Mix', 'dimension:Payment Method', 'dimension:Franchise Country']
+- id: b-013
+  question: Gross sales by day for the first week of May 2024
+  expected_sql: |-
+    SELECT `Transaction Date`, MEASURE(`Gross Sales`) AS gross_sales
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    WHERE `Transaction Date` BETWEEN DATE'2024-05-01' AND DATE'2024-05-07'
+    GROUP BY ALL ORDER BY `Transaction Date`
+  tags: ['type:time', 'view:mv_bakehouse_sales', 'measure:Gross Sales', 'dimension:Transaction Date']
+- id: b-014
+  question: Weekly units sold trend
+  expected_sql: |-
+    SELECT `Transaction Week`, MEASURE(`Units Sold`) AS units_sold
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    GROUP BY ALL ORDER BY `Transaction Week`
+  tags: ['type:time', 'view:mv_bakehouse_sales', 'measure:Units Sold', 'dimension:Transaction Week']
+- id: b-015
+  question: At what hour of the day do we ring up the most transactions?
+  expected_sql: |-
+    SELECT `Transaction Hour`, MEASURE(`Transaction Count`) AS transaction_count
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    GROUP BY ALL ORDER BY transaction_count DESC LIMIT 1
+  tags: ['type:time', 'view:mv_bakehouse_sales', 'measure:Transaction Count', 'dimension:Transaction Hour']
+- id: b-016
+  question: For each day, show gross sales next to the previous day's gross sales
+  expected_sql: |-
+    SELECT `Transaction Date`, MEASURE(`Daily Gross Sales`) AS daily_gross_sales, MEASURE(`Prior Day Gross Sales`) AS prior_day_gross_sales
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    GROUP BY ALL ORDER BY `Transaction Date`
+  tags: ['type:time', 'view:mv_bakehouse_sales', 'measure:Daily Gross Sales', 'measure:Prior Day Gross Sales', 'dimension:Transaction Date']
+- id: b-017
+  question: What was same-store sales growth day over day for franchise 3000005 in May 2024?
+  expected_sql: |-
+    SELECT `Transaction Date`, MEASURE(`Comparable Franchise Sales Growth (proxy)`) AS comp_sales_growth
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    WHERE `Franchise ID` = 3000005 AND `Transaction Date` BETWEEN DATE'2024-05-01' AND DATE'2024-05-31'
+    GROUP BY ALL ORDER BY `Transaction Date`
+  tags: ['type:synonym', 'view:mv_bakehouse_sales', 'measure:Comparable Franchise Sales Growth (proxy)', 'dimension:Franchise ID', 'dimension:Transaction Date']
+- id: b-018
+  question: Which 5 stores (by store id) had the highest gross sales?
+  expected_sql: |-
+    SELECT `Franchise ID`, MEASURE(`Gross Sales`) AS gross_sales
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    GROUP BY ALL ORDER BY gross_sales DESC LIMIT 5
+  tags: ['type:breakdown', 'view:mv_bakehouse_sales', 'measure:Gross Sales', 'dimension:Franchise ID']
+- id: b-019
+  question: Gross sales by store name
+  expected_sql: |-
+    SELECT `Franchise Name`, MEASURE(`Gross Sales`) AS gross_sales
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    GROUP BY ALL ORDER BY gross_sales DESC
+  tags: ['type:edge', 'view:mv_bakehouse_sales', 'measure:Gross Sales', 'dimension:Franchise Name', store-name-not-unique]
+- id: b-020
+  question: How many transactions happened at stores in Stockholm?
+  expected_sql: |-
+    SELECT MEASURE(`Transaction Count`) AS transaction_count
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    WHERE `Franchise City` = 'Stockholm'
+  tags: ['type:filter', 'view:mv_bakehouse_sales', 'measure:Transaction Count', 'dimension:Franchise City']
+- id: b-021
+  question: Sales per store by store country
+  expected_sql: |-
+    SELECT `Franchise Country`, MEASURE(`Sales per Franchise`) AS sales_per_franchise
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    GROUP BY ALL ORDER BY sales_per_franchise DESC
+  tags: ['type:ratio', 'view:mv_bakehouse_sales', 'measure:Sales per Franchise', 'dimension:Franchise Country']
+- id: b-022
+  question: What is average transaction value by store size band?
+  expected_sql: |-
+    SELECT `Franchise Size`, MEASURE(`Average Transaction Value`) AS average_transaction_value
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    GROUP BY ALL ORDER BY `Franchise Size`
+  tags: ['type:breakdown', 'view:mv_bakehouse_sales', 'measure:Average Transaction Value', 'dimension:Franchise Size']
+- id: b-023
+  question: How much did customers from the USA spend in total?
+  expected_sql: |-
+    SELECT MEASURE(`Gross Sales`) AS gross_sales
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    WHERE `Customer Country` = 'USA'
+  tags: ['type:edge', 'view:mv_bakehouse_sales', 'measure:Gross Sales', 'dimension:Customer Country', country-code-usa-vs-us]
+- id: b-024
+  question: Gross sales at US stores
+  expected_sql: |-
+    SELECT MEASURE(`Gross Sales`) AS gross_sales
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    WHERE `Franchise Country` = 'US'
+  tags: ['type:filter', 'view:mv_bakehouse_sales', 'measure:Gross Sales', 'dimension:Franchise Country']
+- id: b-025
+  question: Units sold by customer home continent
+  expected_sql: |-
+    SELECT `Customer Continent`, MEASURE(`Units Sold`) AS units_sold
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    GROUP BY ALL ORDER BY units_sold DESC
+  tags: ['type:breakdown', 'view:mv_bakehouse_sales', 'measure:Units Sold', 'dimension:Customer Continent']
+- id: b-026
+  question: How many unique buyers come from California (state CA)?
+  expected_sql: |-
+    SELECT MEASURE(`Customers with Purchases`) AS customers_with_purchases
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    WHERE `Customer State` = 'CA'
+  tags: ['type:filter', 'view:mv_bakehouse_sales', 'measure:Customers with Purchases', 'dimension:Customer State']
+- id: b-027
+  question: Average basket size by customer gender
+  expected_sql: |-
+    SELECT `Customer Gender`, MEASURE(`Units per Transaction`) AS units_per_transaction
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    GROUP BY ALL ORDER BY `Customer Gender`
+  tags: ['type:breakdown', 'view:mv_bakehouse_sales', 'measure:Units per Transaction', 'dimension:Customer Gender']
+- id: b-028
+  question: What were gross sales on 17 May 2024, and note that the day is partial?
+  expected_sql: |-
+    SELECT MEASURE(`Gross Sales`) AS gross_sales
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    WHERE `Transaction Date` = DATE'2024-05-17'
+  tags: ['type:edge', 'view:mv_bakehouse_sales', 'measure:Gross Sales', 'dimension:Transaction Date', partial-day]
+- id: b-029
+  question: Product share of sales within each store country
+  expected_sql: |-
+    SELECT `Franchise Country`, `Product`, MEASURE(`Product Mix`) AS product_mix
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    GROUP BY ALL ORDER BY `Franchise Country`, product_mix DESC
+  tags: ['type:ratio', 'view:mv_bakehouse_sales', 'measure:Product Mix', 'dimension:Product', 'dimension:Franchise Country']
+- id: b-030
+  question: How many Tokyo Tidbits did we sell with visa?
+  expected_sql: |-
+    SELECT MEASURE(`Units Sold`) AS units_sold
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales
+    WHERE `Product` = 'Tokyo Tidbits' AND `Payment Method` = 'visa'
+  tags: ['type:filter', 'view:mv_bakehouse_sales', 'measure:Units Sold', 'dimension:Product', 'dimension:Payment Method']
+- id: b-031
+  question: How many franchise stores do we have?
+  expected_sql: |-
+    SELECT MEASURE(`Franchise Count`) AS franchise_count
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+  tags: ['type:simple', 'view:mv_bakehouse_supplier_coverage', 'measure:Franchise Count']
+- id: b-032
+  question: How many ingredient suppliers do we work with?
+  expected_sql: |-
+    SELECT MEASURE(`Supplier Count`) AS supplier_count
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+  tags: ['type:simple', 'view:mv_bakehouse_supplier_coverage', 'measure:Supplier Count']
+- id: b-033
+  question: How many stores are mapped to a supplier on file?
+  expected_sql: |-
+    SELECT MEASURE(`Franchises with Supplier`) AS franchises_with_supplier
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+  tags: ['type:simple', 'view:mv_bakehouse_supplier_coverage', 'measure:Franchises with Supplier']
+- id: b-034
+  question: What is our supplier reach across the store network?
+  expected_sql: |-
+    SELECT MEASURE(`Supplier Coverage (proxy)`) AS supplier_coverage
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+  tags: ['type:synonym', 'view:mv_bakehouse_supplier_coverage', 'measure:Supplier Coverage (proxy)']
+- id: b-035
+  question: Supplier coverage by store country
+  expected_sql: |-
+    SELECT `Franchise Country`, MEASURE(`Supplier Coverage (proxy)`) AS supplier_coverage
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+    GROUP BY ALL ORDER BY supplier_coverage
+  tags: ['type:ratio', 'view:mv_bakehouse_supplier_coverage', 'measure:Supplier Coverage (proxy)', 'dimension:Franchise Country']
+- id: b-036
+  question: On average how many stores does each supplier serve?
+  expected_sql: |-
+    SELECT MEASURE(`Franchises per Supplier`) AS franchises_per_supplier
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+  tags: ['type:ratio', 'view:mv_bakehouse_supplier_coverage', 'measure:Franchises per Supplier']
+- id: b-037
+  question: How many approved suppliers are there?
+  expected_sql: |-
+    SELECT MEASURE(`Approved Suppliers`) AS approved_suppliers
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+  tags: ['type:simple', 'view:mv_bakehouse_supplier_coverage', 'measure:Approved Suppliers']
+- id: b-038
+  question: What fraction of our suppliers are approved?
+  expected_sql: |-
+    SELECT MEASURE(`Approved Supplier Share (Supplier Basis)`) AS approved_supplier_share_supplier_basis
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+  tags: ['type:ratio', 'view:mv_bakehouse_supplier_coverage', 'measure:Approved Supplier Share (Supplier Basis)']
+- id: b-039
+  question: What share of all stores, including those with no supplier on file, buy from an approved vendor?
+  expected_sql: |-
+    SELECT MEASURE(`Franchises on Approved Supplier`) AS franchises_on_approved_supplier, MEASURE(`Approved Supplier Share (Franchise Basis)`) AS approved_supplier_share_franchise_basis
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+  tags: ['type:edge', 'view:mv_bakehouse_supplier_coverage', 'measure:Franchises on Approved Supplier', 'measure:Approved Supplier Share (Franchise Basis)']
+- id: b-040
+  question: How many stores have no supplier on file versus a supplier on file?
+  expected_sql: |-
+    SELECT `Supplier Status`, MEASURE(`Franchise Count`) AS franchise_count
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+    GROUP BY ALL ORDER BY `Supplier Status`
+  tags: ['type:edge', 'view:mv_bakehouse_supplier_coverage', 'measure:Franchise Count', 'dimension:Supplier Status']
+- id: b-041
+  question: Store count by store size band
+  expected_sql: |-
+    SELECT `Franchise Size`, MEASURE(`Franchise Count`) AS franchise_count
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+    GROUP BY ALL ORDER BY `Franchise Size`
+  tags: ['type:breakdown', 'view:mv_bakehouse_supplier_coverage', 'measure:Franchise Count', 'dimension:Franchise Size']
+- id: b-042
+  question: Which vendor supplies each store in Paris?
+  expected_sql: |-
+    SELECT `Franchise ID`, `Franchise Name`, `Supplier Name`, MEASURE(`Franchise Count`) AS franchise_count
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+    WHERE `Franchise City` = 'Paris'
+    GROUP BY ALL ORDER BY `Franchise ID`
+  tags: ['type:filter', 'view:mv_bakehouse_supplier_coverage', 'measure:Franchise Count', 'dimension:Franchise ID', 'dimension:Franchise Name', 'dimension:Supplier Name', 'dimension:Franchise City']
+- id: b-043
+  question: Number of suppliers by supplier continent
+  expected_sql: |-
+    SELECT `Supplier Continent`, MEASURE(`Supplier Count`) AS supplier_count
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+    GROUP BY ALL ORDER BY supplier_count DESC
+  tags: ['type:breakdown', 'view:mv_bakehouse_supplier_coverage', 'measure:Supplier Count', 'dimension:Supplier Continent']
+- id: b-044
+  question: How many stores get almonds from their supplier?
+  expected_sql: |-
+    SELECT MEASURE(`Franchises with Supplier`) AS franchises_with_supplier
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+    WHERE `Supplier Ingredient` = 'almonds'
+  tags: ['type:filter', 'view:mv_bakehouse_supplier_coverage', 'measure:Franchises with Supplier', 'dimension:Supplier Ingredient']
+- id: b-045
+  question: Supplier count by supplier size
+  expected_sql: |-
+    SELECT `Supplier Size`, MEASURE(`Supplier Count`) AS supplier_count
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+    GROUP BY ALL ORDER BY `Supplier Size`
+  tags: ['type:breakdown', 'view:mv_bakehouse_supplier_coverage', 'measure:Supplier Count', 'dimension:Supplier Size']
+- id: b-046
+  question: How many stores are on each supplier approval flag value?
+  expected_sql: |-
+    SELECT `Supplier Approved`, MEASURE(`Franchise Count`) AS franchise_count
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+    GROUP BY ALL ORDER BY `Supplier Approved`
+  tags: ['type:breakdown', 'view:mv_bakehouse_supplier_coverage', 'measure:Franchise Count', 'dimension:Supplier Approved']
+- id: b-047
+  question: Approved supplier share of stores by store country
+  expected_sql: |-
+    SELECT `Franchise Country`, MEASURE(`Approved Supplier Share (Franchise Basis)`) AS approved_supplier_share_franchise_basis
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+    GROUP BY ALL ORDER BY `Franchise Country`
+  tags: ['type:ratio', 'view:mv_bakehouse_supplier_coverage', 'measure:Approved Supplier Share (Franchise Basis)', 'dimension:Franchise Country']
+- id: b-048
+  question: How many vendors serve stores in European supplier continent with an approved flag?
+  expected_sql: |-
+    SELECT MEASURE(`Approved Suppliers`) AS approved_suppliers
+    FROM ${target_catalog}.${target_schema}.mv_bakehouse_supplier_coverage
+    WHERE `Supplier Continent` = 'Europe'
+  tags: ['type:filter', 'view:mv_bakehouse_supplier_coverage', 'measure:Approved Suppliers', 'dimension:Supplier Continent']

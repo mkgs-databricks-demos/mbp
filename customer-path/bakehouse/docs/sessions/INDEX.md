@@ -4,6 +4,9 @@ Genie build session summaries, newest first.
 
 | Date | Wave | Session | Title | Mode | Status | Summary |
 |---|---|---|---|---|---|---|
+| 2026-11-28 | 6 | 10c | Benchmark Questions: Cross-View (59 questions, 59/59 SUCCEEDED) | edit | pass | [2026-11-28_w6-10c-cross-view-benchmark.md](2026-11-28_w6-10c-cross-view-benchmark.md) |
+| 2026-11-28 | 6 | 10b | Benchmark Questions: View Group B (48 questions, 48/48 SUCCEEDED) | edit | pass | [2026-11-28_w6-10b-benchmark-group-b.md](2026-11-28_w6-10b-benchmark-group-b.md) |
+| 2026-11-28 | 6 | 10a | Benchmark Questions: View Group A (80 questions, 80/80 SUCCEEDED) | edit | pass | [2026-11-28_w6-10a-benchmark-group-a.md](2026-11-28_w6-10a-benchmark-group-a.md) |
 | 2026-11-28 | 5 | 09 | Genie Agent Deployment & Probe (space 01f1eaeeac87195fa93d5b083cc91e84, probe SUCCEEDED) | edit | pass | [2026-11-28_w5-09-agent-deployment.md](2026-11-28_w5-09-agent-deployment.md) |
 | 2026-11-28 | 4 | 08 | Genie Agent Curation (re-validation, no changes) | edit | pass | [2026-11-28_w4-08-agent-revalidation.md](2026-11-28_w4-08-agent-revalidation.md) |
 | 2026-11-28 | 4 | 07 | UC Pages Registration (revalidation: 23 unchanged) | edit | pass | [2026-11-28_w4-07-uc-pages-revalidation.md](2026-11-28_w4-07-uc-pages-revalidation.md) |

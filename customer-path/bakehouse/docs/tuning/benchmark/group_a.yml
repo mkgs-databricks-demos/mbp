@@ -1,0 +1,323 @@
+# View group: group_a (metric views: mv_bakehouse_customer_activity, mv_bakehouse_sales)
+# Session 10a, build run 409860738864401. Single-view questions; ids prefixed a-.
+# expected_sql uses ${target_catalog}.${target_schema} tokens; every statement ran read-only with state SUCCEEDED on 2026-11-28.
+- id: a-001
+  question: "How many customers do we have on file?"
+  expected_sql: "SELECT MEASURE(`Customer Count`) AS customer_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+  tags: ["type:simple", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Count"]
+- id: a-002
+  question: "How many customers have bought something from us?"
+  expected_sql: "SELECT MEASURE(`Buying Customers`) AS buying_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+  tags: ["type:simple", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Buying Customers"]
+- id: a-003
+  question: "How many customers have purchased more than once?"
+  expected_sql: "SELECT MEASURE(`Repeat Customers`) AS repeat_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+  tags: ["type:simple", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Repeat Customers"]
+- id: a-004
+  question: "What is the total spend across all customers?"
+  expected_sql: "SELECT MEASURE(`Customer Gross Sales`) AS customer_gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+  tags: ["type:simple", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Gross Sales"]
+- id: a-005
+  question: "How many purchases have our customers made in total?"
+  expected_sql: "SELECT MEASURE(`Customer Transactions`) AS customer_transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+  tags: ["type:simple", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Transactions"]
+- id: a-006
+  question: "What is the average spend per shopper?"
+  expected_sql: "SELECT MEASURE(`Revenue per Customer`) AS revenue_per_customer FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+  tags: ["type:synonym", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Revenue per Customer"]
+- id: a-007
+  question: "On average, how many times does a buying customer shop with us?"
+  expected_sql: "SELECT MEASURE(`Purchase Frequency`) AS purchase_frequency FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+  tags: ["type:synonym", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Purchase Frequency"]
+- id: a-008
+  question: "What share of our shoppers came back for another purchase?"
+  expected_sql: "SELECT MEASURE(`Repeat Customer Rate`) AS repeat_customer_rate FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+  tags: ["type:ratio", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Repeat Customer Rate"]
+- id: a-009
+  question: "What percentage of customers on file have made at least one purchase?"
+  expected_sql: "SELECT MEASURE(`Customer Coverage (proxy)`) AS customer_coverage FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity"
+  tags: ["type:ratio", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Coverage (proxy)"]
+- id: a-010
+  question: "How many customers do we have in each home country?"
+  expected_sql: "SELECT `Customer Country`, MEASURE(`Customer Count`) AS customer_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY customer_count DESC"
+  tags: ["type:breakdown", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Count", "dimension:mv_bakehouse_customer_activity.Customer Country"]
+- id: a-011
+  question: "Break down customer spend by customer continent."
+  expected_sql: "SELECT `Customer Continent`, MEASURE(`Customer Gross Sales`) AS customer_gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY customer_gross_sales DESC"
+  tags: ["type:breakdown", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Gross Sales", "dimension:mv_bakehouse_customer_activity.Customer Continent"]
+- id: a-012
+  question: "Which 5 customer home states have the most customers?"
+  expected_sql: "SELECT `Customer State`, MEASURE(`Customer Count`) AS customer_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY customer_count DESC LIMIT 5"
+  tags: ["type:breakdown", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Count", "dimension:mv_bakehouse_customer_activity.Customer State"]
+- id: a-013
+  question: "How does revenue per customer compare by gender?"
+  expected_sql: "SELECT `Customer Gender`, MEASURE(`Revenue per Customer`) AS revenue_per_customer FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY 1"
+  tags: ["type:breakdown", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Revenue per Customer", "dimension:mv_bakehouse_customer_activity.Customer Gender"]
+- id: a-014
+  question: "How many customers fall into each purchase-count band?"
+  expected_sql: "SELECT `Customer Purchase Band`, MEASURE(`Customer Count`) AS customer_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY 1"
+  tags: ["type:breakdown", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Count", "dimension:mv_bakehouse_customer_activity.Customer Purchase Band"]
+- id: a-015
+  question: "How many customers made their first purchase on each day?"
+  expected_sql: "SELECT `First Purchase Date`, MEASURE(`Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `First Purchase Date` IS NOT NULL GROUP BY ALL ORDER BY 1"
+  tags: ["type:time", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Count", "dimension:mv_bakehouse_customer_activity.First Purchase Date"]
+- id: a-016
+  question: "On which date did the most customers make their latest purchase?"
+  expected_sql: "SELECT `Last Purchase Date`, MEASURE(`Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Last Purchase Date` IS NOT NULL GROUP BY ALL ORDER BY customers DESC LIMIT 1"
+  tags: ["type:time", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Count", "dimension:mv_bakehouse_customer_activity.Last Purchase Date"]
+- id: a-017
+  question: "How many customers first bought from us on or after May 10, 2024?"
+  expected_sql: "SELECT MEASURE(`Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `First Purchase Date` >= DATE'2024-05-10'"
+  tags: ["type:time", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Count", "dimension:mv_bakehouse_customer_activity.First Purchase Date"]
+- id: a-018
+  question: "How many customers have not purchased since May 10, 2024?"
+  expected_sql: "SELECT MEASURE(`Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Last Purchase Date` < DATE'2024-05-10'"
+  tags: ["type:time", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Count", "dimension:mv_bakehouse_customer_activity.Last Purchase Date"]
+- id: a-019
+  question: "What is the repeat customer rate for customers living in Japan?"
+  expected_sql: "SELECT MEASURE(`Repeat Customer Rate`) AS repeat_customer_rate FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer Country` = 'Japan'"
+  tags: ["type:filter", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Repeat Customer Rate", "dimension:mv_bakehouse_customer_activity.Customer Country"]
+- id: a-020
+  question: "How much did female customers spend in total?"
+  expected_sql: "SELECT MEASURE(`Customer Gross Sales`) AS customer_gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer Gender` = 'female'"
+  tags: ["type:filter", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Gross Sales", "dimension:mv_bakehouse_customer_activity.Customer Gender"]
+- id: a-021
+  question: "How many customers from the USA have bought from us?"
+  expected_sql: "SELECT MEASURE(`Buying Customers`) AS buying_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer Country` = 'USA'"
+  tags: ["type:filter", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Buying Customers", "dimension:mv_bakehouse_customer_activity.Customer Country"]
+- id: a-022
+  question: "What is the purchase frequency of customers in the 11+ purchases band?"
+  expected_sql: "SELECT MEASURE(`Purchase Frequency`) AS purchase_frequency FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer Purchase Band` = '11+ purchases'"
+  tags: ["type:filter", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Purchase Frequency", "dimension:mv_bakehouse_customer_activity.Customer Purchase Band"]
+- id: a-023
+  question: "How many transactions came from customers based in Australia?"
+  expected_sql: "SELECT MEASURE(`Customer Transactions`) AS customer_transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer Country` = 'Australia'"
+  tags: ["type:filter", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Transactions", "dimension:mv_bakehouse_customer_activity.Customer Country"]
+- id: a-024
+  question: "What is ARPC by customer country?"
+  expected_sql: "SELECT `Customer Country`, MEASURE(`Revenue per Customer`) AS revenue_per_customer FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY revenue_per_customer DESC"
+  tags: ["type:synonym", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Revenue per Customer", "dimension:mv_bakehouse_customer_activity.Customer Country"]
+- id: a-025
+  question: "How many returning customers do we have per continent?"
+  expected_sql: "SELECT `Customer Continent`, MEASURE(`Repeat Customers`) AS repeat_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY repeat_customers DESC"
+  tags: ["type:synonym", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Repeat Customers", "dimension:mv_bakehouse_customer_activity.Customer Continent"]
+- id: a-026
+  question: "What is our customer reach in each home country?"
+  expected_sql: "SELECT `Customer Country`, MEASURE(`Customer Coverage (proxy)`) AS customer_coverage FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY 1"
+  tags: ["type:synonym", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Coverage (proxy)", "dimension:mv_bakehouse_customer_activity.Customer Country"]
+- id: a-027
+  question: "How many orders per customer do shoppers place, by gender?"
+  expected_sql: "SELECT `Customer Gender`, MEASURE(`Purchase Frequency`) AS purchase_frequency FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY 1"
+  tags: ["type:synonym", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Purchase Frequency", "dimension:mv_bakehouse_customer_activity.Customer Gender"]
+- id: a-028
+  question: "Which home state has the highest revenue per customer?"
+  expected_sql: "SELECT `Customer State`, MEASURE(`Revenue per Customer`) AS revenue_per_customer FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY revenue_per_customer DESC LIMIT 1"
+  tags: ["type:ratio", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Revenue per Customer", "dimension:mv_bakehouse_customer_activity.Customer State"]
+- id: a-029
+  question: "What is the repeat customer rate by customer continent?"
+  expected_sql: "SELECT `Customer Continent`, MEASURE(`Repeat Customer Rate`) AS repeat_customer_rate FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY 1"
+  tags: ["type:ratio", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Repeat Customer Rate", "dimension:mv_bakehouse_customer_activity.Customer Continent"]
+- id: a-030
+  question: "How many customers have never made a purchase?"
+  expected_sql: "SELECT MEASURE(`Customer Count`) AS customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer Purchase Band` = '0 purchases'"
+  tags: ["type:edge", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Count", "dimension:mv_bakehouse_customer_activity.Customer Purchase Band"]
+- id: a-031
+  question: "How much has customer 2000000 spent with us, and how many purchases have they made?"
+  expected_sql: "SELECT `Customer ID`, MEASURE(`Customer Gross Sales`) AS customer_gross_sales, MEASURE(`Customer Transactions`) AS customer_transactions FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer ID` = 2000000 GROUP BY ALL"
+  tags: ["type:edge", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Gross Sales", "measure:mv_bakehouse_customer_activity.Customer Transactions", "dimension:mv_bakehouse_customer_activity.Customer ID"]
+- id: a-032
+  question: "Which 10 customers spent the most?"
+  expected_sql: "SELECT `Customer ID`, MEASURE(`Customer Gross Sales`) AS customer_gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY customer_gross_sales DESC LIMIT 10"
+  tags: ["type:edge", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Gross Sales", "dimension:mv_bakehouse_customer_activity.Customer ID"]
+- id: a-033
+  question: "How many customers in the customer table live in the United States?"
+  expected_sql: "SELECT MEASURE(`Customer Count`) AS customer_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity WHERE `Customer Country` = 'USA'"
+  tags: ["type:edge", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Customer Count", "dimension:mv_bakehouse_customer_activity.Customer Country", "edge:country_code_usa"]
+- id: a-034
+  question: "How many buying and repeat customers are there for each gender in each home country?"
+  expected_sql: "SELECT `Customer Country`, `Customer Gender`, MEASURE(`Buying Customers`) AS buying_customers, MEASURE(`Repeat Customers`) AS repeat_customers FROM ${target_catalog}.${target_schema}.mv_bakehouse_customer_activity GROUP BY ALL ORDER BY 1, 2"
+  tags: ["type:breakdown", "view:mv_bakehouse_customer_activity", "measure:mv_bakehouse_customer_activity.Buying Customers", "measure:mv_bakehouse_customer_activity.Repeat Customers", "dimension:mv_bakehouse_customer_activity.Customer Country", "dimension:mv_bakehouse_customer_activity.Customer Gender"]
+- id: a-035
+  question: "What were our total gross sales?"
+  expected_sql: "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+  tags: ["type:simple", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Gross Sales"]
+- id: a-036
+  question: "How many baked goods did we sell in total?"
+  expected_sql: "SELECT MEASURE(`Units Sold`) AS units_sold FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+  tags: ["type:simple", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Units Sold"]
+- id: a-037
+  question: "How many sales transactions were recorded?"
+  expected_sql: "SELECT MEASURE(`Transaction Count`) AS transaction_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+  tags: ["type:simple", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Transaction Count"]
+- id: a-038
+  question: "How many franchise stores made at least one sale?"
+  expected_sql: "SELECT MEASURE(`Franchises with Sales`) AS franchises_with_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+  tags: ["type:simple", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Franchises with Sales"]
+- id: a-039
+  question: "How many distinct customers bought at our stores?"
+  expected_sql: "SELECT MEASURE(`Customers with Purchases`) AS customers_with_purchases FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+  tags: ["type:simple", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Customers with Purchases"]
+- id: a-040
+  question: "What is the average ticket size?"
+  expected_sql: "SELECT MEASURE(`Average Transaction Value`) AS average_transaction_value FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+  tags: ["type:synonym", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Average Transaction Value"]
+- id: a-041
+  question: "What is our average basket size in items?"
+  expected_sql: "SELECT MEASURE(`Units per Transaction`) AS units_per_transaction FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+  tags: ["type:synonym", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Units per Transaction"]
+- id: a-042
+  question: "What is the average price we get per unit sold?"
+  expected_sql: "SELECT MEASURE(`Average Selling Price`) AS average_selling_price FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+  tags: ["type:synonym", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Average Selling Price"]
+- id: a-043
+  question: "What is the average sales per store?"
+  expected_sql: "SELECT MEASURE(`Sales per Franchise`) AS sales_per_franchise FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+  tags: ["type:synonym", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Sales per Franchise"]
+- id: a-044
+  question: "What is revenue by product?"
+  expected_sql: "SELECT `Product`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY gross_sales DESC"
+  tags: ["type:breakdown", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Gross Sales", "dimension:mv_bakehouse_sales.Product"]
+- id: a-045
+  question: "What share of revenue does each product contribute?"
+  expected_sql: "SELECT `Product`, MEASURE(`Product Mix`) AS product_mix, MEASURE(`Gross Sales All Products`) AS gross_sales_all_products FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY product_mix DESC"
+  tags: ["type:ratio", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Product Mix", "measure:mv_bakehouse_sales.Gross Sales All Products", "dimension:mv_bakehouse_sales.Product"]
+- id: a-046
+  question: "What is the tender mix across our sales?"
+  expected_sql: "SELECT `Payment Method`, MEASURE(`Payment Method Mix`) AS payment_method_mix, MEASURE(`Transaction Count All Payment Methods`) AS transactions_all_methods FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY payment_method_mix DESC"
+  tags: ["type:synonym", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Payment Method Mix", "measure:mv_bakehouse_sales.Transaction Count All Payment Methods", "dimension:mv_bakehouse_sales.Payment Method"]
+- id: a-047
+  question: "How many transactions were paid with each card network?"
+  expected_sql: "SELECT `Payment Method`, MEASURE(`Transaction Count`) AS transaction_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY transaction_count DESC"
+  tags: ["type:breakdown", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Transaction Count", "dimension:mv_bakehouse_sales.Payment Method"]
+- id: a-048
+  question: "Which store country generated the most revenue?"
+  expected_sql: "SELECT `Franchise Country`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY gross_sales DESC LIMIT 1"
+  tags: ["type:breakdown", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Gross Sales", "dimension:mv_bakehouse_sales.Franchise Country"]
+- id: a-049
+  question: "What are units sold by store city? Show the top 10."
+  expected_sql: "SELECT `Franchise City`, MEASURE(`Units Sold`) AS units_sold FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY units_sold DESC LIMIT 10"
+  tags: ["type:breakdown", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Units Sold", "dimension:mv_bakehouse_sales.Franchise City"]
+- id: a-050
+  question: "How do sales per store compare across store size bands?"
+  expected_sql: "SELECT `Franchise Size`, MEASURE(`Sales per Franchise`) AS sales_per_franchise FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY 1"
+  tags: ["type:ratio", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Sales per Franchise", "dimension:mv_bakehouse_sales.Franchise Size"]
+- id: a-051
+  question: "List the 5 stores (by store id and name) with the lowest revenue."
+  expected_sql: "SELECT `Franchise ID`, `Franchise Name`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY gross_sales ASC LIMIT 5"
+  tags: ["type:breakdown", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Gross Sales", "dimension:mv_bakehouse_sales.Franchise ID", "dimension:mv_bakehouse_sales.Franchise Name"]
+- id: a-052
+  question: "How much revenue came from customers whose home country is Japan?"
+  expected_sql: "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Customer Country` = 'Japan'"
+  tags: ["type:filter", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Gross Sales", "dimension:mv_bakehouse_sales.Customer Country"]
+- id: a-053
+  question: "What were gross sales by customer home continent?"
+  expected_sql: "SELECT `Customer Continent`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY gross_sales DESC"
+  tags: ["type:breakdown", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Gross Sales", "dimension:mv_bakehouse_sales.Customer Continent"]
+- id: a-054
+  question: "Which 5 customer home states bought the most units?"
+  expected_sql: "SELECT `Customer State`, MEASURE(`Units Sold`) AS units_sold FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY units_sold DESC LIMIT 5"
+  tags: ["type:breakdown", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Units Sold", "dimension:mv_bakehouse_sales.Customer State"]
+- id: a-055
+  question: "What is the average transaction value for male versus female customers?"
+  expected_sql: "SELECT `Customer Gender`, MEASURE(`Average Transaction Value`) AS average_transaction_value FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY 1"
+  tags: ["type:breakdown", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Average Transaction Value", "dimension:mv_bakehouse_sales.Customer Gender"]
+- id: a-056
+  question: "Show daily revenue."
+  expected_sql: "SELECT `Transaction Date`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY 1"
+  tags: ["type:time", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Gross Sales", "dimension:mv_bakehouse_sales.Transaction Date"]
+- id: a-057
+  question: "What were weekly units sold?"
+  expected_sql: "SELECT `Transaction Week`, MEASURE(`Units Sold`) AS units_sold FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY 1"
+  tags: ["type:time", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Units Sold", "dimension:mv_bakehouse_sales.Transaction Week"]
+- id: a-058
+  question: "At what hour of the day do we make the most transactions?"
+  expected_sql: "SELECT `Transaction Hour`, MEASURE(`Transaction Count`) AS transaction_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY transaction_count DESC LIMIT 1"
+  tags: ["type:time", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Transaction Count", "dimension:mv_bakehouse_sales.Transaction Hour"]
+- id: a-059
+  question: "What were gross sales on May 10, 2024?"
+  expected_sql: "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Transaction Date` = DATE'2024-05-10'"
+  tags: ["type:time", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Gross Sales", "dimension:mv_bakehouse_sales.Transaction Date"]
+- id: a-060
+  question: "What was revenue in the first week of May 2024 (May 1 to May 7)?"
+  expected_sql: "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Transaction Date` BETWEEN DATE'2024-05-01' AND DATE'2024-05-07'"
+  tags: ["type:time", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Gross Sales", "dimension:mv_bakehouse_sales.Transaction Date"]
+- id: a-061
+  question: "What is the day-over-day sales change for store 3000000?"
+  expected_sql: "SELECT `Franchise ID`, `Transaction Date`, MEASURE(`Daily Gross Sales`) AS daily_gross_sales, MEASURE(`Prior Day Gross Sales`) AS prior_day_gross_sales, MEASURE(`Comparable Franchise Sales Growth (proxy)`) AS comp_growth FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise ID` = 3000000 GROUP BY ALL ORDER BY 2"
+  tags: ["type:ratio", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Comparable Franchise Sales Growth (proxy)", "measure:mv_bakehouse_sales.Daily Gross Sales", "measure:mv_bakehouse_sales.Prior Day Gross Sales", "dimension:mv_bakehouse_sales.Franchise ID", "dimension:mv_bakehouse_sales.Transaction Date"]
+- id: a-062
+  question: "What was same-store sales growth on May 16, 2024 versus the prior day for each store?"
+  expected_sql: "SELECT `Franchise ID`, MEASURE(`Comparable Franchise Sales Growth (proxy)`) AS comp_growth FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Transaction Date` = DATE'2024-05-16' GROUP BY ALL ORDER BY comp_growth DESC"
+  tags: ["type:synonym", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Comparable Franchise Sales Growth (proxy)", "dimension:mv_bakehouse_sales.Franchise ID", "dimension:mv_bakehouse_sales.Transaction Date"]
+- id: a-063
+  question: "What was the overall gross sales on each day compared with the day before?"
+  expected_sql: "SELECT `Transaction Date`, MEASURE(`Daily Gross Sales`) AS daily_gross_sales, MEASURE(`Prior Day Gross Sales`) AS prior_day_gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY 1"
+  tags: ["type:time", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Daily Gross Sales", "measure:mv_bakehouse_sales.Prior Day Gross Sales", "dimension:mv_bakehouse_sales.Transaction Date"]
+- id: a-064
+  question: "How much revenue did stores in Japan make?"
+  expected_sql: "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise Country` = 'Japan'"
+  tags: ["type:filter", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Gross Sales", "dimension:mv_bakehouse_sales.Franchise Country"]
+- id: a-065
+  question: "How many units of Golden Gate Ginger did we sell?"
+  expected_sql: "SELECT MEASURE(`Units Sold`) AS units_sold FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Product` = 'Golden Gate Ginger'"
+  tags: ["type:filter", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Units Sold", "dimension:mv_bakehouse_sales.Product"]
+- id: a-066
+  question: "How many transactions were paid with amex at XL stores?"
+  expected_sql: "SELECT MEASURE(`Transaction Count`) AS transaction_count FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Payment Method` = 'amex' AND `Franchise Size` = 'XL'"
+  tags: ["type:filter", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Transaction Count", "dimension:mv_bakehouse_sales.Payment Method", "dimension:mv_bakehouse_sales.Franchise Size"]
+- id: a-067
+  question: "What is the product mix within US stores?"
+  expected_sql: "SELECT `Product`, MEASURE(`Product Mix`) AS product_mix FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise Country` = 'US' GROUP BY ALL ORDER BY product_mix DESC"
+  tags: ["type:filter", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Product Mix", "dimension:mv_bakehouse_sales.Product", "dimension:mv_bakehouse_sales.Franchise Country"]
+- id: a-068
+  question: "What is the payment mix in each store country?"
+  expected_sql: "SELECT `Franchise Country`, `Payment Method`, MEASURE(`Payment Method Mix`) AS payment_method_mix FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY 1, 2"
+  tags: ["type:ratio", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Payment Method Mix", "dimension:mv_bakehouse_sales.Franchise Country", "dimension:mv_bakehouse_sales.Payment Method"]
+- id: a-069
+  question: "How many unique shoppers bought at stores in Berlin?"
+  expected_sql: "SELECT MEASURE(`Customers with Purchases`) AS customers_with_purchases FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise City` = 'Berlin'"
+  tags: ["type:synonym", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Customers with Purchases", "dimension:mv_bakehouse_sales.Franchise City"]
+- id: a-070
+  question: "How many active stores are there in each store country?"
+  expected_sql: "SELECT `Franchise Country`, MEASURE(`Franchises with Sales`) AS franchises_with_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY franchises_with_sales DESC"
+  tags: ["type:synonym", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Franchises with Sales", "dimension:mv_bakehouse_sales.Franchise Country"]
+- id: a-071
+  question: "What is the UPT by product?"
+  expected_sql: "SELECT `Product`, MEASURE(`Units per Transaction`) AS units_per_transaction FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY units_per_transaction DESC"
+  tags: ["type:synonym", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Units per Transaction", "dimension:mv_bakehouse_sales.Product"]
+- id: a-072
+  question: "What is the ASP for each product?"
+  expected_sql: "SELECT `Product`, MEASURE(`Average Selling Price`) AS average_selling_price FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY 1"
+  tags: ["type:synonym", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Average Selling Price", "dimension:mv_bakehouse_sales.Product"]
+- id: a-073
+  question: "Which product has the highest average order value?"
+  expected_sql: "SELECT `Product`, MEASURE(`Average Transaction Value`) AS average_transaction_value FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY average_transaction_value DESC LIMIT 1"
+  tags: ["type:ratio", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Average Transaction Value", "dimension:mv_bakehouse_sales.Product"]
+- id: a-074
+  question: "How much did the Sugar Rush stores sell? Show each store separately."
+  expected_sql: "SELECT `Franchise ID`, `Franchise Name`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise Name` = 'Sugar Rush' GROUP BY ALL ORDER BY 1"
+  tags: ["type:edge", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Gross Sales", "dimension:mv_bakehouse_sales.Franchise Name", "dimension:mv_bakehouse_sales.Franchise ID", "edge:duplicate_store_name"]
+- id: a-075
+  question: "What were sales from US stores, using the store country rather than the customer country?"
+  expected_sql: "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise Country` = 'US'"
+  tags: ["type:edge", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Gross Sales", "dimension:mv_bakehouse_sales.Franchise Country", "edge:country_code_us"]
+- id: a-076
+  question: "What were gross sales on May 17, 2024, which is a partial day?"
+  expected_sql: "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Transaction Date` = DATE'2024-05-17'"
+  tags: ["type:edge", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Gross Sales", "dimension:mv_bakehouse_sales.Transaction Date", "edge:partial_day"]
+- id: a-077
+  question: "What were net sales after returns?"
+  expected_sql: "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales"
+  tags: ["type:edge", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Gross Sales", "edge:net_sales_not_modeled"]
+- id: a-078
+  question: "How much revenue came from stores in Canada in the afternoon (12:00 to 17:59)?"
+  expected_sql: "SELECT MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise Country` = 'Canada' AND `Transaction Hour` BETWEEN 12 AND 17"
+  tags: ["type:filter", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Gross Sales", "dimension:mv_bakehouse_sales.Franchise Country", "dimension:mv_bakehouse_sales.Transaction Hour"]
+- id: a-079
+  question: "What were gross sales by customer home country and store country?"
+  expected_sql: "SELECT `Customer Country`, `Franchise Country`, MEASURE(`Gross Sales`) AS gross_sales FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales GROUP BY ALL ORDER BY 1, 2"
+  tags: ["type:breakdown", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Gross Sales", "dimension:mv_bakehouse_sales.Customer Country", "dimension:mv_bakehouse_sales.Franchise Country"]
+- id: a-080
+  question: "What were weekly sales per store for medium stores?"
+  expected_sql: "SELECT `Transaction Week`, MEASURE(`Sales per Franchise`) AS sales_per_franchise FROM ${target_catalog}.${target_schema}.mv_bakehouse_sales WHERE `Franchise Size` = 'M' GROUP BY ALL ORDER BY 1"
+  tags: ["type:time", "view:mv_bakehouse_sales", "measure:mv_bakehouse_sales.Sales per Franchise", "dimension:mv_bakehouse_sales.Transaction Week", "dimension:mv_bakehouse_sales.Franchise Size"]
