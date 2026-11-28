@@ -1,5 +1,7 @@
 # Tuning Plan 02 — Bakehouse Retail Sales Agent
 
+**Status: applied** in iteration 2 (build run 409860738864401, session 13). YAML registered by `register_metric_views` run 251284026050684 (SUCCESS); re-evaluated in eval run `01f1eb035de91aad886e10d893b5fefc` (tuning 134/146, 91.8%). See `docs/tuning/iterations/02.md`.
+
 * Source: iteration 1, Genie eval run `01f1eafb99ba1a47ac5f2814b651116f`, started 2026-11-28T07:16:16Z (build run 409860738864401, session 12). See `docs/tuning/iterations/01.md`.
 * Current: tuning 131/146 (89.7%), holdout 35/41 (85.4%, numbers only). `benchmark.asymptote`: not reached (1 of 3 required plans applied).
 * Scope of triage: the **15 tuning-split failures only**. No holdout question is listed or cited.
@@ -20,17 +22,17 @@
 
 | # | Ladder step | Category | Question ids | Change | Expected effect | Status | Outcome |
 |---|---|---|---|---|---|---|---|
-| C7 | 1 (comment) | Filter / edge | b-048 | `Supplier Continent` comment: exact values (Africa, Asia, Central America, Europe, North America, South America, Unknown); filter with `=`, never `ILIKE`; 'European' means `= 'Europe'` | Agent filters `= 'Europe'` | planned | |
-| C8 | 2 (synonyms) | Synonym gap | b-048 | Synonyms `approved vendors`, `number of approved suppliers` on `Approved Suppliers` | Agent uses `Approved Suppliers` instead of `Supplier Count` + filter | planned | |
+| C7 | 1 (comment) | Filter / edge | b-048 | `Supplier Continent` comment: exact values (Africa, Asia, Central America, Europe, North America, South America, Unknown); filter with `=`, never `ILIKE`; 'European' means `= 'Europe'` | Agent filters `= 'Europe'` | applied | b-048 fixed (filters `= 'Europe'`) |
+| C8 | 2 (synonyms) | Synonym gap | b-048 | Synonyms `approved vendors`, `number of approved suppliers` on `Approved Suppliers` | Agent uses `Approved Suppliers` instead of `Supplier Count` + filter | applied | b-048 fixed (with C7); also added synonym `number of approved vendors` and a usage note on the comment |
 
 ### mv_bakehouse_sales
 
 | # | Ladder step | Category | Question ids | Change | Expected effect | Status | Outcome |
 |---|---|---|---|---|---|---|---|
-| S8 | 1 (comment) | Filter / edge | x-055 | `Supplier Name` comment: 'Unknown supplier' is not a supplier; when ranking or listing suppliers, filter `Supplier Status = 'Supplier on file'` | Unknown supplier no longer ranked | planned | |
-| S9 | 1 (comment) | Unit / format | x-059 | View and `Franchises with Sales` comments: shares and rates are returned as 0-1 fractions; do not multiply by 100, including ratios computed from two measures | Share returned as 1.0, not 100.0 | planned | |
-| S10 | 1 (comment), after a read-only check | Filter / edge | x-048 | First verify read-only why `Prior Day Gross Sales` grouped by `Supplier Status` with a `Transaction Date` filter differs from the per-store sum (stores without a sale that day?). Then document the behaviour on `Prior Day Gross Sales` / `Daily Gross Sales`; if the measure is wrong for this grouping, consider step 5 | Supplier-on-file prior day = 1647 | planned | |
-| S11 | none (exhaustion record started) | Ambiguity | x-004 | No metric view step applies to top-N tie handling (it is not a property of a measure or dimension). Record only; reconsider in plan 03 if it recurs | n/a | n/a | |
+| S8 | 1 (comment) | Filter / edge | x-055 | `Supplier Name` comment: 'Unknown supplier' is not a supplier; when ranking or listing suppliers, filter `Supplier Status = 'Supplier on file'` | Unknown supplier no longer ranked | applied | Worked: x-055 now filters `Supplier on file`, same 10 suppliers and values; still BAD on rounding only (expectation `ROUND(...,2)`) -> benchmark_defect |
+| S9 | 1 (comment) | Unit / format | x-059 | View and `Franchises with Sales` comments: shares and rates are returned as 0-1 fractions; do not multiply by 100, including ratios computed from two measures | Share returned as 1.0, not 100.0 | applied | x-059 fixed |
+| S10 | 1 (comment), after a read-only check | Filter / edge | x-048 | First verify read-only why `Prior Day Gross Sales` grouped by `Supplier Status` with a `Transaction Date` filter differs from the per-store sum (stores without a sale that day?). Then document the behaviour on `Prior Day Gross Sales` / `Daily Gross Sales`; if the measure is wrong for this grouping, consider step 5 | Supplier-on-file prior day = 1647 | applied (comment) | Check: the measure is right. Grouped by Supplier Status it returns 1755 = `Gross Sales` of 2024-05-15 for that group; the expectation's 1647 drops stores with no sale on 2024-05-16. No step 5. x-048 reclassified benchmark_defect; comment documents the grouping behaviour |
+| S11 | none (exhaustion record started) | Ambiguity | x-004 | No metric view step applies to top-N tie handling (it is not a property of a measure or dimension). Record only; reconsider in plan 03 if it recurs | n/a | record only | x-004 still fails in iteration 2 (RANK tie, 11 rows); exhaustion record completed in plan 03 |
 
 ## benchmark_defect (for the owner; not tuned)
 

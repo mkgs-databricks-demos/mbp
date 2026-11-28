@@ -65,7 +65,7 @@ dimensions:
       - ingredient
   - name: Supplier Continent
     expr: COALESCE(supplier.continent, 'Unknown')
-    comment: "Continent of the supplier; 'Unknown' when no supplier is on file."
+    comment: "Continent of the supplier; 'Unknown' when no supplier is on file. Exact values: Africa, Asia, Central America, Europe, North America, South America, Unknown. Filter with = on the exact value, never ILIKE or LIKE: 'European' means = 'Europe'."
   - name: Supplier Size
     expr: COALESCE(supplier.size, 'Unknown')
     comment: "Supplier size band (definition not confirmed); 'Unknown' when no supplier is on file."
@@ -117,7 +117,11 @@ measures:
         places: 2
   - name: Approved Suppliers
     expr: COUNT(DISTINCT supplier.supplierID) FILTER (WHERE supplier.approved = 'Y')
-    comment: "Distinct suppliers in scope with approval flag 'Y'."
+    comment: "Distinct suppliers in scope with approval flag 'Y'. Use it for 'how many approved suppliers / vendors' questions instead of Supplier Count with a Supplier Approved filter."
+    synonyms:
+      - approved vendors
+      - number of approved suppliers
+      - number of approved vendors
   - name: Approved Supplier Share (Supplier Basis)
     expr: MEASURE(`Approved Suppliers`) / MEASURE(`Supplier Count`)
     comment: "Supplier basis: fraction 0-1 of suppliers on file that are approved ('Y'). Counts suppliers, not stores; for questions about stores (franchises) use Approved Supplier Share (Franchise Basis)."

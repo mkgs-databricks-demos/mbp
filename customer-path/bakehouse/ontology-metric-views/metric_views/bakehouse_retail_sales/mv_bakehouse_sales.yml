@@ -3,7 +3,7 @@
 # point-of-sale transaction (single product line); transactionID is unique (EDA pattern C).
 # Data spans 2024-05-01 to 2024-05-17; 2024-05-17 is a partial day (ends 11:48).
 version: 1.1
-comment: "Bakehouse retail sales at transaction grain: gross sales, units, basket, product and payment mix, and franchise productivity, sliceable by product, payment method, franchise (store) geography, customer geography and time. Card numbers and customer contact fields are excluded (PCI DSS / personal data). Net sales is not modeled: the data has no returns, allowances or discounts."
+comment: "Bakehouse retail sales at transaction grain: gross sales, units, basket, product and payment mix, and franchise productivity, sliceable by product, payment method, franchise (store) geography, customer geography and time. Card numbers and customer contact fields are excluded (PCI DSS / personal data). Net sales is not modeled: the data has no returns, allowances or discounts. Shares, mixes and rates are 0-1 fractions: return them as is and do not multiply by 100, including ratios computed from two measures."
 
 source: ${source_catalog}.${source_schema}.sales_transactions
 
@@ -118,7 +118,7 @@ dimensions:
       - has supplier
   - name: Supplier Name
     expr: COALESCE(franchise.supplier.name, 'Unknown supplier')
-    comment: "Name of the store's ingredient supplier; 'Unknown supplier' when no supplier is on file. Group ratio measures (Average Transaction Value, Units per Transaction, Sales per Franchise) by it directly: they are recomputed per supplier."
+    comment: "Name of the store's ingredient supplier; 'Unknown supplier' when no supplier is on file. 'Unknown supplier' is not a supplier: when ranking or listing suppliers, filter Supplier Status = 'Supplier on file'. Group ratio measures (Average Transaction Value, Units per Transaction, Sales per Franchise) by it directly: they are recomputed per supplier."
     synonyms:
       - vendor
       - ingredient supplier
@@ -231,7 +231,7 @@ measures:
         places: 2
   - name: Franchises with Sales
     expr: COUNT(DISTINCT source.franchiseID)
-    comment: "Number of distinct franchise stores with at least one transaction in scope."
+    comment: "Number of distinct franchise stores with at least one transaction in scope. A count, not a share: a share of stores with sales (this count divided by a store count from mv_bakehouse_supplier_coverage) is a 0-1 fraction; do not multiply it by 100."
     synonyms:
       - active stores
       - selling franchises
@@ -262,7 +262,7 @@ measures:
         range: current
   - name: Prior Day Gross Sales
     expr: SUM(source.totalPrice)
-    comment: "Gross sales of the day before the Transaction Date (prior-period value for Comparable Franchise Sales Growth). With Daily Gross Sales it is the day-over-day pair: group by Transaction Date and use these measures instead of LAG."
+    comment: "Gross sales of the day before the Transaction Date (prior-period value for Comparable Franchise Sales Growth). With Daily Gross Sales it is the day-over-day pair: group by Transaction Date and use these measures instead of LAG. Grouped by another dimension (for example Supplier Status), it is the total prior-day gross sales of every store in that group, including stores with no sale on the Transaction Date; group by Transaction Date and that dimension directly, without a per-store breakdown."
     window:
       - order: Transaction Date
         range: current

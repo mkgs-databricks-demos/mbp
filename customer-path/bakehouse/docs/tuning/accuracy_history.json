@@ -124,5 +124,65 @@
       "correct": 131,
       "n": 146
     }
+  },
+  {
+    "changes": [
+      {
+        "id": "C7",
+        "plan": "tuning_plan_02",
+        "status": "applied",
+        "step": 1,
+        "view": "mv_bakehouse_supplier_coverage"
+      },
+      {
+        "id": "C8",
+        "plan": "tuning_plan_02",
+        "status": "applied",
+        "step": 2,
+        "view": "mv_bakehouse_supplier_coverage"
+      },
+      {
+        "id": "S8",
+        "plan": "tuning_plan_02",
+        "status": "applied",
+        "step": 1,
+        "view": "mv_bakehouse_sales"
+      },
+      {
+        "id": "S9",
+        "plan": "tuning_plan_02",
+        "status": "applied",
+        "step": 1,
+        "view": "mv_bakehouse_sales"
+      },
+      {
+        "id": "S10",
+        "plan": "tuning_plan_02",
+        "status": "applied (check: expectation defect)",
+        "step": 1,
+        "view": "mv_bakehouse_sales"
+      },
+      {
+        "id": "S11",
+        "plan": "tuning_plan_02",
+        "status": "record only",
+        "step": 0,
+        "view": "mv_bakehouse_sales"
+      }
+    ],
+    "eval_run_id": "01f1eb035de91aad886e10d893b5fefc",
+    "holdout": {
+      "accuracy": 0.8536585365853658,
+      "correct": 35,
+      "n": 41
+    },
+    "iteration": 2,
+    "label": "tuning_plan_02",
+    "started_at": "2026-11-28T08:11:51Z",
+    "tuning": {
+      "accuracy": 0.9178082191780822,
+      "correct": 134,
+      "n": 146
+    }
   }
 ]
